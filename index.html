@@ -198,54 +198,66 @@
     }
 
     function listen() {
-        // --- ASCOLTO AMICI E RICHIESTE ---
-        db.collection("amicizie").onSnapshot(snap => {
-            const div = document.getElementById('lista-amici'); 
-            div.innerHTML = "";
-            let amiciSet = new Set();
-
-            snap.forEach(doc => {
-                const d = doc.data();
-                // Gestione Richieste in arrivo
-                if (d.a === mioNome && d.stato === 'pendente') {
-                    // Evita notifiche multiple controllando se è un nuovo inserimento
-                    div.innerHTML += `<div class="user-item" style="background:#3700b3; color:white;">
-                        <span>🤝 Richiesta da: ${d.da}</span>
-                        <button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
-                    </div>`;
-                }
-                
-                // Gestione Lista Amici Effettivi
-                let amico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
-                if(amico && d.stato === 'amici') {
-                    amiciSet.add(amico);
-                    const isSel = amiciSelezionati.has(amico);
-                    div.innerHTML += `
-                        <div class="user-item ${isSel?'selected':''}" onclick="toggleAmico('${amico}', this)">
-                            <span>⭐ ${amico}</span>
-                            <button class="btn-del" onclick="event.stopPropagation(); db.collection('amicizie').doc('${doc.id}').delete()">X</button>
-                        </div>`;
+        // ASCOLTO AMICI E STATO ONLINE
+        // Usiamo un doppio ascolto: uno per le amicizie e uno per le presenze globali
+        db.collection("presenze").onSnapshot(presSnap => {
+            let utentiOnline = {};
+            presSnap.forEach(doc => {
+                const u = doc.data();
+                // Un utente è considerato online se l'ultimo "battito" è di meno di 60 secondi fa
+                if (u.last > Date.now() - 60000) {
+                    utentiOnline[u.nome] = true;
                 }
             });
-            // Aggiorna la lista globale filtrando gli amici
-            updateGlobal(amiciSet);
+
+            db.collection("amicizie").onSnapshot(snap => {
+                const div = document.getElementById('lista-amici'); 
+                div.innerHTML = "";
+                let amiciSet = new Set();
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    
+                    // Gestione Richieste in arrivo (Box Viola)
+                    if (d.a === mioNome && d.stato === 'pendente') {
+                        div.innerHTML += `<div class="user-item" style="background:#3700b3; color:white;">
+                            <span>🤝 Richiesta Amicizia: ${d.da}</span>
+                            <button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
+                        </div>`;
+                    }
+                    
+                    // Gestione Lista Amici
+                    let nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
+                    if(nomeAmico && d.stato === 'amici') {
+                        amiciSet.add(nomeAmico);
+                        const isSel = amiciSelezionati.has(nomeAmico);
+                        const isOnline = utentiOnline[nomeAmico]; // <--- CONTROLLO PALLINO
+
+                        div.innerHTML += `
+                            <div class="user-item ${isSel?'selected':''}" onclick="toggleAmico('${nomeAmico}', this)">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <span style="height:10px; width:100px; width:10px; background:${isOnline ? '#2ecc71' : '#555'}; border-radius:50%; display:inline-block; box-shadow: ${isOnline ? '0 0 8px #2ecc71' : 'none'};"></span>
+                                    <span style="font-weight:bold;">${nomeAmico}</span>
+                                </div>
+                                <button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere amico?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
+                            </div>`;
+                    }
+                });
+                updateGlobal(amiciSet);
+            });
         });
 
-        // --- ASCOLTO PARTITE E SFIDE ---
+        // ASCOLTO PARTITE (Resta invariato)
         db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
             const div = document.getElementById('lista-partite'); 
             div.innerHTML = `<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'"><span>Allenamento Solo (Ruzzle)</span><button>GIOCA</button></div>`;
-            
             snap.forEach(doc => {
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
-                
-                // Se è una sfida nuova (attesa) e non l'ho creata io, mostro alert
                 if(p.stato === "attesa" && p.partecipanti[0] !== mioNome) {
-                    // Notifica rapida inline
                     div.innerHTML += `<div class="user-item" style="background:#f1c40f; color:black;">
-                        <span>⚔️ SFIDA DA ${p.partecipanti[0]}</span>
-                        <button onclick="window.location.href='ruzzle.html?matchId=${doc.id}'">ACCETTA</button>
+                        <span>⚔️ SFIDA A ${p.gioco.toUpperCase()} DA ${p.partecipanti[0]}</span>
+                        <button onclick="window.location.href='${p.gioco}.html?matchId=${doc.id}'">ACCETTA</button>
                     </div>`;
                 } else {
                     let altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
@@ -254,7 +266,7 @@
                             <span>vs ${altri} (${p.gioco})</span>
                             <div>
                                 <button onclick="window.location.href='${p.gioco}.html?matchId=${doc.id}'" style="background:#03dac6; color:#000;">ENTRA</button>
-                                <button onclick="db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+                                <button onclick="if(confirm('Eliminare partita?')) db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
                             </div>
                         </div>`;
                 }
@@ -343,6 +355,7 @@
 </script>
 </body>
 </html>
+
 
 
 
