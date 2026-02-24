@@ -90,18 +90,33 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    
+    // RECUPERA NOME E PASSWORD SALVATI
     let mioNome = localStorage.getItem('mioNome') || "";
+    let miaPass = localStorage.getItem('miaPass') || "";
 
-    async function entra() {
+    // AUTOLOGIN SE DATI PRESENTI
+    if(mioNome && miaPass) {
+        window.onload = () => {
+            document.getElementById('username').value = mioNome;
+            document.getElementById('password').value = miaPass;
+            entra(true); // Parametro true per evitare alert inutili
+        };
+    }
+
+    async function entra(isAuto = false) {
         const n = document.getElementById('username').value.trim().toUpperCase();
         const p = document.getElementById('password').value.trim();
-        if(n.length < 2 || p.length < 3) return alert("Dati non validi!");
+        if(n.length < 2 || p.length < 3) return;
 
         const userRef = db.collection("utenti").doc(n);
         const doc = await userRef.get();
 
         if(doc.exists) {
-            if(doc.data().password !== p) return alert("Password Errata!");
+            if(doc.data().password !== p) {
+                if(!isAuto) alert("Password Errata!");
+                return;
+            }
         } else {
             if(confirm("Nuovo utente? Registrati con questa password.")) {
                 await userRef.set({ nome: n, password: p });
@@ -110,6 +125,8 @@
 
         mioNome = n;
         localStorage.setItem('mioNome', n);
+        localStorage.setItem('miaPass', p); // Salva la pass per il prossimo accesso
+        
         document.getElementById('login-div').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('user-display').textContent = "UTENTE: " + mioNome;
@@ -214,4 +231,5 @@ async function inviaRichiestaAmicizia(target) {
 </script>
 </body>
 </html>
+
 
