@@ -121,13 +121,19 @@
                 <button onclick="window.location.href='ruzzle.html'">GIOCA SOLO</button>
             </div>`;
 
+            // ... dentro il snapshot delle partite:
             snap.forEach(doc => {
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
                 let avversario = p.partecipanti.find(n => n !== mioNome);
+                let dataSfida = p.dataOra || ""; // Recupera la data
+            
                 partDiv.innerHTML += `
                     <div class="user-item live-match">
-                        <span>Partita vs ${avversario} [${p.stato}]</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-weight:bold;">vs ${avversario}</span>
+                            <small style="opacity:0.7;">${dataSfida} [${p.stato}]</small>
+                        </div>
                         <div>
                             <button onclick="vaiAlGioco('${doc.id}')">ENTRA</button>
                             <button class="btn-del" onclick="eliminaPartita('${doc.id}')" style="margin-left:10px; background:#e74c3c;">🗑️</button>
@@ -152,6 +158,7 @@
     function closeModal() { document.getElementById('modal-sfida').style.display = 'none'; }
 
     async function creaPartita() {
+        const oraAttuale = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const doc = await db.collection("partite").add({
             partecipanti: [mioNome, targetUser],
             punteggi: { [mioNome]: 0, [targetUser]: 0 },
@@ -159,6 +166,7 @@
             pronti: [],
             confermaVerifica: [],
             stato: "attesa",
+            dataOra: oraAttuale, // <--- AGGIUNTO QUI
             opzioni: {
                 tempo: document.getElementById('opt-tempo').value,
                 griglia: document.getElementById('opt-griglia').value,
@@ -183,4 +191,5 @@
 </script>
 </body>
 </html>
+
 
