@@ -153,16 +153,38 @@
         });
     }
 
-    function updateGlobal(amiciSet) {
-        db.collection("presenze").get().then(snap => {
-            const div = document.getElementById('lista-global'); div.innerHTML = "";
-            snap.forEach(doc => {
-                if(doc.id !== mioNome && !amiciSet.has(doc.id)) {
-                    div.innerHTML += `<div class="user-item"><span>${doc.id}</span><button onclick="db.collection('amicizie').doc('${mioNome}_${doc.id}').set({da:mioNome, a:doc.id, stato:'pendente'})">+AMICO</button></div>`;
-                }
-            });
+function updateGlobal(amiciSet) {
+    db.collection("presenze").get().then(snap => {
+        const div = document.getElementById('lista-global'); 
+        div.innerHTML = "";
+        snap.forEach(doc => {
+            // Mostra l'utente solo se non sono io e se non è già mio amico
+            if(doc.id !== mioNome && !amiciSet.has(doc.id)) {
+                div.innerHTML += `
+                    <div class="user-item">
+                        <span>${doc.id}</span>
+                        <button onclick="inviaRichiestaAmicizia('${doc.id}')" style="background:#bb86fc; color:black;">+ AMICO</button>
+                    </div>`;
+            }
         });
+    });
+}
+
+// Nuova funzione da aggiungere in fondo allo script di index.html
+async function inviaRichiestaAmicizia(target) {
+    try {
+        await db.collection("amicizie").doc(mioNome + "_" + target).set({
+            da: mioNome,
+            a: target,
+            stato: 'pendente',
+            timestamp: Date.now()
+        });
+        alert("Richiesta inviata a " + target + "!");
+    } catch (e) {
+        console.error(e);
+        alert("Errore nell'invio della richiesta. Controlla le Rules di Firebase.");
     }
+}
 
     function caricaStorico() {
         db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato","==","conclusa").onSnapshot(snap => {
@@ -192,3 +214,4 @@
 </script>
 </body>
 </html>
+
