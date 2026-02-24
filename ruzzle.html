@@ -2117,152 +2117,128 @@ function fireConfetti(originElement = null) {
 		});
     // Sostituisci la parte finale (dove c'è loadDictionary) con questo:
 
-// INNESTO 2: IL CERVELLO MULTIPLAYER
-// Controlla solo che l'utente sia loggato
+// --- UNICO BLOCCO DI GESTIONE MULTIPLAYER & SOLO (FIXATO) ---
+
 if (!mioNome) {
-    alert("Devi effettuare il login nella Dashboard prima di giocare!");
+    alert("Effettua il login in Dashboard.");
     window.location.href = "index.html";
 }
 
-// Se non c'è matchId, nascondiamo gli elementi multiplayer
 if (!matchId) {
-    window.addEventListener('load', () => {
-        if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
-        if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
-    });
-}
-
-// Ascolta lo stato della partita su Firebase
-db.collection("partite").doc(matchId).onSnapshot(doc => {
-    const data = doc.data();
-    if(!data) return;
-    
-    const statusDiv = document.getElementById('lobby-status');
-    const actionDiv = document.getElementById('lobby-action');
-    const overlay = document.getElementById('multiplayer-lobby');
-    const pronti = data.pronti || [];
-
-    // STATO 1: ATTESA (Entrambi devono cliccare AVVIA)
-    if (data.stato === "attesa") {
-        statusDiv.textContent = `Giocatori pronti: ${pronti.length} / 2`;
-        actionDiv.innerHTML = !pronti.includes(mioNome) ? 
-            `<button onclick="setProntoOnline()" style="padding:20px 40px; font-size:1.5rem; background:#03dac6; border:none; border-radius:10px; font-weight:900; cursor:pointer;">AVVIA SFIDA! 🚀</button>` : 
-            `<p>In attesa del collega...</p>`;
+    // MODALITÀ GIOCATORE SINGOLO
+    if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
+    if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
+    loadDictionary(); 
+} else {
+    // MODALITÀ MULTIPLAYER (SFIDE)
+    db.collection("partite").doc(matchId).onSnapshot(doc => {
+        const data = doc.data();
+        if(!data) { window.location.href = "index.html"; return; }
         
-        if (pronti.length >= 2) {
-            db.collection("partite").doc(matchId).update({ stato: "in_corso" });
-        }
-    }
+        const overlay = document.getElementById('multiplayer-lobby');
+        const statusDiv = document.getElementById('lobby-status');
+        const actionDiv = document.getElementById('lobby-action');
+        const pronti = data.pronti || [];
+        const finito = data.finito || [];
 
-        // 2. Fase di gioco: genera le lettere e FORZA la visualizzazione
-        if (data.stato === "in_corso") {
-            if (!isGameActive && !isAnalysisPhase) {
-                // Impostazioni della sfida
-                gridSize = parseInt(data.opzioni.griglia);
-                timeRemaining = parseInt(data.opzioni.tempo);
-                initialTime = timeRemaining;
-                currentSeed = data.opzioni.seed;
-                isBiatchMode = (data.opzioni.mode === 'biatch');
-                isCrazyMode = (data.opzioni.mode === 'crazy');
-                useBonuses = (data.opzioni.mode !== 'classic');
-                
-                // GENERAZIONE GRIGLIA
-                const cleanSeed = currentSeed.split('-')[0];
-                generateGridData(cleanSeed);
-                renderGrid();
-                
-                // --- FIX DEFINITIVO VISIBILITÀ ---
-                overlay.style.display = 'none'; // Nasconde la lobby nera
-                
-                // Forza la sparizione degli overlay originali
-                const sScreen = document.getElementById('start-screen');
-                if(sScreen) sScreen.style.setProperty('display', 'none', 'important');
-                
-                const gOverlay = document.getElementById('grid-overlay');
-                if(gOverlay) gOverlay.style.setProperty('display', 'none', 'important');
-
-                // Rimuove il blur da tutte le tile (se presente)
-                document.querySelectorAll('.tile').forEach(t => {
-                    t.classList.remove('blurred');
-                });
-                
-                startRound(); 
-            }
-            // Aggiorna punteggio avversario
-            const avv = data.partecipanti.find(n => n !== mioNome);
-            const scoreAvv = data.punteggi[avv] || 0;
-            const liveOppEl = document.getElementById('live-opponent-score');
-            if(liveOppEl) liveOppEl.textContent = `🆚 ${avv}: ${scoreAvv}`;
-        }
-
-    // STATO 3: VERIFICA (Togliamo le parole comuni)
-    if (data.stato === "verifica") {
-        overlay.style.display = 'flex';
-        document.getElementById('lobby-title').textContent = "CONFRONTO PAROLE...";
-        const conf = data.confermaVerifica || [];
-        actionDiv.innerHTML = !conf.includes(mioNome) ? 
-            `<button onclick="confermaVerificaOnline()" style="padding:20px 40px; background:#f1c40f; border:none; border-radius:10px; font-weight:900; cursor:pointer;">VEDI RISULTATI FINALI 🏁</button>` : 
-            `<p>Attendo che il collega confermi...</p>`;
-    }
-
-// DENTRO ON SNAPSHOT -> STATO 4: CONCLUSIONE
-if (data.stato === "conclusa") {
-    overlay.style.display = 'flex';
-    
-    // Trova il punteggio più alto tra tutti
-    let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-    let vincitore = classifica[0][0];
-    let isPareggio = classifica.length > 1 && classifica[0][1] === classifica[1][1];
-
-    document.getElementById('lobby-title').textContent = isPareggio ? "PAREGGIO! 🤝" : (vincitore === mioNome ? "CAMPIONE! 👑" : "SCONFITTA! 🐷");
-    
-    let classificaHtml = "<div style='font-size:1.2rem; margin:15px;'>";
-    classifica.forEach(([player, score], index) => {
-        classificaHtml += `${index+1}. ${player}: ${score} PT ${player === vincitore ? '🏆' : ''}<br>`;
-    });
-    classificaHtml += "</div>";
-    
-    statusDiv.innerHTML = classificaHtml + `
-        <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; margin-bottom:10px; cursor:pointer;">🔍 ANALIZZA TUTTI</button>
-    `;
-    
-    document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">HOME</button>`;
-    if(vincitore === mioNome && !isPareggio) { fireConfetti(); startEndGameCelebration(); }
-}
-
-// FUNZIONE VERIFICA AGGIORNATA PER N GIOCATORI
-async function confermaVerificaOnline() {
-    await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
-    const snap = await db.collection("partite").doc(matchId).get();
-    const data = snap.data();
-    
-    // Se TUTTI i partecipanti hanno confermato
-    if (data.confermaVerifica.length >= data.partecipanti.length) {
-        let tuttiPunteggi = {};
-        
-        data.partecipanti.forEach(player => {
-            let mioScoreFinal = 0;
-            const mieParole = data.parole[player] || [];
+        // STATO 1: ATTESA (Sincronizzazione Start)
+        if (data.stato === "attesa") {
+            overlay.style.display = 'flex';
+            document.getElementById('lobby-title').textContent = "SALA D'ATTESA 🐷";
+            statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
+            actionDiv.innerHTML = !pronti.includes(mioNome) ? 
+                `<button onclick="setProntoOnline()" class="btn-ready">AVVIA SFIDA! 🚀</button>` : `<p>In attesa dei colleghi...</p>`;
             
-            mieParole.forEach(parolaObj => {
-                let trovataDaAltri = false;
-                // Controlla se qualcun altro ha la stessa parola
-                data.partecipanti.forEach(altroPlayer => {
-                    if (player !== altroPlayer) {
-                        const paroleAltro = data.parole[altroPlayer] || [];
-                        if (paroleAltro.some(p => p.w === parolaObj.w)) trovataDaAltri = true;
-                    }
-                });
-                
-                if (!trovataDaAltri) mioScoreFinal += parolaObj.p;
-            });
-            tuttiPunteggi[player] = mioScoreFinal;
-        });
+            if (pronti.length >= data.partecipanti.length) {
+                db.collection("partite").doc(matchId).update({ stato: "in_corso" });
+            }
+        }
 
-        db.collection("partite").doc(matchId).update({ punteggi: tuttiPunteggi, stato: "conclusa" });
-    }
+        // STATO 2: IN CORSO (Fix Lettere Invisibili)
+        if (data.stato === "in_corso") {
+            if (!finito.includes(mioNome)) {
+                overlay.style.display = 'none';
+                if (!isGameActive && !isAnalysisPhase) {
+                    // Impostazioni della sfida
+                    gridSize = parseInt(data.opzioni.griglia);
+                    timeRemaining = parseInt(data.opzioni.tempo);
+                    initialTime = timeRemaining;
+                    currentSeed = data.opzioni.seed;
+                    isBiatchMode = (data.opzioni.mode === 'biatch');
+                    isCrazyMode = (data.opzioni.mode === 'crazy');
+                    useBonuses = (data.opzioni.mode !== 'classic');
+                    
+                    // Genera e Disegna la griglia
+                    const cleanSeed = currentSeed.split('-')[0];
+                    generateGridData(cleanSeed);
+                    renderGrid();
+                    
+                    // Nascondi overlay originali
+                    document.getElementById('start-screen').style.display = 'none';
+                    document.getElementById('grid-overlay').style.display = 'none';
+                    
+                    startRound(); 
+                }
+            } else {
+                overlay.style.display = 'flex';
+                // CONTATORE CHIARO: 1 su 3, 2 su 3...
+                if (finito.length < data.partecipanti.length) {
+                    document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
+                    statusDiv.innerHTML = `
+                        <div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div>
+                        <p>Hanno terminato. Aspettiamo gli altri...</p>
+                    `;
+                    actionDiv.innerHTML = "";
+                } else {
+                    // Tutti hanno finito, passa a verifica
+                    db.collection("partite").doc(matchId).update({ stato: "verifica" });
+                }
+            }
+            // Punteggi Live di tutti
+            const altriGiocatori = data.partecipanti.filter(n => n !== mioNome);
+            let scoresHtml = "";
+            altriGiocatori.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
+            document.getElementById('live-opponent-score').innerHTML = scoresHtml;
+        }
+
+        // STATO 3: VERIFICA
+        if (data.stato === "verifica") {
+            overlay.style.display = 'flex';
+            document.getElementById('lobby-title').textContent = "VERIFICA PAROLE";
+            const conf = data.confermaVerifica || [];
+            statusDiv.innerHTML = `<div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>`;
+            
+            actionDiv.innerHTML = !conf.includes(mioNome) ? 
+                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">SCOPRI IL VINCITORE 🏁</button>` : 
+                `<p>In attesa che tutti confermino...</p>`;
+        }
+
+        // STATO 4: CONCLUSIONE
+        if (data.stato === "conclusa") {
+            overlay.style.display = 'flex';
+            let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
+            let vincitore = classifica[0][0];
+            let mioScoreFinal = data.punteggi[mioNome];
+
+            document.getElementById('lobby-title').textContent = (vincitore === mioNome) ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
+            
+            let htmlClassifica = "<div style='font-size:1.5rem; margin:15px;'>";
+            classifica.forEach(([p, s]) => {
+                htmlClassifica += `${p}: ${s} PT ${p === vincitore ? '🏆' : ''}<br>`;
+            });
+            htmlClassifica += "</div>";
+
+            statusDiv.innerHTML = htmlClassifica + `
+                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold;">🔍 ANALIZZA TUTTI</button>
+            `;
+            
+            actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; margin-top:10px;">TORNA ALLA HOME</button>`;
+            
+            if(vincitore === mioNome) { fireConfetti(); startEndGameCelebration(); }
+        }
+    });
+    loadDictionary();
 }
-});
 
 function setProntoOnline() {
     db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
@@ -2272,167 +2248,61 @@ async function confermaVerificaOnline() {
     await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
-    if (data.confermaVerifica.length >= 2) {
-        const p1 = data.partecipanti[0], p2 = data.partecipanti[1];
-        const comuni = data.parole[p1].filter(a => data.parole[p2].some(b => a.w === b.w)).map(x => x.w);
-        let f1 = 0; data.parole[p1].forEach(x => { if(!comuni.includes(x.w)) f1 += x.p; });
-        let f2 = 0; data.parole[p2].forEach(x => { if(!comuni.includes(x.w)) f2 += x.p; });
-        db.collection("partite").doc(matchId).update({ punteggi: { [p1]: f1, [p2]: f2 }, stato: "conclusa" });
-    }
-}
-// --- PARTE C: GESTIONE AVVIO (SOLO VS MULTI) ---
-
-// --- GESTIONE AVVIO (SOLO VS MULTI) ---
-if (!matchId) {
-    if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
-    if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
-    loadDictionary(); // Carica e aspetta click su NUOVA
-} else {
-    db.collection("partite").doc(matchId).onSnapshot(doc => {
-        const data = doc.data();
-        if(!data) { window.location.href = "index.html"; return; }
+    
+    // Se TUTTI hanno confermato, calcola i punteggi reali (multi-player)
+    if (data.confermaVerifica.length >= data.partecipanti.length) {
+        let nuoviPunteggi = {};
         
-        const overlay = document.getElementById('multiplayer-lobby');
-        const statusDiv = document.getElementById('lobby-status');
-        const actionDiv = document.getElementById('lobby-action');
-        const finito = data.finito || [];
+        data.partecipanti.forEach(player => {
+            let pFinal = 0;
+            const mie = data.parole[player] || [];
+            
+            mie.forEach(par => {
+                let comune = false;
+                // Controlla se la parola è stata trovata da ALMENO un altro giocatore
+                data.partecipanti.forEach(altro => {
+                    if(player !== altro) {
+                        const paroleAltro = data.parole[altro] || [];
+                        if(paroleAltro.some(x => x.w === par.w)) comune = true;
+                    }
+                });
+                if(!comune) pFinal += par.p;
+            });
+            nuoviPunteggi[player] = pFinal;
+        });
 
-        // 1. ATTESA PRONTI
-        if (data.stato === "attesa") {
-            overlay.style.display = 'flex';
-            statusDiv.textContent = `Pronti: ${data.pronti.length} / 2`;
-            actionDiv.innerHTML = !data.pronti.includes(mioNome) ? 
-                `<button onclick="db.collection('partite').doc(matchId).update({pronti:firebase.firestore.FieldValue.arrayUnion(mioNome)})" class="btn-ready">AVVIA! 🚀</button>` : `<p>In attesa dell'altro...</p>`;
-            if (data.pronti.length >= 2) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
-        }
-
-        // 2. IN CORSO
-		if (data.stato === "in_corso") {
-		    if (!finito.includes(mioNome)) {
-		        overlay.style.display = 'none';
-		        // [Tuo codice per avviare la griglia...]
-		    } else {
-		        overlay.style.display = 'flex';
-		        // NUOVO CONTATORE:
-		        if (finito.length < data.partecipanti.length) {
-		            document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
-		            document.getElementById('lobby-status').innerHTML = `
-		                <div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div>
-		                <p>Hanno terminato il tempo. Aspettiamo gli altri...</p>
-		            `;
-		        } else {
-		            // Quando tutti hanno finito, passa a verifica
-		            db.collection("partite").doc(matchId).update({ stato: "verifica" });
-		        }
-		    }
-		    // Mostra punteggi live (facoltativo: puoi scorrere l'array partecipanti per mostrarli tutti)
-		    const avvList = data.partecipanti.filter(n => n !== mioNome);
-		    let scoresHtml = "";
-		    avvList.forEach(a => scoresHtml += `🆚 ${a}: ${data.punteggi[a] || 0} `);
-		    document.getElementById('live-opponent-score').innerHTML = scoresHtml;
-		}
-		
-		// STATO 3: VERIFICA
-		if (data.stato === "verifica") {
-		    overlay.style.display = 'flex';
-		    document.getElementById('lobby-title').textContent = "VERIFICA PAROLE";
-		    const conf = data.confermaVerifica || [];
-		    
-		    document.getElementById('lobby-status').innerHTML = `
-		        <div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>
-		    `;
-		    
-		    document.getElementById('lobby-action').innerHTML = !conf.includes(mioNome) ? 
-		        `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">CONFERMA E CALCOLA 🏁</button>` : 
-		        `<p>In attesa che tutti confermino...</p>`;
-		}
-
-        // 4. CONCLUSIONE
-        if (data.stato === "conclusa") {
-            overlay.style.display = 'flex';
-            const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
-            const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "Pareggio");
-            document.getElementById('lobby-title').textContent = vinc === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
-            statusDiv.innerHTML = `<div style="font-size:2rem;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>`;
-            actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">TORNA ALLA HOME</button>`;
-            if(vinc === mioNome) { fireConfetti(); startEndGameCelebration(); }
-        }
-    });
-    loadDictionary();
-}
-
-async function confermaVerificaOnline() {
-    await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
-    const snap = await db.collection("partite").doc(matchId).get();
-    const data = snap.data();
-    if (data.confermaVerifica.length >= 2) {
-        const p1 = data.partecipanti[0], p2 = data.partecipanti[1];
-        const comuni = data.parole[p1].filter(a => data.parole[p2].some(b => a.w === b.w)).map(x => x.w);
-        let f1 = 0; data.parole[p1].forEach(x => { if(!comuni.includes(x.w)) f1 += x.p; });
-        let f2 = 0; data.parole[p2].forEach(x => { if(!comuni.includes(x.w)) f2 += x.p; });
-        db.collection("partite").doc(matchId).update({ punteggi: { [p1]: f1, [p2]: f2 }, stato: "conclusa" });
+        db.collection("partite").doc(matchId).update({ punteggi: nuoviPunteggi, stato: "conclusa" });
     }
 }
+
 async function attivaAnalisiMultiplayer() {
-    // 1. Nascondi lo schermo nero
     document.getElementById('multiplayer-lobby').style.display = 'none';
-    
-    // 2. Attiva la tua modalità analisi originale
     isAnalysisPhase = true;
-    isGameActive = true; // permette di cliccare sulla lista per vedere le linee
-    
-    // 3. Mostra i controlli di analisi (se li hai nel CSS)
+    isGameActive = true; 
     if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
     if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
 
-    // 4. Sincronizza i dati locali con quelli del server per entrambi i giocatori
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
-    
     const wordsListEl = document.getElementById('found-words');
     wordsListEl.innerHTML = "";
     wordsListEl.classList.add('interactive');
 
-    // Funzione interna per aggiungere parole alla lista visibile
-    const aggiungiALista = (playerNome, parole) => {
+    data.partecipanti.forEach(p => {
         const header = document.createElement('li');
-        header.innerHTML = `<b style="color:#03dac6">${playerNome}</b>`;
+        header.innerHTML = `<b style="color:#03dac6">${p}</b>`;
         header.style.background = "#333";
         wordsListEl.appendChild(header);
 
-        parole.forEach(item => {
-            // Aggiorniamo la mappa locale 'foundWords' così la tua funzione originale 
-            // showWordOnGrid(word) può disegnare le linee
+        (data.parole[p] || []).forEach(item => {
             foundWords.set(item.w, { points: item.p, path: item.path });
-
             const li = document.createElement('li');
-            li.innerHTML = `
-                <div class="word-item-left">
-                    <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
-                    <span>${item.w}</span>
-                </div>
-                <span class="pts">${item.p}</span>`;
+            li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button><span>${item.w}</span></div><span class="pts">${item.p}</span>`;
             wordsListEl.appendChild(li);
         });
-    };
-
-    // Aggiungi le parole di entrambi i giocatori alla sidebar
-    data.partecipanti.forEach(p => {
-        aggiungiALista(p, data.parole[p] || []);
     });
-    
-    alert("Ora puoi cliccare sugli occhietti 👁️ per vedere i percorsi sulla griglia o usare 'COSA MI SONO PERSO?'");
 }
 </script>
 </body>
 
 </html>
-
-
-
-
-
-
-
-
-
