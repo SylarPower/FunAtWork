@@ -493,10 +493,14 @@
 
 <div class="app-wrapper">
     <!-- Header Allineato -->
-    <div class="header-bar">
-            <h1>Paroliere dei maiali 🐷</h1>
-            <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
-    </div>
+	<div class="header-bar">
+	    <div style="display:flex; align-items:center; gap:15px;">
+	        <button onclick="window.location.href='index.html'" style="background:#34495e; color:white; border:none; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">🏠 HOME</button>
+	        <h1>Paroliere dei 🐷</h1>
+	    </div>
+	    <div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1.1rem;"></div>
+	    <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
+	</div>
 
     <div class="game-container">
         
@@ -2119,6 +2123,8 @@ function fireConfetti(originElement = null) {
 
 // --- UNICO BLOCCO DI GESTIONE MULTIPLAYER & SOLO (FIXATO) ---
 
+// --- LOGICA MULTIPLAYER & SOLO (PULITA E COMPLETA) ---
+
 if (!mioNome) {
     alert("Effettua il login in Dashboard.");
     window.location.href = "index.html";
@@ -2130,7 +2136,7 @@ if (!matchId) {
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
     loadDictionary(); 
 } else {
-    // MODALITÀ MULTIPLAYER (SFIDE)
+    // MODALITÀ MULTIPLAYER
     db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if(!data) { window.location.href = "index.html"; return; }
@@ -2141,25 +2147,22 @@ if (!matchId) {
         const pronti = data.pronti || [];
         const finito = data.finito || [];
 
-        // STATO 1: ATTESA (Sincronizzazione Start)
+        // 1. ATTESA (Sincronizzazione Start)
         if (data.stato === "attesa") {
             overlay.style.display = 'flex';
-            document.getElementById('lobby-title').textContent = "SALA D'ATTESA 🐷";
             statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
             actionDiv.innerHTML = !pronti.includes(mioNome) ? 
                 `<button onclick="setProntoOnline()" class="btn-ready">AVVIA SFIDA! 🚀</button>` : `<p>In attesa dei colleghi...</p>`;
+            actionDiv.innerHTML += `<br><button onclick="window.location.href='index.html'" style="background:none; color:#777; border:none; margin-top:20px; cursor:pointer; text-decoration:underline;">Annulla ed esci</button>`;
             
-            if (pronti.length >= data.partecipanti.length) {
-                db.collection("partite").doc(matchId).update({ stato: "in_corso" });
-            }
+            if (pronti.length >= data.partecipanti.length) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
         }
 
-        // STATO 2: IN CORSO (Fix Lettere Invisibili)
+        // 2. IN CORSO
         if (data.stato === "in_corso") {
             if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase) {
-                    // Impostazioni della sfida
                     gridSize = parseInt(data.opzioni.griglia);
                     timeRemaining = parseInt(data.opzioni.tempo);
                     initialTime = timeRemaining;
@@ -2167,203 +2170,122 @@ if (!matchId) {
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
                     useBonuses = (data.opzioni.mode !== 'classic');
-                    
-                    // Genera e Disegna la griglia
-                    const cleanSeed = currentSeed.split('-')[0];
-                    generateGridData(cleanSeed);
+                    generateGridData(currentSeed.split('-')[0]);
                     renderGrid();
-                    
-                    // Nascondi overlay originali
                     document.getElementById('start-screen').style.display = 'none';
                     document.getElementById('grid-overlay').style.display = 'none';
-                    
                     startRound(); 
                 }
             } else {
                 overlay.style.display = 'flex';
-                // CONTATORE CHIARO: 1 su 3, 2 su 3...
+                // IL TUO CONTATORE DINAMICO (1 su 3, 2 su 3...)
                 if (finito.length < data.partecipanti.length) {
                     document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
-                    statusDiv.innerHTML = `
-                        <div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div>
-                        <p>Hanno terminato. Aspettiamo gli altri...</p>
-                    `;
+                    statusDiv.innerHTML = `<div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div><p>Hanno terminato. Aspettiamo gli altri...</p>`;
                     actionDiv.innerHTML = "";
                 } else {
-                    // Tutti hanno finito, passa a verifica
                     db.collection("partite").doc(matchId).update({ stato: "verifica" });
                 }
             }
             // Punteggi Live di tutti
-            const altriGiocatori = data.partecipanti.filter(n => n !== mioNome);
+            const altri = data.partecipanti.filter(n => n !== mioNome);
             let scoresHtml = "";
-            altriGiocatori.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
+            altri.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
             document.getElementById('live-opponent-score').innerHTML = scoresHtml;
         }
 
-        // STATO 3: VERIFICA
+        // 3. VERIFICA
         if (data.stato === "verifica") {
             overlay.style.display = 'flex';
             document.getElementById('lobby-title').textContent = "VERIFICA PAROLE";
             const conf = data.confermaVerifica || [];
             statusDiv.innerHTML = `<div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>`;
-            
             actionDiv.innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">SCOPRI IL VINCITORE 🏁</button>` : 
-                `<p>In attesa che tutti confermino...</p>`;
+                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">SCOPRI IL VINCITORE 🏁</button>` : `<p>Attendo gli altri...</p>`;
         }
 
-        // STATO 4: CONCLUSIONE (CON RIVINCITA)
+        // 4. CONCLUSIONE (CON RIVINCITA)
         if (data.stato === "conclusa") {
             overlay.style.display = 'flex';
-            
-            // --- LOGICA AUTO-REINDIRIZZO RIVINCITA ---
             if (data.prossimaPartita) {
-                document.getElementById('lobby-title').textContent = "RIVINCITA IN CORSO...";
-                statusDiv.textContent = "Il gruppo si sta spostando nella nuova stanza...";
-                setTimeout(() => {
-                    window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`;
-                }, 1500);
+                document.getElementById('lobby-title').textContent = "RIVINCITA!";
+                statusDiv.textContent = "Spostamento nella nuova stanza...";
+                setTimeout(() => { window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; }, 1500);
                 return;
             }
-            // -----------------------------------------
 
             let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
             let vincitore = classifica[0][0];
-
             document.getElementById('lobby-title').textContent = (vincitore === mioNome) ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
-            
-            let htmlClassifica = "<div style='font-size:1.5rem; margin:15px;'>";
-            classifica.forEach(([p, s]) => {
-                htmlClassifica += `${p}: ${s} PT ${p === vincitore ? '🏆' : ''}<br>`;
-            });
-            htmlClassifica += "</div>";
-
-            statusDiv.innerHTML = htmlClassifica + `
-                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>
-            `;
-            
-            // BOTTONI FINALI
+            let htmlClass = "<div style='font-size:1.5rem; margin:15px;'>";
+            classifica.forEach(([p, s]) => { htmlClass += `${p}: ${s} PT ${p === vincitore ? '🏆' : ''}<br>`; });
+            htmlClass += "</div>";
+            statusDiv.innerHTML = htmlClass + `<button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
             actionDiv.innerHTML = `
                 <button onclick="creaRivincita()" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA (Stesso Gruppo) 🔄</button>
-                <button onclick="window.location.href='index.html'" style="padding:10px 20px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">TORNA ALLA HOME</button>
-            `;
-            
+                <button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; width:100%;">TORNA ALLA HOME</button>`;
             if(vincitore === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
     loadDictionary();
 }
 
-function setProntoOnline() {
-    db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
-}
+function setProntoOnline() { db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) }); }
 
 async function confermaVerificaOnline() {
     await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
-    
-    // Se TUTTI hanno confermato, calcola i punteggi reali (multi-player)
     if (data.confermaVerifica.length >= data.partecipanti.length) {
         let nuoviPunteggi = {};
-        
         data.partecipanti.forEach(player => {
-            let pFinal = 0;
-            const mie = data.parole[player] || [];
-            
+            let pFinal = 0; const mie = data.parole[player] || [];
             mie.forEach(par => {
                 let comune = false;
-                // Controlla se la parola è stata trovata da ALMENO un altro giocatore
                 data.partecipanti.forEach(altro => {
-                    if(player !== altro) {
-                        const paroleAltro = data.parole[altro] || [];
-                        if(paroleAltro.some(x => x.w === par.w)) comune = true;
-                    }
+                    if(player !== altro && (data.parole[altro] || []).some(x => x.w === par.w)) comune = true;
                 });
                 if(!comune) pFinal += par.p;
             });
             nuoviPunteggi[player] = pFinal;
         });
-
         db.collection("partite").doc(matchId).update({ punteggi: nuoviPunteggi, stato: "conclusa" });
     }
 }
 
+async function creaRivincita() {
+    const snap = await db.collection("partite").doc(matchId).get();
+    const v = snap.data();
+    let pts = {}; let words = {};
+    v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
+    const doc = await db.collection("partite").add({
+        partecipanti: v.partecipanti, opzioni: v.opzioni, punteggi: pts, parole: words,
+        pronti: [], finito: [], confermaVerifica: [], stato: "attesa", timestamp: Date.now(),
+        dataOra: new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+    });
+    // Genera un nuovo seed per la rivincita
+    db.collection("partite").doc(doc.id).update({ "opzioni.seed": Math.random().toString(36).substring(7).toUpperCase() });
+    db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
+}
+
 async function attivaAnalisiMultiplayer() {
     document.getElementById('multiplayer-lobby').style.display = 'none';
-    isAnalysisPhase = true;
-    isGameActive = true; 
+    isAnalysisPhase = true; isGameActive = true; 
     if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
     if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
-
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
-    const wordsListEl = document.getElementById('found-words');
-    wordsListEl.innerHTML = "";
-    wordsListEl.classList.add('interactive');
-
+    const list = document.getElementById('found-words'); list.innerHTML = "";
     data.partecipanti.forEach(p => {
-        const header = document.createElement('li');
-        header.innerHTML = `<b style="color:#03dac6">${p}</b>`;
-        header.style.background = "#333";
-        wordsListEl.appendChild(header);
-
+        const header = document.createElement('li'); header.innerHTML = `<b style="color:#03dac6">${p}</b>`; header.style.background = "#333"; list.appendChild(header);
         (data.parole[p] || []).forEach(item => {
             foundWords.set(item.w, { points: item.p, path: item.path });
             const li = document.createElement('li');
             li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button><span>${item.w}</span></div><span class="pts">${item.p}</span>`;
-            wordsListEl.appendChild(li);
+            list.appendChild(li);
         });
     });
 }
-async function creaRivincita() {
-    if (!confirm("Vuoi creare una nuova partita con le stesse impostazioni e gli stessi giocatori?")) return;
-
-    try {
-        const snap = await db.collection("partite").doc(matchId).get();
-        const vecchiaPartita = snap.data();
-        
-        // Prepariamo i dati per la nuova partita
-        let punteggiIniziali = {};
-        let paroleIniziali = {};
-        vecchiaPartita.partecipanti.forEach(p => { 
-            punteggiIniziali[p] = 0; 
-            paroleIniziali[p] = []; 
-        });
-
-        const nuovaPartita = {
-            partecipanti: vecchiaPartita.partecipanti,
-            opzioni: vecchiaPartita.opzioni, // Mantiene Tempo, Griglia e Modalità
-            punteggi: punteggiIniziali,
-            parole: paroleIniziali,
-            pronti: [],
-            finito: [],
-            confermaVerifica: [],
-            stato: "attesa",
-            dataOra: new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}),
-            timestamp: Date.now()
-        };
-
-        // Generiamo un nuovo Seed per non avere la stessa griglia di prima
-        nuovaPartita.opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
-
-        // 1. Crea la nuova partita
-        const docRef = await db.collection("partite").add(nuovaPartita);
-        
-        // 2. "Avvisa" la vecchia partita che c'è una rivincita pronta
-        // Questo farà scattare il reindirizzamento automatico per tutti
-        await db.collection("partite").doc(matchId).update({
-            prossimaPartita: docRef.id
-        });
-
-    } catch (e) {
-        console.error("Errore creazione rivincita:", e);
-        alert("Impossibile creare la rivincita.");
-    }
-}
 </script>
 </body>
-
 </html>
-
