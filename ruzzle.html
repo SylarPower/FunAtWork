@@ -2145,7 +2145,7 @@ function fireConfetti(originElement = null) {
 		});
     // Sostituisci la parte finale (dove c'è loadDictionary) con questo:
 
-// --- UNICO BLOCCO DI GESTIONE MULTIPLAYER & SOLO (FIXATO) ---
+// --- LOGICA DI GESTIONE FINALE (PULITA E CORRETTA) ---
 
 if (!mioNome) {
     alert("Effettua il login in Dashboard.");
@@ -2153,7 +2153,7 @@ if (!mioNome) {
 }
 
 if (!matchId) {
-    // MODALITÀ GIOCATORE SINGOLO
+    // MODALITÀ SOLO
     if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
     loadDictionary(); 
@@ -2186,10 +2186,11 @@ if (!matchId) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase) {
                     gridSize = parseInt(data.opzioni.griglia);
-                    if (timeRemaining <= 0) {
-							timeRemaining = parseInt(data.opzioni.tempo);
-							initialTime = timeRemaining;
-						  }
+                    // FIX TIMER: lo imposta solo se non è già partito per evitare reset
+                    if (timeRemaining <= 0 || timeRemaining === 180) {
+                        timeRemaining = parseInt(data.opzioni.tempo);
+                        initialTime = timeRemaining;
+                    }
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2202,16 +2203,13 @@ if (!matchId) {
                 }
             } else {
                 overlay.style.display = 'flex';
-                // IL TUO CONTATORE DINAMICO (1 su 3, 2 su 3...)
                 if (finito.length < data.partecipanti.length) {
                     document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
                     statusDiv.innerHTML = `<div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div><p>Hanno terminato. Aspettiamo gli altri...</p>`;
-                    actionDiv.innerHTML = "";
                 } else {
                     db.collection("partite").doc(matchId).update({ stato: "verifica" });
                 }
             }
-            // Punteggi Live di tutti
             const altri = data.partecipanti.filter(n => n !== mioNome);
             let scoresHtml = "";
             altri.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
@@ -2225,7 +2223,7 @@ if (!matchId) {
             const conf = data.confermaVerifica || [];
             statusDiv.innerHTML = `<div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>`;
             actionDiv.innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">SCOPRI IL VINCITORE 🏁</button>` : `<p>Attendo gli altri...</p>`;
+                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI CHI HA VINTO 🏁</button>` : `<p>Attendo gli altri...</p>`;
         }
 
         // 4. CONCLUSIONE (CON RIVINCITA)
@@ -2233,23 +2231,34 @@ if (!matchId) {
             overlay.style.display = 'flex';
             if (data.prossimaPartita) {
                 document.getElementById('lobby-title').textContent = "RIVINCITA!";
-                statusDiv.textContent = "Spostamento nella nuova stanza...";
-                setTimeout(() => { window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; }, 1500);
+                setTimeout(() => { window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; }, 1000);
                 return;
             }
-
             let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
-            let vincitore = classifica[0][0];
-            document.getElementById('lobby-title').textContent = (vincitore === mioNome) ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
-            let htmlClass = "<div style='font-size:1.5rem; margin:15px;'>";
-            classifica.forEach(([p, s]) => { htmlClass += `${p}: ${s} PT ${p === vincitore ? '🏆' : ''}<br>`; });
-            htmlClass += "</div>";
-            statusDiv.innerHTML = htmlClass + `<button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
+            document.getElementById('lobby-title').textContent = classifica[0][0] === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
+            let html = ""; classifica.forEach(([p, s]) => { html += `${p}: ${s} PT<br>`; });
+            statusDiv.innerHTML = `<div style='font-size:1.5rem; margin:15px;'>${html}</div><button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
+            
+            // TASTO RIVINCITA: default 4x4 Crazy 60s
             actionDiv.innerHTML = `
-                <button onclick="creaRivincita()" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA (Stesso Gruppo) 🔄</button>
-                <button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; width:100%;">TORNA ALLA HOME</button>`;
-            if(vincitore === mioNome) { fireConfetti(); startEndGameCelebration(); }
+                <button onclick="confirmNewGame(true, true, false)" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA (4x4 Crazy 60s) 🔄</button>
+                <button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; width:100%;">HOME</button>`;
+            if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
+    });
+    
+    // ASCOLTO PROPOSTE PAROLE
+    db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+        snap.docChanges().forEach(change => {
+            if(change.type === "added") {
+                const prop = change.doc.data();
+                if(!prop.voti.includes(mioNome)) {
+                    if(confirm(`Voto: ${prop.voti[0]} vuole ${prop.tipo==='extra'?'aggiungere':'rimuovere'} "${prop.parola}". Approvi?`)) {
+                        db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({ voti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
+                    }
+                }
+            }
+        });
     });
     loadDictionary();
 }
@@ -2266,9 +2275,7 @@ async function confermaVerificaOnline() {
             let pFinal = 0; const mie = data.parole[player] || [];
             mie.forEach(par => {
                 let comune = false;
-                data.partecipanti.forEach(altro => {
-                    if(player !== altro && (data.parole[altro] || []).some(x => x.w === par.w)) comune = true;
-                });
+                data.partecipanti.forEach(altro => { if(player !== altro && (data.parole[altro] || []).some(x => x.w === par.w)) comune = true; });
                 if(!comune) pFinal += par.p;
             });
             nuoviPunteggi[player] = pFinal;
@@ -2277,57 +2284,21 @@ async function confermaVerificaOnline() {
     }
 }
 
-async function creaRivincita() {
-    const snap = await db.collection("partite").doc(matchId).get();
-    const v = snap.data();
-    let pts = {}; let words = {};
-    v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
-    const doc = await db.collection("partite").add({
-        partecipanti: v.partecipanti, opzioni: v.opzioni, punteggi: pts, parole: words,
-        pronti: [], finito: [], confermaVerifica: [], stato: "attesa", timestamp: Date.now(),
-        dataOra: new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
-    });
-    // Genera un nuovo seed per la rivincita
-    db.collection("partite").doc(doc.id).update({ "opzioni.seed": Math.random().toString(36).substring(7).toUpperCase() });
-    db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
-}
-
 async function attivaAnalisiMultiplayer() {
     document.getElementById('multiplayer-lobby').style.display = 'none';
-    isAnalysisPhase = true;
-    isGameActive = true; 
-    
-    // 1. Pulizia UI: Nascondi Copia, Verifica e Unisciti
-    if(document.getElementById('compare-tools')) document.getElementById('compare-tools').style.display = "none";
-    const btnJoin = document.querySelector('.btn-join');
-    if(btnJoin) btnJoin.style.display = "none";
-
-    // 2. Trasforma tasto "Nuova" in "Nuova Sfida Gruppo"
-    const btnNew = document.querySelector('.btn-new');
-    if(btnNew) {
-        btnNew.textContent = "NUOVA SFIDA GRUPPO 🔄";
-        btnNew.onclick = () => { document.getElementById('new-game-modal').style.display = 'flex'; };
-    }
-
-    if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
-    if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
-
+    isAnalysisPhase = true; isGameActive = true; 
+    document.getElementById('analysis-msg').style.display = "block";
+    document.getElementById('btn-missed').style.display = "block";
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
     
-    // Logica conteggio per barratura
     let conteggioParole = {};
-    data.partecipanti.forEach(p => {
-        (data.parole[p] || []).forEach(par => {
-            conteggioParole[par.w] = (conteggioParole[par.w] || 0) + 1;
-        });
-    });
+    data.partecipanti.forEach(p => { (data.parole[p] || []).forEach(par => { conteggioParole[par.w] = (conteggioParole[par.w] || 0) + 1; }); });
 
     const wordsListEl = document.getElementById('found-words');
     wordsListEl.innerHTML = "";
     wordsListEl.classList.add('interactive');
 
-    // Menu a tendina
     const selDiv = document.createElement('div');
     selDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
     selDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold;">VEDI PAROLE DI:</label>
@@ -2342,15 +2313,12 @@ async function attivaAnalisiMultiplayer() {
 
     const mostraPlayer = (nome) => {
         wordsListEl.innerHTML = "";
-        // Ordina alfabeticamente l'elenco prima di mostrarlo
-        let listaOrdinata = (data.parole[nome] || []).sort((a, b) => a.w.localeCompare(b.w));
-        
+        let listaOrdinata = (data.parole[nome] || []).sort((a, b) => a.w.localeCompare(b.w)); // FIX ORDINE ALFABETICO
         listaOrdinata.forEach(item => {
             foundWords.set(item.w, { points: item.p, path: item.path });
             const isDup = conteggioParole[item.w] > 1;
             const li = document.createElement('li');
             if(isDup) { li.style.textDecoration = "line-through"; li.style.opacity = "0.5"; }
-            
             li.innerHTML = `
                 <div class="word-item-left">
                     <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
@@ -2361,43 +2329,16 @@ async function attivaAnalisiMultiplayer() {
             wordsListEl.appendChild(li);
         });
     };
-
     sel.onchange = (e) => mostraPlayer(e.target.value);
     mostraPlayer(mioNome);
-    setSortMode('alpha'); // Forza l'illuminazione del tasto
+    setSortMode('alpha');
 }
 
 async function proponiParola(parola, esisteGia) {
     const azione = esisteGia ? "ELIMINARE (EXCLUDED)" : "AGGIUNGERE (EXTRA)";
     if(!confirm(`Vuoi proporre al gruppo di ${azione} la parola ${parola}?`)) return;
-
-    await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({
-        parola: parola,
-        tipo: esisteGia ? "exclude" : "extra",
-        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-    }, {merge: true});
+    await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({ parola: parola, tipo: esisteGia ? "exclude" : "extra", voti: [mioNome] });
 }
-
-// Aggiungi questo pezzetto dentro il snapshot della partita (onSnapshot)
-// Serve per mostrare il voto agli altri
-db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-    snap.docChanges().forEach(change => {
-        if(change.type === "added" || change.type === "modified") {
-            const prop = change.doc.data();
-            if(!prop.voti.includes(mioNome)) {
-                if(confirm(`Votazione: ${prop.voti[0]} vuole ${prop.tipo === 'extra' ? 'aggiungere' : 'rimuovere'} "${prop.parola}". Approvi?`)) {
-                    db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
-                        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                    });
-                }
-            }
-            if(prop.voti.length >= data.partecipanti.length) {
-                alert(`PAROLA ${prop.parola} APPROVATA! Verrà gestita nel database globale.`);
-                // Qui in una versione futura scriveresti nel DB globale utenti.
-            }
-        }
-    });
-});
 </script>
 </body>
 </html>
