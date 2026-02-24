@@ -2,47 +2,59 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Pig Games Social 🐷</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pig Games Portal 🐷</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; margin: 0; }
         .container { max-width: 800px; margin: auto; }
         .box { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
-        .user-item { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; margin: 8px 0; border-radius: 8px; }
+        h1, h3 { color: #03dac6; margin-top: 0; }
+        
         input, select { width: 100%; padding: 12px; margin: 10px 0; background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; }
         button { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-sfida { background: #03dac6; color: #000; }
-        .btn-del { background: #cf6679; color: white; }
-        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:100; }
-        .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; border: 2px solid #333; }
+        
+        .user-item { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; margin: 8px 0; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+        .user-item:hover { border-color: #444; }
+        .user-item.selected { background: #03dac6 !important; color: #000; border-color: white; }
+        
+        .btn-sfida-multi { background: #f1c40f; color: #000; width: 100%; height: 50px; font-size: 1.1rem; margin-bottom: 15px; display: none; }
+        .btn-del { background: #cf6679; color: white; padding: 5px 10px; font-size: 0.8rem; }
+        
         .live-match { border-left: 5px solid #f1c40f; }
-        .history-item { font-size: 0.85rem; border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; }
+        .history-item { font-size: 0.85rem; border-bottom: 1px solid #333; padding: 8px 0; display: flex; justify-content: space-between; }
+        
+        #user-display { background: #03dac6; color: #000; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 20px; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:1000; }
+        .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; border: 2px solid #333; }
     </style>
 </head>
 <body>
+
 <div class="container">
     
     <!-- LOGIN -->
     <div id="login-div" class="box">
-        <h1>Benvenuto 🐷</h1>
-        <p>Inserisci nome e password (nuova o esistente).</p>
-        <input type="text" id="username" placeholder="NOME (es: MARCO)">
-        <input type="password" id="password" placeholder="Password">
-        <button onclick="entra()" style="background:#03dac6; width:100%; height:50px;">ENTRA / REGISTRATI</button>
+        <h1>Pig Login 🐷</h1>
+        <input type="text" id="username" placeholder="IL TUO NOME">
+        <input type="password" id="password" placeholder="PASSWORD">
+        <button onclick="entra()" style="background:#03dac6; width:100%; height:50px; color:#000;">ENTRA / REGISTRATI</button>
     </div>
 
     <!-- DASHBOARD -->
     <div id="main-app" style="display:none;">
-        <div id="user-display" style="color:#03dac6; font-weight:bold; margin-bottom:15px; font-size:1.2rem;"></div>
+        <div id="user-display"></div>
         
         <div class="box">
-            <h3>🎮 Partite In Corso / Inviti</h3>
+            <h3>🎮 Partite In Corso</h3>
             <div id="lista-partite"></div>
         </div>
 
         <div class="box">
             <h3>⭐ I tuoi Amici</h3>
+            <p style="font-size:0.8rem; opacity:0.6;">Clicca sui nomi per selezionare più amici e sfidarli insieme!</p>
+            <button id="btn-sfida-multipla" class="btn-sfida-multi" onclick="apriModalSfida()">SFIDA IL GRUPPO ⚔️</button>
             <div id="lista-amici"></div>
         </div>
 
@@ -56,29 +68,42 @@
             <div id="lista-storico"></div>
         </div>
         
-        <button onclick="logout()" style="background:#cf6679; width:100%;">LOGOUT</button>
+        <button onclick="logout()" style="background:#444; width:100%; margin-top:20px;">ESCI (LOGOUT)</button>
     </div>
 </div>
 
+<!-- MODALE OPZIONI SFIDA -->
 <div id="modal-sfida" class="modal">
     <div class="modal-content">
-        <h2 id="target-name">Sfida</h2>
+        <h2 id="sfida-title">Impostazioni Sfida</h2>
         <label>Tempo:</label>
         <select id="opt-tempo">
-            <option value="45">45s</option><option value="60">60s</option><option value="90">90s</option>
-            <option value="180" selected>180s</option><option value="300">300s</option>
+            <option value="45">45s (Fulmine ⚡)</option>
+            <option value="60">60s (Blitz)</option>
+            <option value="90">90s (Veloce)</option>
+            <option value="180" selected>180s (Standard)</option>
+            <option value="300">300s (Relax)</option>
         </select>
         <label>Griglia:</label>
-        <select id="opt-griglia"><option value="4">4x4</option><option value="5" selected>5x5</option><option value="6">6x6</option><option value="10">10x10</option></select>
+        <select id="opt-griglia">
+            <option value="4">4x4</option>
+            <option value="5" selected>5x5</option>
+            <option value="6">6x6</option>
+            <option value="10">10x10</option>
+        </select>
         <label>Modalità:</label>
-        <select id="opt-mode"><option value="classic">Classica</option><option value="bonus">Bonus ⭐</option><option value="crazy">Crazy 🤪</option><option value="biatch">BIATCH 💅</option></select>
-        <button onclick="creaPartita()" style="background:#03dac6; width:100%; height:50px;">LANCIA SFIDA</button>
+        <select id="opt-mode">
+            <option value="classic">Classica</option>
+            <option value="bonus">Bonus ⭐</option>
+            <option value="crazy">Crazy 🤪</option>
+            <option value="biatch">BIATCH 💅</option>
+        </select>
+        <button onclick="creaPartitaMultipla()" style="background:#03dac6; width:100%; height:50px; color:#000;">VAI! 🚀</button>
         <button onclick="closeModal()" style="background:none; color:#777; width:100%; margin-top:10px;">Annulla</button>
     </div>
 </div>
 
 <script>
-    // --- METTI QUI IL TUO CONFIG FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
         authDomain: "funatwork-cd237.firebaseapp.com",
@@ -91,16 +116,16 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     
-    // RECUPERA NOME E PASSWORD SALVATI
     let mioNome = localStorage.getItem('mioNome') || "";
     let miaPass = localStorage.getItem('miaPass') || "";
+    let amiciSelezionati = new Set();
 
-    // AUTOLOGIN SE DATI PRESENTI
+    // Autologin
     if(mioNome && miaPass) {
         window.onload = () => {
             document.getElementById('username').value = mioNome;
             document.getElementById('password').value = miaPass;
-            entra(true); // Parametro true per evitare alert inutili
+            entra(true);
         };
     }
 
@@ -125,36 +150,40 @@
 
         mioNome = n;
         localStorage.setItem('mioNome', n);
-        localStorage.setItem('miaPass', p); // Salva la pass per il prossimo accesso
+        localStorage.setItem('miaPass', p);
         
         document.getElementById('login-div').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
-        document.getElementById('user-display').textContent = "UTENTE: " + mioNome;
+        document.getElementById('user-display').textContent = "👤 " + mioNome;
 
-        updateStatus(); setInterval(updateStatus, 20000);
+        aggiornaPresenza(); setInterval(aggiornaPresenza, 20000);
         listen();
         caricaStorico();
     }
 
-    function updateStatus() { db.collection("presenze").doc(mioNome).set({ nome: mioNome, last: Date.now() }); }
+    function aggiornaPresenza() { db.collection("presenze").doc(mioNome).set({ nome: mioNome, last: Date.now() }); }
 
     function listen() {
-        // AMICI: Mostra solo se stato='amici'
+        // AMICI
         db.collection("amicizie").onSnapshot(snap => {
             const div = document.getElementById('lista-amici'); div.innerHTML = "";
-            let amiciSet = new Set();
+            let amiciNomi = new Set();
             snap.forEach(doc => {
                 const d = doc.data();
                 let amico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
                 if(amico && d.stato === 'amici') {
-                    amiciSet.add(amico);
-                    div.innerHTML += `<div class="user-item"><span>⭐ ${amico}</span><div><button class="btn-sfida" onclick="openSfida('${amico}')">SFIDA</button><button onclick="db.collection('amicizie').doc('${doc.id}').delete()" style="margin-left:10px; background:#444; color:white; border:none; padding:5px;">X</button></div></div>`;
+                    amiciNomi.add(amico);
+                    const isSel = amiciSelezionati.has(amico);
+                    div.innerHTML += `
+                        <div class="user-item ${isSel ? 'selected' : ''}" onclick="toggleAmico('${amico}', this)">
+                            <span>⭐ ${amico}</span>
+                            <button class="btn-del" onclick="event.stopPropagation(); rimozioneAmico('${doc.id}')">X</button>
+                        </div>`;
                 } else if(d.a === mioNome && d.stato === 'pendente') {
-                    div.innerHTML += `<div class="user-item"><span>Richiesta da: ${d.da}</span><button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button></div>`;
+                    div.innerHTML += `<div class="user-item" style="background:#3700b3;"><span>Richiesta da: ${d.da}</span><button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button></div>`;
                 }
             });
-            // Aggiorna GLOBAL filtrando chi è già amico
-            updateGlobal(amiciSet);
+            updateGlobal(amiciNomi);
         });
 
         // PARTITE
@@ -164,72 +193,94 @@
             snap.forEach(doc => {
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
-                let avv = p.partecipanti.find(n => n !== mioNome);
-                div.innerHTML += `<div class="user-item live-match"><span>vs ${avv} (${p.dataOra})</span><div><button onclick="window.location.href='ruzzle.html?matchId=${doc.id}'">ENTRA</button><button onclick="db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px; color:white; border:none; padding:5px;">🗑️</button></div></div>`;
+                let altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
+                div.innerHTML += `
+                    <div class="user-item live-match">
+                        <div style="display:flex; flex-direction:column">
+                            <span style="font-weight:bold">vs ${altri}</span>
+                            <small style="opacity:0.6">${p.dataOra} [${p.stato}]</small>
+                        </div>
+                        <div>
+                            <button onclick="window.location.href='ruzzle.html?matchId=${doc.id}'" style="background:#03dac6; color:#000;">ENTRA</button>
+                            <button onclick="db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+                        </div>
+                    </div>`;
             });
         });
     }
 
-function updateGlobal(amiciSet) {
-    db.collection("presenze").get().then(snap => {
-        const div = document.getElementById('lista-global'); 
-        div.innerHTML = "";
-        snap.forEach(doc => {
-            // Mostra l'utente solo se non sono io e se non è già mio amico
-            if(doc.id !== mioNome && !amiciSet.has(doc.id)) {
-                div.innerHTML += `
-                    <div class="user-item">
-                        <span>${doc.id}</span>
-                        <button onclick="inviaRichiestaAmicizia('${doc.id}')" style="background:#bb86fc; color:black;">+ AMICO</button>
-                    </div>`;
+    function toggleAmico(nome, el) {
+        if(amiciSelezionati.has(nome)) amiciSelezionati.delete(nome);
+        else amiciSelezionati.add(nome);
+        
+        const btn = document.getElementById('btn-sfida-multipla');
+        if(amiciSelezionati.size > 0) {
+            btn.style.display = 'block';
+            btn.textContent = `SFIDA ${amiciSelezionati.size} AMICI ⚔️`;
+        } else {
+            btn.style.display = 'none';
+        }
+        el.classList.toggle('selected');
+    }
+
+    function updateGlobal(amiciSet) {
+        db.collection("presenze").get().then(snap => {
+            const div = document.getElementById('lista-global'); div.innerHTML = "";
+            snap.forEach(doc => {
+                if(doc.id !== mioNome && !amiciSet.has(doc.id)) {
+                    div.innerHTML += `<div class="user-item"><span>${doc.id}</span><button onclick="addFriend('${doc.id}')">+AMICO</button></div>`;
+                }
+            });
+        });
+    }
+
+    function apriModalSfida() { document.getElementById('modal-sfida').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modal-sfida').style.display = 'none'; }
+
+    async function creaPartitaMultipla() {
+        const ora = new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+        const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
+        
+        let punteggiIniziali = {};
+        let paroleIniziali = {};
+        partecipanti.forEach(p => { punteggiIniziali[p] = 0; paroleIniziali[p] = []; });
+
+        const doc = await db.collection("partite").add({
+            partecipanti: partecipanti,
+            punteggi: punteggiIniziali,
+            parole: paroleIniziali,
+            pronti: [],
+            finito: [],
+            confermaVerifica: [],
+            stato: "attesa",
+            dataOra: ora,
+            timestamp: Date.now(),
+            opzioni: {
+                tempo: document.getElementById('opt-tempo').value,
+                griglia: document.getElementById('opt-griglia').value,
+                mode: document.getElementById('opt-mode').value,
+                seed: Math.random().toString(36).substring(7).toUpperCase()
             }
         });
-    });
-}
-
-// Nuova funzione da aggiungere in fondo allo script di index.html
-async function inviaRichiestaAmicizia(target) {
-    try {
-        await db.collection("amicizie").doc(mioNome + "_" + target).set({
-            da: mioNome,
-            a: target,
-            stato: 'pendente',
-            timestamp: Date.now()
-        });
-        alert("Richiesta inviata a " + target + "!");
-    } catch (e) {
-        console.error(e);
-        alert("Errore nell'invio della richiesta. Controlla le Rules di Firebase.");
+        window.location.href = `ruzzle.html?matchId=${doc.id}`;
     }
-}
 
     function caricaStorico() {
         db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato","==","conclusa").onSnapshot(snap => {
             const div = document.getElementById('lista-storico'); div.innerHTML = "";
             snap.forEach(doc => {
                 const p = doc.data();
-                const v = p.punteggi[p.partecipanti[0]] > p.punteggi[p.partecipanti[1]] ? p.partecipanti[0] : p.partecipanti[1];
-                div.innerHTML += `<div class="history-item"><span>${p.dataOra} vs ${p.partecipanti.find(n=>n!==mioNome)}</span><span>Vincitore: <b>${v}</b></span></div>`;
+                // Trova chi ha vinto tra i punteggi
+                let classifica = Object.entries(p.punteggi).sort((a,b) => b[1]-a[1]);
+                let vincitore = classifica[0][0];
+                div.innerHTML += `<div class="history-item"><span>${p.dataOra} - Gruppo: ${p.partecipanti.length}</span><span>Vinto da: <b>${vincitore}</b></span></div>`;
             });
         });
     }
 
-    let targetSfidante = "";
-    function openSfida(n) { targetSfidante = n; document.getElementById('target-name').textContent = "Sfida " + n; document.getElementById('modal-sfida').style.display = 'flex'; }
-    function closeModal() { document.getElementById('modal-sfida').style.display = 'none'; }
-
-    async function creaPartita() {
-        const ora = new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-        const doc = await db.collection("partite").add({
-            partecipanti: [mioNome, targetSfidante], punteggi: {[mioNome]:0, [targetSfidante]:0}, parole: {[mioNome]:[], [targetSfidante]:[]},
-            pronti: [], finito: [], confermaVerifica: [], stato: "attesa", dataOra: ora, timestamp: Date.now(),
-            opzioni: { tempo: document.getElementById('opt-tempo').value, griglia: document.getElementById('opt-griglia').value, mode: document.getElementById('opt-mode').value, seed: Math.random().toString(36).substring(7).toUpperCase() }
-        });
-        window.location.href = `ruzzle.html?matchId=${doc.id}`;
-    }
+    function addFriend(n) { db.collection("amicizie").doc(mioNome+"_"+n).set({da:mioNome, a:n, stato:'pendente'}); alert("Richiesta inviata!"); }
+    function rimozioneAmico(id) { if(confirm("Eliminare amico?")) db.collection("amicizie").doc(id).delete(); }
     function logout() { localStorage.clear(); window.location.reload(); }
 </script>
 </body>
 </html>
-
-
