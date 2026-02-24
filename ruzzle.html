@@ -498,7 +498,6 @@
 	        <button onclick="window.location.href='index.html'" style="background:#34495e; color:white; border:none; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">🏠 HOME</button>
 	        <h1>Paroliere dei 🐷</h1>
 	    </div>
-	    <div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1.1rem;"></div>
 	    <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
 	</div>
 
@@ -569,6 +568,7 @@
                 <div class="score-box">
                     <div style="font-size:0.8rem; font-weight:bold;">PUNTEGGIO</div>
                     <div class="score-val" id="total-score">0</div>
+						  <div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1.1rem; margin-top:10px;"></div>
                 </div>
                 <button class="info-btn" onclick="openLegend()" title="Legenda">i</button>
             </div>
@@ -932,6 +932,10 @@
     function startNewGame() { newGameModal.style.display = 'flex'; }
     
 		function confirmNewGame(withBonus, isCrazy = false, isBiatch = false) {
+		    if (typeof matchId !== 'undefined' && matchId) {
+				creaRivincitaPersonalizzata(withBonus, isCrazy, isBiatch);
+				return;
+			}
 			 useBonuses = withBonus || isCrazy; // Crazy usa sempre i bonus
 			 isCrazyMode = isCrazy; 
 			 isBiatchMode = isBiatch;
@@ -941,7 +945,27 @@
 			 initGame(null);
 			 copySeedNewGame();
 		}
-    
+ 
+	async function creaRivincitaPersonalizzata(bonus, crazy, biatch) {
+		 const snap = await db.collection("partite").doc(matchId).get();
+		 const v = snap.data();
+		 let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
+		 
+		 let pts = {}; let words = {}; v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
+		 const doc = await db.collection("partite").add({
+			  gioco: 'ruzzle',
+			  partecipanti: v.partecipanti,
+			  opzioni: {
+					tempo: document.getElementById('modal-timer-select').value,
+					griglia: document.getElementById('modal-grid-select').value,
+					mode: mode,
+					seed: Math.random().toString(36).substring(7).toUpperCase()
+			  },
+			  punteggi: pts, parole: words, pronti: [], finito: [], confermaVerifica: [], stato: "attesa", timestamp: Date.now(), dataOra: new Date().toLocaleString('it-IT')
+		 });
+		 db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
+	}
+ 
     function closeNewGameModal() { newGameModal.style.display = 'none'; }
     function joinGame() {
         const code = prompt("Inserisci il Codice Partita:");
@@ -2123,8 +2147,6 @@ function fireConfetti(originElement = null) {
 
 // --- UNICO BLOCCO DI GESTIONE MULTIPLAYER & SOLO (FIXATO) ---
 
-// --- LOGICA MULTIPLAYER & SOLO (PULITA E COMPLETA) ---
-
 if (!mioNome) {
     alert("Effettua il login in Dashboard.");
     window.location.href = "index.html";
@@ -2164,8 +2186,10 @@ if (!matchId) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase) {
                     gridSize = parseInt(data.opzioni.griglia);
-                    timeRemaining = parseInt(data.opzioni.tempo);
-                    initialTime = timeRemaining;
+                    if (timeRemaining <= 0) {
+							timeRemaining = parseInt(data.opzioni.tempo);
+							initialTime = timeRemaining;
+						  }
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2272,17 +2296,30 @@ async function attivaAnalisiMultiplayer() {
     document.getElementById('multiplayer-lobby').style.display = 'none';
     isAnalysisPhase = true;
     isGameActive = true; 
+    
+    // 1. Pulizia UI: Nascondi Copia, Verifica e Unisciti
+    if(document.getElementById('compare-tools')) document.getElementById('compare-tools').style.display = "none";
+    const btnJoin = document.querySelector('.btn-join');
+    if(btnJoin) btnJoin.style.display = "none";
+
+    // 2. Trasforma tasto "Nuova" in "Nuova Sfida Gruppo"
+    const btnNew = document.querySelector('.btn-new');
+    if(btnNew) {
+        btnNew.textContent = "NUOVA SFIDA GRUPPO 🔄";
+        btnNew.onclick = () => { document.getElementById('new-game-modal').style.display = 'flex'; };
+    }
+
     if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
     if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
 
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
     
-    // 1. Calcola le parole comuni (presenti in più di un giocatore)
-    let conteggioParoleGlobali = {};
+    // Logica conteggio per barratura
+    let conteggioParole = {};
     data.partecipanti.forEach(p => {
         (data.parole[p] || []).forEach(par => {
-            conteggioParoleGlobali[par.w] = (conteggioParoleGlobali[par.w] || 0) + 1;
+            conteggioParole[par.w] = (conteggioParole[par.w] || 0) + 1;
         });
     });
 
@@ -2290,56 +2327,77 @@ async function attivaAnalisiMultiplayer() {
     wordsListEl.innerHTML = "";
     wordsListEl.classList.add('interactive');
 
-    // 2. Crea il Menu a Tendina per scegliere il giocatore
-    const headerDiv = document.createElement('div');
-    headerDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
-    headerDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:5px;">MOSTRA PAROLE DI:</label>
-                           <select id="select-analisi-player" style="width:100%; padding:5px; background:#1e1e1e; color:white; border:1px solid #444;"></select>`;
-    wordsListEl.parentNode.insertBefore(headerDiv, wordsListEl);
+    // Menu a tendina
+    const selDiv = document.createElement('div');
+    selDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
+    selDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold;">VEDI PAROLE DI:</label>
+                        <select id="sel-analisi" style="width:100%; background:#1e1e1e; color:white; border:1px solid #444; padding:5px;"></select>`;
+    wordsListEl.parentNode.insertBefore(selDiv, wordsListEl);
 
-    const selector = document.getElementById('select-analisi-player');
+    const sel = document.getElementById('sel-analisi');
     data.partecipanti.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p + (p === mioNome ? " (TU)" : "");
-        selector.appendChild(opt);
+        const o = document.createElement('option'); o.value = p; o.textContent = p + (p===mioNome?" (TU)":"");
+        sel.appendChild(o);
     });
 
-    // 3. Funzione per renderizzare la lista filtrata
-    const renderizzaAnalisiPlayer = (nomePlayer) => {
+    const mostraPlayer = (nome) => {
         wordsListEl.innerHTML = "";
-        const parole = data.parole[nomePlayer] || [];
+        // Ordina alfabeticamente l'elenco prima di mostrarlo
+        let listaOrdinata = (data.parole[nome] || []).sort((a, b) => a.w.localeCompare(b.w));
         
-        parole.forEach(item => {
-            // Salva nella mappa per l'occhio 👁️
+        listaOrdinata.forEach(item => {
             foundWords.set(item.w, { points: item.p, path: item.path });
-
-            const isDuplicata = conteggioParoleGlobali[item.w] > 1;
+            const isDup = conteggioParole[item.w] > 1;
             const li = document.createElement('li');
+            if(isDup) { li.style.textDecoration = "line-through"; li.style.opacity = "0.5"; }
             
-            // Applica sbarrato se duplicata
-            if(isDuplicata) li.style.textDecoration = "line-through";
-            if(isDuplicata) li.style.opacity = "0.5";
-
             li.innerHTML = `
                 <div class="word-item-left">
                     <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
                     <span>${item.w}</span>
+                    <button onclick="proponiParola('${item.w}', ${isDup?'false':'true'})" style="background:none; border:none; cursor:pointer; font-size:0.7rem;" title="Proponi Modifica">📢</button>
                 </div>
-                <span class="pts">${isDuplicata ? 0 : item.p}</span>`;
+                <span class="pts">${isDup?0:item.p}</span>`;
             wordsListEl.appendChild(li);
         });
     };
 
-    // Al cambio del menu, aggiorna la lista
-    selector.onchange = (e) => renderizzaAnalisiPlayer(e.target.value);
-
-    // Renderizza subito me stesso
-    renderizzaAnalisiPlayer(mioNome);
-    
-    alert("Analisi Attiva! Usa il menu a tendina sopra la lista per vedere le parole dei colleghi.");
+    sel.onchange = (e) => mostraPlayer(e.target.value);
+    mostraPlayer(mioNome);
+    setSortMode('alpha'); // Forza l'illuminazione del tasto
 }
+
+async function proponiParola(parola, esisteGia) {
+    const azione = esisteGia ? "ELIMINARE (EXCLUDED)" : "AGGIUNGERE (EXTRA)";
+    if(!confirm(`Vuoi proporre al gruppo di ${azione} la parola ${parola}?`)) return;
+
+    await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({
+        parola: parola,
+        tipo: esisteGia ? "exclude" : "extra",
+        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+    }, {merge: true});
+}
+
+// Aggiungi questo pezzetto dentro il snapshot della partita (onSnapshot)
+// Serve per mostrare il voto agli altri
+db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+        if(change.type === "added" || change.type === "modified") {
+            const prop = change.doc.data();
+            if(!prop.voti.includes(mioNome)) {
+                if(confirm(`Votazione: ${prop.voti[0]} vuole ${prop.tipo === 'extra' ? 'aggiungere' : 'rimuovere'} "${prop.parola}". Approvi?`)) {
+                    db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
+                        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+                    });
+                }
+            }
+            if(prop.voti.length >= data.partecipanti.length) {
+                alert(`PAROLA ${prop.parola} APPROVATA! Verrà gestita nel database globale.`);
+                // Qui in una versione futura scriveresti nel DB globale utenti.
+            }
+        }
+    });
+});
 </script>
 </body>
 </html>
-
