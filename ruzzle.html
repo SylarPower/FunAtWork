@@ -2270,22 +2270,76 @@ async function creaRivincita() {
 
 async function attivaAnalisiMultiplayer() {
     document.getElementById('multiplayer-lobby').style.display = 'none';
-    isAnalysisPhase = true; isGameActive = true; 
+    isAnalysisPhase = true;
+    isGameActive = true; 
     if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
     if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
+
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
-    const list = document.getElementById('found-words'); list.innerHTML = "";
+    
+    // 1. Calcola le parole comuni (presenti in più di un giocatore)
+    let conteggioParoleGlobali = {};
     data.partecipanti.forEach(p => {
-        const header = document.createElement('li'); header.innerHTML = `<b style="color:#03dac6">${p}</b>`; header.style.background = "#333"; list.appendChild(header);
-        (data.parole[p] || []).forEach(item => {
-            foundWords.set(item.w, { points: item.p, path: item.path });
-            const li = document.createElement('li');
-            li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button><span>${item.w}</span></div><span class="pts">${item.p}</span>`;
-            list.appendChild(li);
+        (data.parole[p] || []).forEach(par => {
+            conteggioParoleGlobali[par.w] = (conteggioParoleGlobali[par.w] || 0) + 1;
         });
     });
+
+    const wordsListEl = document.getElementById('found-words');
+    wordsListEl.innerHTML = "";
+    wordsListEl.classList.add('interactive');
+
+    // 2. Crea il Menu a Tendina per scegliere il giocatore
+    const headerDiv = document.createElement('div');
+    headerDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
+    headerDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:5px;">MOSTRA PAROLE DI:</label>
+                           <select id="select-analisi-player" style="width:100%; padding:5px; background:#1e1e1e; color:white; border:1px solid #444;"></select>`;
+    wordsListEl.parentNode.insertBefore(headerDiv, wordsListEl);
+
+    const selector = document.getElementById('select-analisi-player');
+    data.partecipanti.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p + (p === mioNome ? " (TU)" : "");
+        selector.appendChild(opt);
+    });
+
+    // 3. Funzione per renderizzare la lista filtrata
+    const renderizzaAnalisiPlayer = (nomePlayer) => {
+        wordsListEl.innerHTML = "";
+        const parole = data.parole[nomePlayer] || [];
+        
+        parole.forEach(item => {
+            // Salva nella mappa per l'occhio 👁️
+            foundWords.set(item.w, { points: item.p, path: item.path });
+
+            const isDuplicata = conteggioParoleGlobali[item.w] > 1;
+            const li = document.createElement('li');
+            
+            // Applica sbarrato se duplicata
+            if(isDuplicata) li.style.textDecoration = "line-through";
+            if(isDuplicata) li.style.opacity = "0.5";
+
+            li.innerHTML = `
+                <div class="word-item-left">
+                    <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
+                    <span>${item.w}</span>
+                </div>
+                <span class="pts">${isDuplicata ? 0 : item.p}</span>`;
+            wordsListEl.appendChild(li);
+        });
+    };
+
+    // Al cambio del menu, aggiorna la lista
+    selector.onchange = (e) => renderizzaAnalisiPlayer(e.target.value);
+
+    // Renderizza subito me stesso
+    renderizzaAnalisiPlayer(mioNome);
+    
+    alert("Analisi Attiva! Usa il menu a tendina sopra la lista per vedere le parole dei colleghi.");
 }
 </script>
 </body>
 </html>
+
