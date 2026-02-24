@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Paroliere dei maiali 🐷</title>
+	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
@@ -707,6 +709,23 @@
 </div>
 
 <script>
+		// --- CONFIGURAZIONE FIREBASE (Incolla qui le tue chiavi) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
+        authDomain: "funatwork-cd237.firebaseapp.com",
+        projectId: "funatwork-cd237",
+        storageBucket: "funatwork-cd237.firebasestorage.app",
+        messagingSenderId: "798226885203",
+        appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
+    };
+	firebase.initializeApp(firebaseConfig);
+	const db = firebase.firestore();
+	
+	// Variabili per il match live
+	const urlParams = new URLSearchParams(window.location.search);
+	const matchId = urlParams.get('matchId');
+	const mioNome = localStorage.getItem('mioNome');
+	// -----------------------------------------------------------
     // --- CONFIGURAZIONE ---
     let gridSize = 5; // Variabile dinamica (default 5)
     const MIN_WORD_LENGTH = 4;
@@ -1568,11 +1587,20 @@
         return pts * wordMult;
     }
     
-    function updateTotalScore() {
-        score = 0; foundWords.forEach(v => { if(v.active) score += v.points; });
-        scoreDisplay.textContent = score;
-        if(isAnalysisPhase) updateHistoryScore();
-    }
+	function updateTotalScore() {
+	    score = 0; 
+	    foundWords.forEach(v => { if(v.active) score += v.points; });
+	    scoreDisplay.textContent = score;
+	    if(isAnalysisPhase) updateHistoryScore();
+	
+	    // --- AGGIUNTA PER LIVE SCORE ---
+	    if (matchId && db) {
+	        db.collection("partite").doc(matchId).update({
+	            [`punteggi.${mioNome}`]: score
+	        }).catch(err => console.error("Errore aggiornamento score:", err));
+	    }
+	    // -------------------------------
+	}
     
     function toggleWord(w, li) {
         const d = foundWords.get(w); d.active = !d.active;
@@ -2064,7 +2092,53 @@ function fireConfetti(originElement = null) {
 		document.addEventListener('visibilitychange', () => {
 			 if (document.hidden && isGameActive && !isPaused && !isSandboxMode) togglePause();
 		});
-    loadDictionary();
+    // Sostituisci la parte finale (dove c'è loadDictionary) con questo:
+
+async function avviaPartitaSincronizzata() {
+    // Prima carichiamo il dizionario
+    await loadDictionary();
+
+    if (matchId) {
+        // Se c'è un matchId, leggiamo i dati dal database
+        db.collection("partite").doc(matchId).onSnapshot(doc => {
+            const p = doc.data();
+            
+            // Se il gioco non è ancora iniziato, impostiamo tutto
+            if (!isGameActive && !isAnalysisPhase && !isPaused) {
+                gridSize = parseInt(p.opzioni.griglia);
+                timeRemaining = parseInt(p.opzioni.tempo);
+                initialTime = timeRemaining;
+                currentSeed = p.opzioni.seed;
+                useBonuses = (p.opzioni.mode !== 'classic');
+                isCrazyMode = (p.opzioni.mode === 'crazy');
+                
+                // Avvia la griglia con i dati del database
+                initGame(currentSeed);
+            }
+
+            // Mostriamo il punteggio dell'avversario a video
+            let avversarioNome = p.partecipanti.find(n => n !== mioNome);
+            let scoreAvv = p.punteggi[avversarioNome] || 0;
+            
+            let displayAvv = document.getElementById('live-opponent-score');
+            if(!displayAvv) {
+                // Crea il widget del punteggio avversario se non esiste
+                const timerCont = document.querySelector('.status-bar');
+                timerCont.insertAdjacentHTML('beforeend', `<div id="live-opponent-score" style="color:#e74c3c; font-size:0.9rem;">🆚 ${avversarioNome}: 0</div>`);
+                displayAvv = document.getElementById('live-opponent-score');
+            }
+            displayAvv.textContent = `🆚 ${avversarioNome}: ${scoreAvv}`;
+        });
+    } else {
+        // Se apri ruzzle.html da solo (senza sfida), carica normalmente
+        // (Opzionale: puoi anche decidere di reindirizzare alla dashboard)
+        console.log("Nessuna sfida rilevata, modalità libera.");
+    }
+}
+
+// Avviamo tutto
+avviaPartitaSincronizzata();
 </script>
 </body>
+
 </html>
