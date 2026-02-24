@@ -1331,7 +1331,7 @@
 	    // --- FINE PARTITA INDIVIDUALE ---
 	    if (typeof matchId !== 'undefined' && matchId) {
 	        const mieParole = [];
-	        foundWords.forEach((v, k) => mieParole.push({w: k, p: v.points}));
+	        foundWords.forEach((v, k) => { mieParole.push({w: k, p: v.points, path: v.path});});
 	        
 	        db.collection("partite").doc(matchId).update({
 	            [`parole.${mioNome}`]: mieParole,
@@ -2196,16 +2196,21 @@ db.collection("partite").doc(matchId).onSnapshot(doc => {
             `<p>Attendo che il collega confermi...</p>`;
     }
 
-    // STATO 4: CONCLUSIONE
-    if (data.stato === "conclusa") {
-        overlay.style.display = 'flex';
-        const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
-        const vincitore = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "PAREGGIO");
-        document.getElementById('lobby-title').textContent = vincitore === mioNome ? "HAI VINTO! 👑" : (vincitore === "PAREGGIO" ? "PAREGGIO! 🤝" : "HAI PERSO! 🐷");
-        statusDiv.innerHTML = `<div style="font-size:2rem;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>`;
-        actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" style="padding:15px 30px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">TORNA ALLA HOME</button>`;
-        if(vincitore === mioNome) { fireConfetti(); startEndGameCelebration(); }
-    }
+        // 4. CONCLUSIONE CON ANALISI
+        if (data.stato === "conclusa") {
+            overlay.style.display = 'flex';
+            const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
+            const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "Pareggio");
+            document.getElementById('lobby-title').textContent = vinc === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
+            
+            statusDiv.innerHTML = `
+                <div style="font-size:1.8rem; margin-bottom:10px;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>
+                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px 20px; background:#f39c12; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🔍 ANALIZZA PARTITA</button>
+            `;
+            
+            document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; margin-top:10px;">TORNA IN HOME</button>`;
+            if(vinc === mioNome) { fireConfetti(); startEndGameCelebration(); }
+        }
 });
 
 function setProntoOnline() {
@@ -2319,11 +2324,61 @@ async function confermaVerificaOnline() {
         db.collection("partite").doc(matchId).update({ punteggi: { [p1]: f1, [p2]: f2 }, stato: "conclusa" });
     }
 }
+async function attivaAnalisiMultiplayer() {
+    // 1. Nascondi lo schermo nero
+    document.getElementById('multiplayer-lobby').style.display = 'none';
+    
+    // 2. Attiva la tua modalità analisi originale
+    isAnalysisPhase = true;
+    isGameActive = true; // permette di cliccare sulla lista per vedere le linee
+    
+    // 3. Mostra i controlli di analisi (se li hai nel CSS)
+    if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
+    if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
 
+    // 4. Sincronizza i dati locali con quelli del server per entrambi i giocatori
+    const snap = await db.collection("partite").doc(matchId).get();
+    const data = snap.data();
+    
+    const wordsListEl = document.getElementById('found-words');
+    wordsListEl.innerHTML = "";
+    wordsListEl.classList.add('interactive');
+
+    // Funzione interna per aggiungere parole alla lista visibile
+    const aggiungiALista = (playerNome, parole) => {
+        const header = document.createElement('li');
+        header.innerHTML = `<b style="color:#03dac6">${playerNome}</b>`;
+        header.style.background = "#333";
+        wordsListEl.appendChild(header);
+
+        parole.forEach(item => {
+            // Aggiorniamo la mappa locale 'foundWords' così la tua funzione originale 
+            // showWordOnGrid(word) può disegnare le linee
+            foundWords.set(item.w, { points: item.p, path: item.path });
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="word-item-left">
+                    <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
+                    <span>${item.w}</span>
+                </div>
+                <span class="pts">${item.p}</span>`;
+            wordsListEl.appendChild(li);
+        });
+    };
+
+    // Aggiungi le parole di entrambi i giocatori alla sidebar
+    data.partecipanti.forEach(p => {
+        aggiungiALista(p, data.parole[p] || []);
+    });
+    
+    alert("Ora puoi cliccare sugli occhietti 👁️ per vedere i percorsi sulla griglia o usare 'COSA MI SONO PERSO?'");
+}
 </script>
 </body>
 
 </html>
+
 
 
 
