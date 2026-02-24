@@ -2,43 +2,61 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Portale Giochi Colleghi 🐷</title>
-    <!-- Carichiamo Firebase dai server Google (senza installare nulla) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Games Colleghi 🐷</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: #2d2d2d; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-        button { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #2980b9; }
-        .user-item { display: flex; justify-content: space-between; align-items: center; background: #3d3d3d; padding: 10px; margin: 5px 0; border-radius: 8px; }
-        .sfida-btn { background: #2ecc71; padding: 5px 10px; font-size: 0.8rem; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        .box { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        h1, h2, h3 { color: #bb86fc; margin-top: 0; }
+        input { width: calc(100% - 24px); padding: 12px; margin: 10px 0; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 6px; }
+        button { background: #03dac6; color: #000; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #018786; }
+        .btn-sfida { background: #cf6679; color: white; }
+        .btn-friend { background: #3700b3; color: white; margin-left: 5px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 4px solid #03dac6; }
+        .badge { font-size: 0.7rem; background: #444; padding: 3px 7px; border-radius: 10px; color: #bbb; }
+        #status-bar { font-size: 0.9rem; margin-bottom: 10px; color: #03dac6; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Area Giochi 🎮</h1>
-    
-    <!-- LOGIN SEMPLICE -->
-    <div id="login-div">
-        <p>Come ti chiami?</p>
+    <div id="status-bar"></div>
+
+    <!-- LOGIN / BENVENUTO -->
+    <div id="login-div" class="box">
+        <h1>Benvenuto 🐷</h1>
         <input type="text" id="username" placeholder="Inserisci il tuo nome...">
-        <br>
-        <button onclick="entra()">Entra e Gioca</button>
+        <button onclick="entra()">ENTRA</button>
     </div>
 
-    <!-- LISTA COLLEGHI -->
-    <div id="lobby-div" style="display:none;">
-        <h3>Colleghi Online:</h3>
-        <div id="lista-utenti"></div>
+    <div id="main-app" style="display:none;">
+        <!-- RICHIESTE AMICIZIA IN ARRIVO -->
+        <div id="richieste-div" class="box" style="display:none;">
+            <h3>Richieste di Amicizia:</h3>
+            <div id="lista-richieste"></div>
+        </div>
+
+        <!-- AMICI ONLINE -->
+        <div class="box">
+            <h3>I tuoi Amici Online:</h3>
+            <div id="lista-amici"></div>
+        </div>
+
+        <!-- CERCA ALTRI COLLEGHI -->
+        <div class="box">
+            <h3>Cerca Colleghi (Global):</h3>
+            <div id="lista-global"></div>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- 1. CONFIGURAZIONE (Incolla qui le TUE chiavi API di Firebase) ---
+    // --- 1. CONFIGURAZIONE (METTI LE TUE CHIAVI QUI) ---
     const firebaseConfig = {
         apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
         authDomain: "funatwork-cd237.firebaseapp.com",
@@ -48,73 +66,139 @@
         appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
     };
 
-    // Inizializza Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let mioNome = "";
+    let mioNome = localStorage.getItem('mioNome') || "";
+
+    // Se il nome è già salvato, entra automaticamente
+    if(mioNome) {
+        window.onload = () => entra();
+    }
 
     function entra() {
-        mioNome = document.getElementById('username').value.trim().toUpperCase();
-        if(mioNome.length < 2) return alert("Inserisci un nome valido!");
-
+        if(!mioNome) {
+            mioNome = document.getElementById('username').value.trim().toUpperCase();
+        }
+        
+        if(mioNome.length < 2) return alert("Nome troppo corto!");
+        
+        // Salva nel browser
+        localStorage.setItem('mioNome', mioNome);
+        
         document.getElementById('login-div').style.display = 'none';
-        document.getElementById('lobby-div').style.display = 'block';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('status-bar').textContent = "Connesso come: " + mioNome;
 
-        // Registrati nel database come "Online"
+        aggiornaPresenza();
+        setInterval(aggiornaPresenza, 30000); // Heartbeat ogni 30 secondi
+
+        ascoltaTutto();
+    }
+
+    // Segna che sono online e aggiorna l'orario
+    function aggiornaPresenza() {
         db.collection("presenze").doc(mioNome).set({
             nome: mioNome,
             ultimoAccesso: Date.now()
         });
-
-        ascoltaUtenti();
-        ascoltaSfide();
     }
 
-    // Mostra gli altri colleghi online
-    function ascoltaUtenti() {
+    function ascoltaTutto() {
+        // 1. Ascolta Colleghi Globali (chiunque sia entrato negli ultimi 5 minuti)
         db.collection("presenze").onSnapshot(snapshot => {
-            const lista = document.getElementById('lista-utenti');
-            lista.innerHTML = "";
+            const listaGlobal = document.getElementById('lista-global');
+            listaGlobal.innerHTML = "";
+            const cinqueMinutiFa = Date.now() - (5 * 60 * 1000);
+
             snapshot.forEach(doc => {
-                if(doc.id !== mioNome) {
-                    lista.innerHTML += `
+                const u = doc.data();
+                if(u.nome !== mioNome && u.ultimoAccesso > cinqueMinutiFa) {
+                    listaGlobal.innerHTML += `
                         <div class="user-item">
-                            <span>🟢 ${doc.id}</span>
-                            <button class="sfida-btn" onclick="inviaSfida('${doc.id}')">SFIDA</button>
+                            <span>${u.nome}</span>
+                            <button class="btn-friend" onclick="chiediAmicizia('${u.nome}')">➕ AMICO</button>
                         </div>`;
                 }
             });
         });
-    }
 
-    // Manda un invito a un collega
-    function inviaSfida(collega) {
-        const seed = Math.random().toString(36).substring(7).toUpperCase();
-        db.collection("sfide").add({
-            da: mioNome,
-            a: collega,
-            seed: seed,
-            accettata: false,
-            timestamp: Date.now()
-        });
-        alert("Sfida inviata a " + collega + "! Appena accetta, la partita inizierà.");
-    }
-
-    // Ascolta se qualcuno sfida ME
-    function ascoltaSfide() {
-        db.collection("sfide").where("a", "==", mioNome)
+        // 2. Ascolta Richieste di Amicizia per ME
+        db.collection("amicizie").where("a", "==", mioNome).where("stato", "==", "pendente")
         .onSnapshot(snapshot => {
+            const divRichieste = document.getElementById('richieste-div');
+            const lista = document.getElementById('lista-richieste');
+            lista.innerHTML = "";
+            
+            if(snapshot.empty) divRichieste.style.display = 'none';
+            else divRichieste.style.display = 'block';
+
+            snapshot.forEach(doc => {
+                const r = doc.data();
+                lista.innerHTML += `
+                    <div class="user-item">
+                        <span>Richiesta da: ${r.da}</span>
+                        <button onclick="accettaAmicizia('${doc.id}', '${r.da}')">ACCETTA</button>
+                    </div>`;
+            });
+        });
+
+        // 3. Ascolta Amici Accettati
+        // Cerchiamo le amicizie dove io sono 'da' o 'a' e lo stato è 'amici'
+        db.collection("amicizie").where("stato", "==", "amici")
+        .onSnapshot(snapshot => {
+            const listaAmici = document.getElementById('lista-amici');
+            listaAmici.innerHTML = "";
+            let amiciNomi = [];
+
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                if(d.da === mioNome) amiciNomi.push(d.a);
+                if(d.a === mioNome) amiciNomi.push(d.da);
+            });
+
+            amiciNomi.forEach(amico => {
+                listaAmici.innerHTML += `
+                    <div class="user-item">
+                        <span>⭐ ${amico}</span>
+                        <button class="btn-sfida" onclick="inviaSfida('${amico}')">SFIDA</button>
+                    </div>`;
+            });
+        });
+
+        // 4. Ascolta Sfide in arrivo
+        db.collection("sfide").where("a", "==", mioNome).onSnapshot(snapshot => {
             snapshot.docChanges().forEach(change => {
                 if (change.type === "added") {
-                    const sfida = change.doc.data();
-                    if(confirm(sfida.da + " ti ha sfidato a Ruzzle! Accetti?")) {
-                        // Vai alla pagina di Ruzzle passando il codice nell'URL
-                        window.location.href = `ruzzle.html?code=${sfida.seed}`;
+                    const s = change.doc.data();
+                    if(confirm(s.da + " ti sfida! Accetti?")) {
+                        window.location.href = `ruzzle.html?code=${s.seed}`;
                     }
                 }
             });
         });
+    }
+
+    function chiediAmicizia(nomeDest) {
+        db.collection("amicizie").doc(mioNome + "_" + nomeDest).set({
+            da: mioNome,
+            a: nomeDest,
+            stato: "pendente"
+        });
+        alert("Richiesta inviata!");
+    }
+
+    function accettaAmicizia(docId, nomeAmico) {
+        db.collection("amicizie").doc(docId).update({ stato: "amici" });
+        alert("Ora sei amico di " + nomeAmico);
+    }
+
+    function inviaSfida(amico) {
+        const seed = Math.random().toString(36).substring(7).toUpperCase();
+        db.collection("sfide").add({
+            da: mioNome, a: amico, seed: seed, timestamp: Date.now()
+        });
+        alert("Sfida inviata a " + amico);
     }
 </script>
 </body>
