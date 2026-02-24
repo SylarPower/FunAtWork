@@ -23,16 +23,16 @@
 <body>
 <div class="container">
     
-    <!-- SEZIONE LOGIN -->
+    <!-- LOGIN -->
     <div id="login-div" class="box">
         <h1>Benvenuto 🐷</h1>
-        <p>Inserisci nome e password per entrare o registrarti.</p>
-        <input type="text" id="username" placeholder="Nome Utente (es: MARCO)">
+        <p>Inserisci nome e password (nuova o esistente).</p>
+        <input type="text" id="username" placeholder="NOME (es: MARCO)">
         <input type="password" id="password" placeholder="Password">
         <button onclick="entra()" style="background:#03dac6; width:100%; height:50px;">ENTRA / REGISTRATI</button>
     </div>
 
-    <!-- APP PRINCIPALE -->
+    <!-- DASHBOARD -->
     <div id="main-app" style="display:none;">
         <div id="user-display" style="color:#03dac6; font-weight:bold; margin-bottom:15px; font-size:1.2rem;"></div>
         
@@ -52,7 +52,7 @@
         </div>
 
         <div class="box">
-            <h3>📜 Storico Ultime Partite</h3>
+            <h3>📜 Storico Partite</h3>
             <div id="lista-storico"></div>
         </div>
         
@@ -60,7 +60,6 @@
     </div>
 </div>
 
-<!-- MODALE SFIDA -->
 <div id="modal-sfida" class="modal">
     <div class="modal-content">
         <h2 id="target-name">Sfida</h2>
@@ -73,12 +72,13 @@
         <select id="opt-griglia"><option value="4">4x4</option><option value="5" selected>5x5</option><option value="6">6x6</option><option value="10">10x10</option></select>
         <label>Modalità:</label>
         <select id="opt-mode"><option value="classic">Classica</option><option value="bonus">Bonus ⭐</option><option value="crazy">Crazy 🤪</option><option value="biatch">BIATCH 💅</option></select>
-        <button onclick="creaPartita()" style="background:#03dac6; width:100%; height:50px;">INVIA SFIDA</button>
+        <button onclick="creaPartita()" style="background:#03dac6; width:100%; height:50px;">LANCIA SFIDA</button>
         <button onclick="closeModal()" style="background:none; color:#777; width:100%; margin-top:10px;">Annulla</button>
     </div>
 </div>
 
 <script>
+    // --- METTI QUI IL TUO CONFIG FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
         authDomain: "funatwork-cd237.firebaseapp.com",
@@ -92,15 +92,10 @@
     const db = firebase.firestore();
     let mioNome = localStorage.getItem('mioNome') || "";
 
-    // Se già loggato, prova a entrare (ma chiederebbe comunque pass se non salvata, per ora facciamo login manuale)
-    if(mioNome) {
-        document.getElementById('username').value = mioNome;
-    }
-
     async function entra() {
         const n = document.getElementById('username').value.trim().toUpperCase();
         const p = document.getElementById('password').value.trim();
-        if(n.length < 2 || p.length < 3) return alert("Dati incompleti!");
+        if(n.length < 2 || p.length < 3) return alert("Dati non validi!");
 
         const userRef = db.collection("utenti").doc(n);
         const doc = await userRef.get();
@@ -108,9 +103,9 @@
         if(doc.exists) {
             if(doc.data().password !== p) return alert("Password Errata!");
         } else {
-            if(confirm("Utente nuovo. Creare account con questa password?")) {
+            if(confirm("Nuovo utente? Registrati con questa password.")) {
                 await userRef.set({ nome: n, password: p });
-            } else { return; }
+            } else return;
         }
 
         mioNome = n;
@@ -127,21 +122,25 @@
     function updateStatus() { db.collection("presenze").doc(mioNome).set({ nome: mioNome, last: Date.now() }); }
 
     function listen() {
-        // Amici
+        // AMICI: Mostra solo se stato='amici'
         db.collection("amicizie").onSnapshot(snap => {
             const div = document.getElementById('lista-amici'); div.innerHTML = "";
+            let amiciSet = new Set();
             snap.forEach(doc => {
                 const d = doc.data();
                 let amico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
                 if(amico && d.stato === 'amici') {
-                    div.innerHTML += `<div class="user-item"><span>⭐ ${amico}</span><div><button class="btn-sfida" onclick="openSfida('${amico}')">SFIDA</button><button onclick="removeFriend('${doc.id}')" style="margin-left:5px; background:#444;">X</button></div></div>`;
+                    amiciSet.add(amico);
+                    div.innerHTML += `<div class="user-item"><span>⭐ ${amico}</span><div><button class="btn-sfida" onclick="openSfida('${amico}')">SFIDA</button><button onclick="db.collection('amicizie').doc('${doc.id}').delete()" style="margin-left:10px; background:#444; color:white; border:none; padding:5px;">X</button></div></div>`;
                 } else if(d.a === mioNome && d.stato === 'pendente') {
                     div.innerHTML += `<div class="user-item"><span>Richiesta da: ${d.da}</span><button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button></div>`;
                 }
             });
+            // Aggiorna GLOBAL filtrando chi è già amico
+            updateGlobal(amiciSet);
         });
 
-        // Partite attive
+        // PARTITE
         db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
             const div = document.getElementById('lista-partite'); div.innerHTML = "";
             div.innerHTML = `<div class="user-item" style="background:#34495e;"><span>Allenamento Solo</span><button onclick="window.location.href='ruzzle.html'">GIOCA</button></div>`;
@@ -149,15 +148,18 @@
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
                 let avv = p.partecipanti.find(n => n !== mioNome);
-                div.innerHTML += `<div class="user-item live-match"><span>vs ${avv} (${p.dataOra})</span><div><button onclick="window.location.href='ruzzle.html?matchId=${doc.id}'">ENTRA</button><button onclick="db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button></div></div>`;
+                div.innerHTML += `<div class="user-item live-match"><span>vs ${avv} (${p.dataOra})</span><div><button onclick="window.location.href='ruzzle.html?matchId=${doc.id}'">ENTRA</button><button onclick="db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px; color:white; border:none; padding:5px;">🗑️</button></div></div>`;
             });
         });
+    }
 
-        // Global
-        db.collection("presenze").onSnapshot(snap => {
+    function updateGlobal(amiciSet) {
+        db.collection("presenze").get().then(snap => {
             const div = document.getElementById('lista-global'); div.innerHTML = "";
             snap.forEach(doc => {
-                if(doc.id !== mioNome) div.innerHTML += `<div class="user-item"><span>${doc.id}</span><button onclick="addFriend('${doc.id}')">+AMICO</button></div>`;
+                if(doc.id !== mioNome && !amiciSet.has(doc.id)) {
+                    div.innerHTML += `<div class="user-item"><span>${doc.id}</span><button onclick="db.collection('amicizie').doc('${mioNome}_${doc.id}').set({da:mioNome, a:doc.id, stato:'pendente'})">+AMICO</button></div>`;
+                }
             });
         });
     }
@@ -167,8 +169,8 @@
             const div = document.getElementById('lista-storico'); div.innerHTML = "";
             snap.forEach(doc => {
                 const p = doc.data();
-                const vinc = p.punteggi[p.partecipanti[0]] > p.punteggi[p.partecipanti[1]] ? p.partecipanti[0] : p.partecipanti[1];
-                div.innerHTML += `<div class="history-item"><span>${p.dataOra} - vs ${p.partecipanti.find(n=>n!==mioNome)}</span><span>Vinto da: <b>${vinc}</b></span></div>`;
+                const v = p.punteggi[p.partecipanti[0]] > p.punteggi[p.partecipanti[1]] ? p.partecipanti[0] : p.partecipanti[1];
+                div.innerHTML += `<div class="history-item"><span>${p.dataOra} vs ${p.partecipanti.find(n=>n!==mioNome)}</span><span>Vincitore: <b>${v}</b></span></div>`;
             });
         });
     }
@@ -186,9 +188,6 @@
         });
         window.location.href = `ruzzle.html?matchId=${doc.id}`;
     }
-
-    function addFriend(n) { db.collection("amicizie").doc(mioNome+"_"+n).set({da:mioNome, a:n, stato:'pendente'}); }
-    function removeFriend(id) { if(confirm("Rimuovere?")) db.collection("amicizie").doc(id).delete(); }
     function logout() { localStorage.clear(); window.location.reload(); }
 </script>
 </body>
