@@ -135,6 +135,7 @@
     let mioNome = localStorage.getItem('mioNome') || "";
     let miaPass = localStorage.getItem('miaPass') || "";
     let amiciSelezionati = new Set();
+    let giocoSelezionato = "ruzzle"; // Default
 
     if(mioNome && miaPass) {
         window.onload = () => {
@@ -186,8 +187,12 @@
             let amiciNomi = new Set();
             snap.docChanges().forEach(change => {
                 const d = change.doc.data();
-                if (change.type === "added" && d.a === mioNome && d.stato === 'pendente') {
-                    mostraNotifica(`🤝 Richiesta Amicizia da: ${d.da}`, "#bb86fc", () => { db.collection('amicizie').doc(change.doc.id).update({stato:'amici'}); });
+                // Nel listener delle partite, quando scatta l'added:
+                if (change.type === "added" && p.stato === "attesa" && p.partecipanti[0] !== mioNome) {
+                    mostraNotifica(`⚔️ SFIDA A ${p.gioco.toUpperCase()} DA: ${p.partecipanti[0]}`, "#f1c40f", () => { 
+                        // Ti manda automaticamente al file HTML corretto
+                        window.location.href = `${p.gioco}.html?matchId=${change.doc.id}`; 
+                    });
                 }
             });
             snap.forEach(doc => {
@@ -238,15 +243,42 @@
     function apriModalSfida() { document.getElementById('modal-sfida').style.display = 'flex'; }
     function closeModal() { document.getElementById('modal-sfida').style.display = 'none'; }
 
+    function selezionaGioco(id, el) {
+        giocoSelezionato = id;
+        // Rimuove la selezione visiva dagli altri e la mette a questo
+        document.querySelectorAll('.game-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        
+        // In futuro potrai mostrare/nascondere opzioni diverse nel modale 
+        // (es: per il Tris non serve la dimensione griglia o il dizionario)
+    }
+    
     async function creaPartitaMultipla() {
         const ora = new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
         const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
-        let pIniziali = {}; let paroleIniziali = {}; partecipanti.forEach(p => { pIniziali[p] = 0; paroleIniziali[p] = []; });
+        
+        let pIniziali = {}; let paroleIniziali = {}; 
+        partecipanti.forEach(p => { pIniziali[p] = 0; paroleIniziali[p] = []; });
+    
         const doc = await db.collection("partite").add({
-            partecipanti: partecipanti, punteggi: pIniziali, parole: paroleIniziali, pronti: [], finito: [], confermaVerifica: [], stato: "attesa", dataOra: ora, timestamp: Date.now(),
-            opzioni: { tempo: document.getElementById('opt-tempo').value, griglia: document.getElementById('opt-griglia').value, mode: document.getElementById('opt-mode').value, seed: Math.random().toString(36).substring(7).toUpperCase() }
+            gioco: giocoSelezionato, // <--- FONDAMENTALE: Salva quale gioco è stato scelto
+            partecipanti: partecipanti,
+            punteggi: pIniziali,
+            parole: paroleIniziali,
+            pronti: [], finito: [], confermaVerifica: [],
+            stato: "attesa",
+            dataOra: ora,
+            timestamp: Date.now(),
+            opzioni: {
+                tempo: document.getElementById('opt-tempo').value,
+                griglia: document.getElementById('opt-griglia').value,
+                mode: document.getElementById('opt-mode').value,
+                seed: Math.random().toString(36).substring(7).toUpperCase()
+            }
         });
-        window.location.href = `ruzzle.html?matchId=${doc.id}`;
+        
+        // Ti manda al file specifico del gioco scelto
+        window.location.href = `${giocoSelezionato}.html?matchId=${doc.id}`;
     }
 
     function caricaStorico() {
@@ -270,6 +302,7 @@
 </script>
 </body>
 </html>
+
 
 
 
