@@ -262,7 +262,6 @@
             color: white; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px;
         }
         .btn-new { background-color: #34495e; }
-        .btn-join { background-color: #7f8c8d; }
         .btn-reset { background-color: #e67e22; display: none; }
         
         .btn-end-now { background-color: var(--accent); display: none; } 
@@ -558,7 +557,6 @@
             
             <div class="btn-group">
                 <button class="btn-action btn-new" onclick="startNewGame()">NUOVA</button>
-                <button class="btn-action btn-join" onclick="joinGame()">UNISCITI</button>
             </div>
         </div>
 
@@ -583,15 +581,6 @@
                 <button class="sort-btn active" title="Alfabetico" onclick="setSortMode('alpha')">🔤</button>
                 <button class="sort-btn" title="Punteggio" onclick="setSortMode('score')">🏆</button>
                 <button class="sort-btn" title="Ordinamento" onclick="toggleSortDirection()" id="sort-dir-btn">⬇️</button>
-            </div>
-
-            <!-- Compare -->
-            <div class="compare-tools" id="compare-tools">
-                <div class="compare-title">Confronto con Avversari</div>
-                <div class="compare-btns">
-                    <button class="btn-compare btn-copy" onclick="copyWords()">COPIA</button>
-                    <button class="btn-compare btn-verify" onclick="pasteAndVerify()">VERIFICA</button>
-                </div>
             </div>
 
             <div style="font-size:0.8rem; color:var(--accent); margin-bottom:5px; display:none; flex-shrink:0;" id="analysis-msg">Clicca per eliminare una parola</div>
@@ -1237,7 +1226,9 @@
     }
 
     function rotateGrid() {
-        // 1. BLOCCO ANTI-SPAM: Se sta già girando, ignora il click
+        // Esci se il gioco non è attivo o se è in pausa
+    	if (!isGameActive || isPaused || isAnalysisPhase) return; 
+		// 1. BLOCCO ANTI-SPAM: Se sta già girando, ignora il click
         if (isRotating) return; 
         
         // Controlli standard
@@ -2171,6 +2162,7 @@ if (!matchId) {
 
         // 1. ATTESA (Sincronizzazione Start)
         if (data.stato === "attesa") {
+			document.querySelector('.rotate-btn').style.display = 'none';
             overlay.style.display = 'flex';
             statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
             actionDiv.innerHTML = !pronti.includes(mioNome) ? 
@@ -2182,6 +2174,7 @@ if (!matchId) {
 
         // 2. IN CORSO
         if (data.stato === "in_corso") {
+			document.querySelector('.rotate-btn').style.display = 'block';
             if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase) {
@@ -2342,3 +2335,4 @@ async function proponiParola(parola, esisteGia) {
 </script>
 </body>
 </html>
+
