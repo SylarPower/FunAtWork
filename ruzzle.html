@@ -570,7 +570,11 @@
                 </div>
                 <button class="info-btn" onclick="openLegend()" title="Legenda">i</button>
             </div>
-            
+            <!-- INNESTO SIDEBAR: Campo proposta nuove parole -->
+<div id="proposta-manuale-container" style="display:none; background:rgba(3,218,198,0.1); padding:10px; border-radius:8px; margin-bottom:10px; border:1px dashed #03dac6;">
+    <input type="text" id="input-nuova-parola" placeholder="Parola non letta? Scrivila..." style="width:100%; margin:0; font-size:0.8rem; text-transform:uppercase;">
+    <button onclick="proponiParolaManuale()" style="width:100%; margin-top:5px; padding:5px; background:#03dac6; color:black; font-size:0.7rem; border-radius:4px; font-weight:bold;">PROPONI AGGIUNTA 📢</button>
+</div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:5px; flex-shrink:0;">
                 <span>Parole: <span id="word-count">0</span></span>
             </div>
@@ -730,11 +734,11 @@
     let gridSize = 5; // Variabile dinamica (default 5)
     const MIN_WORD_LENGTH = 4;
     const LETTER_POOL = "AAAAAAAABBCCDDEEEEEEEEFFGGGHHIIIIIILLLMMNNOOOOOOPPQRRSSTTTUUUVVZ";
-    const EXTRA_WORDS = ["ASIA","EUROPA","AFRICA","AMERICA","OCEANIA","ANTARTIDE","ITALIA","CINA","INDIA","USA","RUSSIA","FRANCIA","SPAGNA","GERMANIA","PERU","CILE","IRAN","IRAQ","LAOS","MALI","CUBA","FIJI","TOGO","ROMA","MILANO","NAPOLI","TORINO","BARI","OSLO","LIMA","RIGA","BONN","NILO","RENO","PO","TEVERE","ARNO","ADIGE","PIAVE","ADDA","ALPI","ANDE","URALI","ETNA","LAGO","MARE","MONTE","CITTA","ISOLA","BELA","LOBO","LOGO","JAVA","HTML","WEB","EMAIL","FILE","APP","GODITI","DIMMI","DAMMI","FAMMI","DILLO","FALLO","VATTENE","PIGLIAMI","SENTIMI",
+    let EXTRA_WORDS = ["ASIA","EUROPA","AFRICA","AMERICA","OCEANIA","ANTARTIDE","ITALIA","CINA","INDIA","USA","RUSSIA","FRANCIA","SPAGNA","GERMANIA","PERU","CILE","IRAN","IRAQ","LAOS","MALI","CUBA","FIJI","TOGO","ROMA","MILANO","NAPOLI","TORINO","BARI","OSLO","LIMA","RIGA","BONN","NILO","RENO","PO","TEVERE","ARNO","ADIGE","PIAVE","ADDA","ALPI","ANDE","URALI","ETNA","LAGO","MARE","MONTE","CITTA","ISOLA","BELA","LOBO","LOGO","JAVA","HTML","WEB","EMAIL","FILE","APP","GODITI","DIMMI","DAMMI","FAMMI","DILLO","FALLO","VATTENE","PIGLIAMI","SENTIMI",
     "ANITA","LUCA","MARCO","ANNA","MARIA","PAOLO","LUIGI","SARA","ELENA","ROSA","VIOLA","GIOIA","SOLE","LUNA","STELLA",
     "PISA","SIENA","PARMA","COMO","LECCO","LODI","ENNA","RAGUSA","FOGGIA","TERNI","AOSTA","MONZA","MEGA","EZIO","PORCHI","MAMELI","GARDA","MASAI","MAASAI","PABLO","SELINA","LAVAREDO","LARA","PETO","GENE","ENNE","ALARE","RAGU","MONA","GASAI","FETA","FETE","MASO","MASI","MEME","GASI","CAGA","SITE","CASIO","ALONSO","DRENI","CEDO","PENTO","PENTE","ERMA","ERMI",
     "SITA","TOFU","POTAI","PIPPE","CALCIA","ERSE","ERSI","QUINOA","GASO","BUSET","MISO","NASA","EBOLA","TERA","NONE","ZORRO","EOLIE","SERI","SILE","PELMO","PITA"];
-	 const EXCLUDED_WORDS = ["SAETTI","BIFFE","PIATO","PIOTA","GILE","GLIE","GIOI","POPE","RAFFA","RAFFI","ZAFFI","PASCI","MEVE","MINO","BASTE","DIANE","MAIO","SPALLI","RENA","FELA","FERA","GATO","ZOIA","ANCE","ELISE","ELSE","FIFE","PILLI","PILLO","BASA","INIO","PIVA","PIVE","ROMI","ALPA","ALPO","BIDE","LARIO","LARO","LAURI","PROTI","NESTO","TOSONE","GORE","BIAVA","FOIA","PASSE","SAPA","LETO","LETA","ORTE","TORE","SILA","SERPA","ENEO","LENE","LENO","LIANO","IANO","MALO","BALIO",
+	 let EXCLUDED_WORDS = ["SAETTI","BIFFE","PIATO","PIOTA","GILE","GLIE","GIOI","POPE","RAFFA","RAFFI","ZAFFI","PASCI","MEVE","MINO","BASTE","DIANE","MAIO","SPALLI","RENA","FELA","FERA","GATO","ZOIA","ANCE","ELISE","ELSE","FIFE","PILLI","PILLO","BASA","INIO","PIVA","PIVE","ROMI","ALPA","ALPO","BIDE","LARIO","LARO","LAURI","PROTI","NESTO","TOSONE","GORE","BIAVA","FOIA","PASSE","SAPA","LETO","LETA","ORTE","TORE","SILA","SERPA","ENEO","LENE","LENO","LIANO","IANO","MALO","BALIO",
 	 "TELMA","TALLO","GRUMA","GIACO","PASCO","CIRA","VAGITA","FEDO","PRECI","SIRO","QUIRO","POTTE","ROSI","POTTA","PELUTO","BOVO","BETTO","CIANA","CIANE","CIANI","VELIE","FAGO","CORE","RICO","BOVE","CEBO","LIMANA","GIANA","MUFFI","MUFFO","NILA","FOGNATA","NASATE","LICE","GERI","MITRE","TOMA","PELTA","POLTA","FANNE","INNA","GENICA","AGIEA","FANNI","SANNA","SANNE","GINNO","FANNI","OLGO","CALE","IMMO","MITRE","TREVO","MESCE","PINGE","NINI","ANITO","OVATO",
 	 "GELSA","TOSSO","COTI","BAULA","BAULO","CARMI","LORA","SIMO","BOTRO","EOLA","AGGIO","ALIA","BORNI","BORNIA"];
 
@@ -2279,60 +2283,126 @@ async function confermaVerificaOnline() {
 
 async function attivaAnalisiMultiplayer() {
     document.getElementById('multiplayer-lobby').style.display = 'none';
-    isAnalysisPhase = true; isGameActive = true; 
-    document.getElementById('analysis-msg').style.display = "block";
-    document.getElementById('btn-missed').style.display = "block";
+    document.getElementById('proposta-manuale-container').style.display = 'block'; // Mostra campo input
+    isAnalysisPhase = true;
+    isGameActive = true; 
+    
+    if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
+    if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
+
     const snap = await db.collection("partite").doc(matchId).get();
     const data = snap.data();
     
-    let conteggioParole = {};
-    data.partecipanti.forEach(p => { (data.parole[p] || []).forEach(par => { conteggioParole[par.w] = (conteggioParole[par.w] || 0) + 1; }); });
+    // 1. Calcola le parole comuni per sbarrarle
+    let conteggioParoleGlobali = {};
+    data.partecipanti.forEach(p => {
+        (data.parole[p] || []).forEach(par => {
+            conteggioParoleGlobali[par.w] = (conteggioParoleGlobali[par.w] || 0) + 1;
+        });
+    });
 
     const wordsListEl = document.getElementById('found-words');
     wordsListEl.innerHTML = "";
-    wordsListEl.classList.add('interactive');
 
-    const selDiv = document.createElement('div');
-    selDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
-    selDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold;">VEDI PAROLE DI:</label>
-                        <select id="sel-analisi" style="width:100%; background:#1e1e1e; color:white; border:1px solid #444; padding:5px;"></select>`;
-    wordsListEl.parentNode.insertBefore(selDiv, wordsListEl);
+    // 2. Menu a Tendina (Se non già presente)
+    if(!document.getElementById('sel-analisi')) {
+        const headerDiv = document.createElement('div');
+        headerDiv.style = "background:#2c3e50; padding:10px; border-radius:5px; margin-bottom:10px;";
+        headerDiv.innerHTML = `<label style="font-size:0.7rem; font-weight:bold; display:block; margin-bottom:5px;">MOSTRA PAROLE DI:</label>
+                               <select id="sel-analisi" style="width:100%; background:#1e1e1e; color:white; border:1px solid #444; padding:5px;"></select>`;
+        wordsListEl.parentNode.insertBefore(headerDiv, wordsListEl);
+        
+        const sel = document.getElementById('sel-analisi');
+        data.partecipanti.forEach(p => {
+            const o = document.createElement('option'); o.value = p; o.textContent = p + (p === mioNome ? " (TU)" : "");
+            sel.appendChild(o);
+        });
+        sel.onchange = (e) => renderizzaAnalisiPlayer(e.target.value);
+    }
 
-    const sel = document.getElementById('sel-analisi');
-    data.partecipanti.forEach(p => {
-        const o = document.createElement('option'); o.value = p; o.textContent = p + (p===mioNome?" (TU)":"");
-        sel.appendChild(o);
-    });
-
-    const mostraPlayer = (nome) => {
+    const renderizzaAnalisiPlayer = (nomePlayer) => {
         wordsListEl.innerHTML = "";
-        let listaOrdinata = (data.parole[nome] || []).sort((a, b) => a.w.localeCompare(b.w)); // FIX ORDINE ALFABETICO
-        listaOrdinata.forEach(item => {
+        // FIX: Ordina alfabeticamente
+        const parole = (data.parole[nomePlayer] || []).sort((a,b) => a.w.localeCompare(b.w));
+        
+        parole.forEach(item => {
             foundWords.set(item.w, { points: item.p, path: item.path });
-            const isDup = conteggioParole[item.w] > 1;
+            const isDuplicata = conteggioParoleGlobali[item.w] > 1;
             const li = document.createElement('li');
-            if(isDup) { li.style.textDecoration = "line-through"; li.style.opacity = "0.5"; }
+            if(isDuplicata) { li.style.textDecoration = "line-through"; li.style.opacity = "0.5"; }
+
             li.innerHTML = `
                 <div class="word-item-left">
                     <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
                     <span>${item.w}</span>
-                    <button onclick="proponiParola('${item.w}', ${isDup?'false':'true'})" style="background:none; border:none; cursor:pointer; font-size:0.7rem;" title="Proponi Modifica">📢</button>
+                    <button onclick="inviaPropostaFirebase('${item.w}', 'exclude')" style="background:none; border:none; cursor:pointer;" title="Proponi Rimozione">📢</button>
                 </div>
-                <span class="pts">${isDup?0:item.p}</span>`;
+                <span class="pts">${isDuplicata ? 0 : item.p}</span>`;
             wordsListEl.appendChild(li);
         });
     };
-    sel.onchange = (e) => mostraPlayer(e.target.value);
-    mostraPlayer(mioNome);
-    setSortMode('alpha');
+
+    renderizzaAnalisiPlayer(mioNome);
 }
 
-async function proponiParola(parola, esisteGia) {
-    const azione = esisteGia ? "ELIMINARE (EXCLUDED)" : "AGGIUNGERE (EXTRA)";
-    if(!confirm(`Vuoi proporre al gruppo di ${azione} la parola ${parola}?`)) return;
-    await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({ parola: parola, tipo: esisteGia ? "exclude" : "extra", voti: [mioNome] });
+// Proposta manuale (per EXTRA_WORDS)
+function proponiParolaManuale() {
+    const parola = document.getElementById('input-nuova-parola').value.trim().toUpperCase();
+    if (parola.length < 4) return alert("Parola troppo corta!");
+    inviaPropostaFirebase(parola, 'extra');
+    document.getElementById('input-nuova-parola').value = "";
+}
+
+// Invia al database la proposta
+async function inviaPropostaFirebase(parola, tipo) {
+    const azione = (tipo === 'extra') ? "AGGIUNGERE alle EXTRA" : "ELIMINARE (EXCLUDED)";
+    if(!confirm(`Vuoi proporre al gruppo di ${azione} la parola: ${parola}?`)) return;
+
+    await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({
+        parola: parola,
+        tipo: tipo,
+        proponente: mioNome,
+        voti: [mioNome] // Il proponente vota sì automaticamente
+    });
+    alert("Proposta inviata! Gli altri devono approvare.");
+}
+
+// Ascolto votazioni (Da mettere dentro il tuo onSnapshot della partita o in fondo)
+db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+        if(change.type === "added" || change.type === "modified") {
+            const prop = change.doc.data();
+            // Se non ho ancora votato questa parola
+            if(!prop.voti.includes(mioNome)) {
+                if(confirm(`VOTAZIONE: ${prop.proponente} vuole ${prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE'} "${prop.parola}". Approvi?`)) {
+                    db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
+                        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+                    });
+                }
+            }
+            // Se TUTTI hanno votato sì
+            const numPartecipanti = gameDoc ? gameDoc.partecipanti.length : 2; // gameDoc deve essere globale
+            if(prop.voti.length >= numPartecipanti) {
+                applicaModificaDizionario(prop.parola, prop.tipo);
+                db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).delete(); // Pulisci proposta
+            }
+        }
+    });
+});
+
+function applicaModificaDizionario(parola, tipo) {
+    if(tipo === 'extra') {
+        EXTRA_WORDS.push(parola);
+        dictionary.add(parola);
+        alert(`✅ La parola "${parola}" è stata aggiunta al dizionario per questa partita!`);
+    } else {
+        EXCLUDED_WORDS.push(parola);
+        dictionary.delete(parola);
+        alert(`🚫 La parola "${parola}" è stata rimossa dal dizionario per questa partita!`);
+    }
 }
 </script>
 </body>
 </html>
+
 
