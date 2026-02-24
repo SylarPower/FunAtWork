@@ -2213,12 +2213,23 @@ if (!matchId) {
                 `<p>In attesa che tutti confermino...</p>`;
         }
 
-        // STATO 4: CONCLUSIONE
+        // STATO 4: CONCLUSIONE (CON RIVINCITA)
         if (data.stato === "conclusa") {
             overlay.style.display = 'flex';
+            
+            // --- LOGICA AUTO-REINDIRIZZO RIVINCITA ---
+            if (data.prossimaPartita) {
+                document.getElementById('lobby-title').textContent = "RIVINCITA IN CORSO...";
+                statusDiv.textContent = "Il gruppo si sta spostando nella nuova stanza...";
+                setTimeout(() => {
+                    window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`;
+                }, 1500);
+                return;
+            }
+            // -----------------------------------------
+
             let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
             let vincitore = classifica[0][0];
-            let mioScoreFinal = data.punteggi[mioNome];
 
             document.getElementById('lobby-title').textContent = (vincitore === mioNome) ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
             
@@ -2229,10 +2240,14 @@ if (!matchId) {
             htmlClassifica += "</div>";
 
             statusDiv.innerHTML = htmlClassifica + `
-                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold;">🔍 ANALIZZA TUTTI</button>
+                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>
             `;
             
-            actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; margin-top:10px;">TORNA ALLA HOME</button>`;
+            // BOTTONI FINALI
+            actionDiv.innerHTML = `
+                <button onclick="creaRivincita()" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA (Stesso Gruppo) 🔄</button>
+                <button onclick="window.location.href='index.html'" style="padding:10px 20px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">TORNA ALLA HOME</button>
+            `;
             
             if(vincitore === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
@@ -2302,7 +2317,53 @@ async function attivaAnalisiMultiplayer() {
         });
     });
 }
+async function creaRivincita() {
+    if (!confirm("Vuoi creare una nuova partita con le stesse impostazioni e gli stessi giocatori?")) return;
+
+    try {
+        const snap = await db.collection("partite").doc(matchId).get();
+        const vecchiaPartita = snap.data();
+        
+        // Prepariamo i dati per la nuova partita
+        let punteggiIniziali = {};
+        let paroleIniziali = {};
+        vecchiaPartita.partecipanti.forEach(p => { 
+            punteggiIniziali[p] = 0; 
+            paroleIniziali[p] = []; 
+        });
+
+        const nuovaPartita = {
+            partecipanti: vecchiaPartita.partecipanti,
+            opzioni: vecchiaPartita.opzioni, // Mantiene Tempo, Griglia e Modalità
+            punteggi: punteggiIniziali,
+            parole: paroleIniziali,
+            pronti: [],
+            finito: [],
+            confermaVerifica: [],
+            stato: "attesa",
+            dataOra: new Date().toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}),
+            timestamp: Date.now()
+        };
+
+        // Generiamo un nuovo Seed per non avere la stessa griglia di prima
+        nuovaPartita.opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
+
+        // 1. Crea la nuova partita
+        const docRef = await db.collection("partite").add(nuovaPartita);
+        
+        // 2. "Avvisa" la vecchia partita che c'è una rivincita pronta
+        // Questo farà scattare il reindirizzamento automatico per tutti
+        await db.collection("partite").doc(matchId).update({
+            prossimaPartita: docRef.id
+        });
+
+    } catch (e) {
+        console.error("Errore creazione rivincita:", e);
+        alert("Impossibile creare la rivincita.");
+    }
+}
 </script>
 </body>
 
 </html>
+
