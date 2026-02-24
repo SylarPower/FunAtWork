@@ -110,13 +110,29 @@
             updateGlobalList();
         });
 
+        // Partite (Versione con Elimina e Gioca Solo)
         db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
-            const partDiv = document.getElementById('lista-partite'); partDiv.innerHTML = "";
+            const partDiv = document.getElementById('lista-partite'); 
+            partDiv.innerHTML = "";
+            
+            // Tasto per giocare da soli sempre visibile in cima
+            partDiv.innerHTML = `<div class="user-item" style="background:#34495e; border-left:4px solid #3498db;">
+                <span>Allenamento Solitario</span>
+                <button onclick="window.location.href='ruzzle.html'">GIOCA SOLO</button>
+            </div>`;
+
             snap.forEach(doc => {
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
                 let avversario = p.partecipanti.find(n => n !== mioNome);
-                partDiv.innerHTML += `<div class="user-item live-match"><span>Partita vs ${avversario} [${p.stato}]</span><button onclick="vaiAlGioco('${doc.id}')">ENTRA</button></div>`;
+                partDiv.innerHTML += `
+                    <div class="user-item live-match">
+                        <span>Partita vs ${avversario} [${p.stato}]</span>
+                        <div>
+                            <button onclick="vaiAlGioco('${doc.id}')">ENTRA</button>
+                            <button class="btn-del" onclick="eliminaPartita('${doc.id}')" style="margin-left:10px; background:#e74c3c;">🗑️</button>
+                        </div>
+                    </div>`;
             });
         });
     }
@@ -157,8 +173,14 @@
     function addAmico(n) { db.collection("amicizie").doc(mioNome+"_"+n).set({ da: mioNome, a: n, stato: 'pendente' }); }
     function accettaAmico(id) { db.collection("amicizie").doc(id).update({ stato: 'amici' }); }
     function removeAmico(id) { if(confirm("Rimuovere amico?")) db.collection("amicizie").doc(id).delete(); }
+    function eliminaPartita(id) {
+    if(confirm("Vuoi eliminare definitivamente questa partita?")) {
+        db.collection("partite").doc(id).delete();
+    }
+}
 
     listen();
 </script>
 </body>
 </html>
+
