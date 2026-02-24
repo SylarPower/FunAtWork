@@ -2306,47 +2306,46 @@ if (!matchId) {
             if (data.pronti.length >= 2) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
         }
 
-        // 2. IN CORSO (Fix Lettere Invisibili)
-        if (data.stato === "in_corso") {
-            if (!finito.includes(mioNome)) {
-                overlay.style.display = 'none';
-                if (!isGameActive && !isAnalysisPhase) {
-                    gridSize = parseInt(data.opzioni.griglia);
-                    timeRemaining = parseInt(data.opzioni.tempo);
-                    initialTime = timeRemaining;
-                    currentSeed = data.opzioni.seed;
-                    isBiatchMode = (data.opzioni.mode === 'biatch');
-                    isCrazyMode = (data.opzioni.mode === 'crazy');
-                    useBonuses = (data.opzioni.mode !== 'classic');
-                    
-                    generateGridData(currentSeed.split('-')[0]);
-                    renderGrid();
-                    
-                    document.getElementById('start-screen').style.display = 'none';
-                    document.getElementById('grid-overlay').style.display = 'none';
-                    startRound(); 
-                }
-            } else {
-                overlay.style.display = 'flex';
-				if (finito.length < data.partecipanti.length) {
-				    document.getElementById('lobby-title').textContent = "ATTESA...";
-				    statusDiv.textContent = `Hanno finito in ${finito.length} su ${data.partecipanti.length}.`;
-				} else {
-				    db.collection("partite").doc(matchId).update({ stato: "verifica" });
-				}
-            }
-            const avv = data.partecipanti.find(n => n !== mioNome);
-            document.getElementById('live-opponent-score').textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
-        }
-
-        // 3. VERIFICA
-        if (data.stato === "verifica") {
-            overlay.style.display = 'flex';
-            document.getElementById('lobby-title').textContent = "VERIFICA FINALE";
-            const conf = data.confermaVerifica || [];
-            actionDiv.innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI CHI HA VINTO 🏁</button>` : `<p>Attendo l'avversario...</p>`;
-        }
+        // 2. IN CORSO
+		if (data.stato === "in_corso") {
+		    if (!finito.includes(mioNome)) {
+		        overlay.style.display = 'none';
+		        // [Tuo codice per avviare la griglia...]
+		    } else {
+		        overlay.style.display = 'flex';
+		        // NUOVO CONTATORE:
+		        if (finito.length < data.partecipanti.length) {
+		            document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
+		            document.getElementById('lobby-status').innerHTML = `
+		                <div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div>
+		                <p>Hanno terminato il tempo. Aspettiamo gli altri...</p>
+		            `;
+		        } else {
+		            // Quando tutti hanno finito, passa a verifica
+		            db.collection("partite").doc(matchId).update({ stato: "verifica" });
+		        }
+		    }
+		    // Mostra punteggi live (facoltativo: puoi scorrere l'array partecipanti per mostrarli tutti)
+		    const avvList = data.partecipanti.filter(n => n !== mioNome);
+		    let scoresHtml = "";
+		    avvList.forEach(a => scoresHtml += `🆚 ${a}: ${data.punteggi[a] || 0} `);
+		    document.getElementById('live-opponent-score').innerHTML = scoresHtml;
+		}
+		
+		// STATO 3: VERIFICA
+		if (data.stato === "verifica") {
+		    overlay.style.display = 'flex';
+		    document.getElementById('lobby-title').textContent = "VERIFICA PAROLE";
+		    const conf = data.confermaVerifica || [];
+		    
+		    document.getElementById('lobby-status').innerHTML = `
+		        <div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>
+		    `;
+		    
+		    document.getElementById('lobby-action').innerHTML = !conf.includes(mioNome) ? 
+		        `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">CONFERMA E CALCOLA 🏁</button>` : 
+		        `<p>In attesa che tutti confermino...</p>`;
+		}
 
         // 4. CONCLUSIONE
         if (data.stato === "conclusa") {
@@ -2428,6 +2427,7 @@ async function attivaAnalisiMultiplayer() {
 </body>
 
 </html>
+
 
 
 
