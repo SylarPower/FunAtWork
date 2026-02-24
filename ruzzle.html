@@ -2118,9 +2118,18 @@ function fireConfetti(originElement = null) {
     // Sostituisci la parte finale (dove c'è loadDictionary) con questo:
 
 // INNESTO 2: IL CERVELLO MULTIPLAYER
-if (!matchId || !mioNome) {
-    alert("Accesso non valido. Torna alla Dashboard.");
+// Controlla solo che l'utente sia loggato
+if (!mioNome) {
+    alert("Devi effettuare il login nella Dashboard prima di giocare!");
     window.location.href = "index.html";
+}
+
+// Se non c'è matchId, nascondiamo gli elementi multiplayer
+if (!matchId) {
+    window.addEventListener('load', () => {
+        if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
+        if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
+    });
 }
 
 // Ascolta lo stato della partita su Firebase
@@ -2378,6 +2387,7 @@ async function attivaAnalisiMultiplayer() {
 </body>
 
 </html>
+
 
 
 
