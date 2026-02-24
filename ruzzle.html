@@ -2145,35 +2145,46 @@ db.collection("partite").doc(matchId).onSnapshot(doc => {
         }
     }
 
-    // STATO 2: IN CORSO (Il gioco vero e proprio)
-    if (data.stato === "in_corso") {
-        overlay.style.display = 'none';
-        if (!isGameActive && !isAnalysisPhase) {
-            // Scarica le impostazioni decise dal creator
-            gridSize = parseInt(data.opzioni.griglia);
-            timeRemaining = parseInt(data.opzioni.tempo);
-            initialTime = timeRemaining;
-            currentSeed = data.opzioni.seed;
-            isBiatchMode = (data.opzioni.mode === 'biatch');
-            isCrazyMode = (data.opzioni.mode === 'crazy');
-            useBonuses = (data.opzioni.mode !== 'classic');
-            
-            // Avvia il tuo motore originale
-            const cleanSeed = currentSeed.split('-')[0];
-            generateGridData(cleanSeed);
-            renderGrid();
-            gridOverlay.style.display = 'none'; // Salta il "VIA" locale
-            startRound(); // Funzione originale tua
+        // 2. Fase di gioco: genera le lettere e FORZA la visualizzazione
+        if (data.stato === "in_corso") {
+            if (!isGameActive && !isAnalysisPhase) {
+                // Impostazioni della sfida
+                gridSize = parseInt(data.opzioni.griglia);
+                timeRemaining = parseInt(data.opzioni.tempo);
+                initialTime = timeRemaining;
+                currentSeed = data.opzioni.seed;
+                isBiatchMode = (data.opzioni.mode === 'biatch');
+                isCrazyMode = (data.opzioni.mode === 'crazy');
+                useBonuses = (data.opzioni.mode !== 'classic');
+                
+                // GENERAZIONE GRIGLIA
+                const cleanSeed = currentSeed.split('-')[0];
+                generateGridData(cleanSeed);
+                renderGrid();
+                
+                // --- FIX DEFINITIVO VISIBILITÀ ---
+                overlay.style.display = 'none'; // Nasconde la lobby nera
+                
+                // Forza la sparizione degli overlay originali
+                const sScreen = document.getElementById('start-screen');
+                if(sScreen) sScreen.style.setProperty('display', 'none', 'important');
+                
+                const gOverlay = document.getElementById('grid-overlay');
+                if(gOverlay) gOverlay.style.setProperty('display', 'none', 'important');
+
+                // Rimuove il blur da tutte le tile (se presente)
+                document.querySelectorAll('.tile').forEach(t => {
+                    t.classList.remove('blurred');
+                });
+                
+                startRound(); 
+            }
+            // Aggiorna punteggio avversario
+            const avv = data.partecipanti.find(n => n !== mioNome);
+            const scoreAvv = data.punteggi[avv] || 0;
+            const liveOppEl = document.getElementById('live-opponent-score');
+            if(liveOppEl) liveOppEl.textContent = `🆚 ${avv}: ${scoreAvv}`;
         }
-        // Aggiorna punteggio avversario live
-        const avv = data.partecipanti.find(n => n !== mioNome);
-        let displayAvv = document.getElementById('live-opponent-score');
-        if(!displayAvv) {
-            document.querySelector('.status-bar').insertAdjacentHTML('beforeend', `<div id="live-opponent-score" style="color:#ff4081; font-size:1rem;">🆚 ${avv}: 0</div>`);
-            displayAvv = document.getElementById('live-opponent-score');
-        }
-        displayAvv.textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
-    }
 
     // STATO 3: VERIFICA (Togliamo le parole comuni)
     if (data.stato === "verifica") {
@@ -2336,5 +2347,6 @@ async function confermaVerificaOnline() {
 </body>
 
 </html>
+
 
 
