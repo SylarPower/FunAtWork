@@ -1325,25 +1325,23 @@
     function endGameManually() { if(confirm("Terminare ora?")) endGame(); }
     
 	function endGame() {
-		    // Se siamo in multiplayer, invia le parole al server per la verifica
-	    if (typeof matchId !== 'undefined' && matchId) {
-	        const mieParoleInviate = [];
-	        foundWords.forEach((v, k) => mieParoleInviate.push({w: k, p: v.points}));
-	        db.collection("partite").doc(matchId).update({
-	            [`parole.${mioNome}`]: mieParoleInviate,
-	            stato: "verifica"
-	        });
-	    }
 	    clearInterval(timerInterval);
-	    
-	    // --- AGGIUNTA QUI ---
-	    const mieParoleInviate = [];
-	    foundWords.forEach((v, k) => mieParoleInviate.push({w: k, p: v.points}));
-	    db.collection("partite").doc(matchId).update({
-	        [`parole.${mioNome}`]: mieParoleInviate,
-	        stato: "verifica"
-	    });
-		  
+	    isGameActive = false;
+	
+	    // --- AGGIUNTA PER MULTIPLAYER ---
+	    if (typeof matchId !== 'undefined' && matchId) {
+	        const mieParole = [];
+	        foundWords.forEach((v, k) => mieParole.push({w: k, p: v.points}));
+	        
+	        db.collection("partite").doc(matchId).update({
+	            [`parole.${mioNome}`]: mieParole,
+	            finito: firebase.firestore.FieldValue.arrayUnion(mioNome) // Segna che IO ho finito
+	        });
+	
+	        document.getElementById('lobby-ready').style.display = 'flex';
+	        document.getElementById('lobby-title').textContent = "ATTENDI...";
+	        document.getElementById('lobby-status').textContent = "L'avversario sta ancora finendo la partita.";
+	    }		  
 		  // --- FIX PER GANDHI ---
         // Forziamo un controllo manuale in questo momento esatto
         // Creiamo un contesto fittizio perfetto per questo check
@@ -1617,7 +1615,7 @@ function updateTotalScore() {
     scoreDisplay.textContent = score;
     if(isAnalysisPhase) updateHistoryScore();
 
-    // Invia al server se siamo in multiplayer
+    // AGGIUNTA PER FIREBASE
     if (typeof matchId !== 'undefined' && matchId && db) {
         db.collection("partite").doc(matchId).update({
             [`punteggi.${mioNome}`]: score
@@ -2226,104 +2224,81 @@ async function confermaVerificaOnline() {
 }
 // --- PARTE C: GESTIONE AVVIO (SOLO VS MULTI) ---
 
+// --- GESTIONE AVVIO DEFINITIVA ---
 if (!matchId) {
-    // MODALITÀ SOLO: Se entri senza invito, nascondi la lobby e il punteggio avversario
-    if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
+    if(document.getElementById('lobby-ready')) document.getElementById('lobby-ready').style.display = 'none';
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
-    
-    // Carica il dizionario e abilita il gioco normale (tasto NUOVA)
-    loadDictionary(); 
+    loadDictionary();
 } else {
-    // MODALITÀ MULTIPLAYER: Si collega a Firebase per sincronizzare i due giocatori
     db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
+        if(!data) { window.location.href = "index.html"; return; }
         
-        // Se la partita non esiste più (cancellata dal cestino)
-        if(!data) {
-            alert("Questa partita è stata eliminata.");
-            window.location.href = "index.html";
-            return;
-        }
-        
+        const overlay = document.getElementById('lobby-ready');
         const statusDiv = document.getElementById('lobby-status');
-        const actionDiv = document.getElementById('lobby-action');
-        const overlay = document.getElementById('multiplayer-lobby');
-        const pronti = data.pronti || [];
+        const finito = data.finito || [];
 
-        // 1. Fase di attesa: entrambi devono cliccare AVVIA
+        // STATO 1: ATTESA
         if (data.stato === "attesa") {
-            statusDiv.textContent = `Pronti: ${pronti.length} / 2`;
-            actionDiv.innerHTML = !pronti.includes(mioNome) ? 
-                `<button onclick="setProntoOnline()" class="btn-ready">AVVIA SFIDA! 🚀</button>` : 
-                `<p>In attesa del collega...</p>`;
-            
-            if (pronti.length >= 2) {
-                db.collection("partite").doc(matchId).update({ stato: "in_corso" });
-            }
+            overlay.style.display = 'flex';
+            statusDiv.textContent = `Pronti: ${data.pronti.length} / 2`;
+            document.getElementById('lobby-action').innerHTML = !data.pronti.includes(mioNome) ? 
+                `<button onclick="db.collection('partite').doc(matchId).update({pronti:firebase.firestore.FieldValue.arrayUnion(mioNome)})" class="btn-ready">AVVIA! 🚀</button>` : `<p>In attesa...</p>`;
+            if (data.pronti.length >= 2) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
         }
 
-        // 2. Fase di gioco: genera le lettere e fa partire il tempo
+        // STATO 2: IN CORSO
         if (data.stato === "in_corso") {
-            if (!isGameActive && !isAnalysisPhase) {
-                // Impostazioni della sfida
-                gridSize = parseInt(data.opzioni.griglia);
-                timeRemaining = parseInt(data.opzioni.tempo);
-                initialTime = timeRemaining;
-                currentSeed = data.opzioni.seed;
-                isBiatchMode = (data.opzioni.mode === 'biatch');
-                isCrazyMode = (data.opzioni.mode === 'crazy');
-                useBonuses = (data.opzioni.mode !== 'classic');
-                
-                // GENERAZIONE GRIGLIA (Questo risolve il bug delle lettere mancanti)
-                const cleanSeed = currentSeed.split('-')[0];
-                generateGridData(cleanSeed);
-                renderGrid();
-                
-                // Nasconde la lobby e avvia il timer
+            if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
-                if(document.getElementById('start-screen')) document.getElementById('start-screen').style.display = 'none';
-                if(document.getElementById('grid-overlay')) document.getElementById('grid-overlay').style.display = 'none';
-                
-                startRound(); 
+                if (!isGameActive && !isAnalysisPhase) {
+                    gridSize = parseInt(data.opzioni.griglia);
+                    timeRemaining = parseInt(data.opzioni.tempo);
+                    initialTime = timeRemaining;
+                    currentSeed = data.opzioni.seed;
+                    isBiatchMode = (data.opzioni.mode === 'biatch');
+                    isCrazyMode = (data.opzioni.mode === 'crazy');
+                    useBonuses = (data.opzioni.mode !== 'classic');
+                    generateGridData(currentSeed.split('-')[0]);
+                    renderGrid();
+                    document.getElementById('start-screen').style.display = 'none';
+                    document.getElementById('grid-overlay').style.display = 'none';
+                    startRound(); 
+                }
+            } else {
+                overlay.style.display = 'flex';
+                if (finito.length < 2) {
+                    document.getElementById('lobby-title').textContent = "ATTESA...";
+                    statusDiv.textContent = "Il collega sta ancora giocando.";
+                } else {
+                    db.collection("partite").doc(matchId).update({ stato: "verifica" });
+                }
             }
-            // Aggiorna il punteggio dell'avversario mentre gioca
             const avv = data.partecipanti.find(n => n !== mioNome);
-            if(document.getElementById('live-opponent-score')) 
-                document.getElementById('live-opponent-score').textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
+            document.getElementById('live-opponent-score').textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
         }
 
-        // 3. Fase di verifica: calcolo delle parole comuni
+        // STATO 3: VERIFICA
         if (data.stato === "verifica") {
             overlay.style.display = 'flex';
-            document.getElementById('lobby-title').textContent = "CONFRONTO PAROLE...";
+            document.getElementById('lobby-title').textContent = "VERIFICA...";
             const conf = data.confermaVerifica || [];
-            actionDiv.innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">SCOPRI IL VINCITORE 🏁</button>` : 
-                `<p>In attesa che il collega confermi...</p>`;
+            document.getElementById('lobby-action').innerHTML = !conf.includes(mioNome) ? 
+                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI RISULTATI 🏁</button>` : `<p>Attendo conferma...</p>`;
         }
 
-        // 4. Fase finale: Risultati
+        // STATO 4: CONCLUSIONE
         if (data.stato === "conclusa") {
             overlay.style.display = 'flex';
             const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
-            const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "PAREGGIO");
-            
-            document.getElementById('lobby-title').textContent = vinc === mioNome ? "HAI VINTO! 👑" : (vinc === "PAREGGIO" ? "PAREGGIO! 🤝" : "HAI PERSO! 🐷");
+            const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "Pareggio");
+            document.getElementById('lobby-title').textContent = vinc === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
             statusDiv.innerHTML = `<div style="font-size:2rem;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>`;
-            actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">TORNA ALLA HOME</button>`;
-            
-            if(vinc === mioNome) { 
-                fireConfetti(); 
-                if(typeof triggerBusetExplosion === 'function') triggerBusetExplosion(); 
-            }
+            document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">HOME</button>`;
+            if(vinc === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
     loadDictionary();
-}
-
-// Funzioni di supporto per il Multiplayer
-function setProntoOnline() {
-    db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
 }
 
 async function confermaVerificaOnline() {
@@ -2332,13 +2307,9 @@ async function confermaVerificaOnline() {
     const data = snap.data();
     if (data.confermaVerifica.length >= 2) {
         const p1 = data.partecipanti[0], p2 = data.partecipanti[1];
-        const paroleP1 = data.parole[p1].map(x => x.w);
-        const paroleP2 = data.parole[p2].map(x => x.w);
-        const comuni = paroleP1.filter(w => paroleP2.includes(w));
-        
+        const comuni = data.parole[p1].filter(a => data.parole[p2].some(b => a.w === b.w)).map(x => x.w);
         let f1 = 0; data.parole[p1].forEach(x => { if(!comuni.includes(x.w)) f1 += x.p; });
         let f2 = 0; data.parole[p2].forEach(x => { if(!comuni.includes(x.w)) f2 += x.p; });
-        
         db.collection("partite").doc(matchId).update({ punteggi: { [p1]: f1, [p2]: f2 }, stato: "conclusa" });
     }
 }
@@ -2347,6 +2318,7 @@ async function confermaVerificaOnline() {
 </body>
 
 </html>
+
 
 
 
