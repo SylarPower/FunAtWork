@@ -566,7 +566,7 @@
                 <div class="score-box">
                     <div style="font-size:0.8rem; font-weight:bold;">PUNTEGGIO</div>
                     <div class="score-val" id="total-score">0</div>
-						  <div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1.1rem; margin-top:10px;"></div>
+					<div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1rem; margin-top:10px;"></div>
                 </div>
                 <button class="info-btn" onclick="openLegend()" title="Legenda">i</button>
             </div>
@@ -769,11 +769,11 @@
     let selectedCells = []; 
     let foundWords =	new Map(); 
     let score = 0;
-	 let isRotating = false;
-	 let errorTimeout = null;
-	 let rotationCount = 0;
-	 let errorCount = 0;
-	 let fireworksInterval = null;
+	let isRotating = false;
+	let errorTimeout = null;
+	let rotationCount = 0;
+	let errorCount = 0;
+	let fireworksInterval = null;
     let timerInterval;
     let timeRemaining = 180;
     let initialTime = 180;
@@ -791,8 +791,12 @@
     let useBonuses = false;
     let currentGameTimestamp = null; 
     let currentHighlightedWord = null;
-	 let isCrazyMode = false;
-	 let isBiatchMode = false;
+	let isCrazyMode = false;
+	let isBiatchMode = false;
+	let currentGameData = null;
+	let dizionarioCustomApplicato = false;
+	let unsubscribePartita = null;
+	let unsubscribeProposte = null;
 	     // --- TRIE (struttura veloce per cercare prefissi) ---
     class TrieNode {
         constructor() { this.children = {}; this.isWord = false; }
@@ -1059,6 +1063,9 @@
         
         const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?code=' + currentSeed;
         window.history.pushState({path:newUrl},'',newUrl);
+		if(!matchId) {
+        gridOverlay.style.display = 'flex'; // Riabilita il tasto VIA per il solitario
+    }
     }
 
     function generateGridData(rngSeedStr) {
@@ -1643,8 +1650,8 @@ function updateTotalScore() {
     // Invia il punteggio live se sei in sfida
     if (typeof matchId !== 'undefined' && matchId && db) {
         db.collection("partite").doc(matchId).update({
-            [`punteggi.${mioNome}`]: score
-        }).catch(e => {});
+    punteggi: { [mioNome]: score }
+}, { merge: true }).catch(e => {});
     }
 }
     
@@ -2146,7 +2153,18 @@ if (!mioNome) {
     alert("Effettua il login in Dashboard.");
     window.location.href = "index.html";
 }
-
+async function caricaDizionarioPermanente() {
+    try {
+        const globalDoc = await db.collection("config").doc("dizionario").get();
+        if (globalDoc.exists) {
+            const data = globalDoc.data();
+            if (data.extra) data.extra.forEach(w => { dictionary.add(w); if(!EXTRA_WORDS.includes(w)) EXTRA_WORDS.push(w); });
+            if (data.excluded) data.excluded.forEach(w => { dictionary.delete(w); if(!EXCLUDED_WORDS.includes(w)) EXCLUDED_WORDS.push(w); });
+            buildTrie(); // Ricostruisce l'indice per i suggerimenti
+            console.log("Dizionario permanente caricato.");
+        }
+    } catch (e) { console.error("Errore dizionario globale:", e); }
+}
 if (!matchId) {
     // MODALITÀ SOLO
     if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
@@ -2154,10 +2172,36 @@ if (!matchId) {
     loadDictionary(); 
 } else {
     // MODALITÀ MULTIPLAYER
-    db.collection("partite").doc(matchId).onSnapshot(doc => {
+    
+    // 🧹 SPEGNI LISTENER VECCHI (se esistono)
+    if(unsubscribePartita) unsubscribePartita();
+    if(unsubscribeProposte) unsubscribeProposte();
+    
+    // ✅ ATTIVA NUOVO LISTENER E SALVA IL TELECOMANDO
+    unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if(!data) { window.location.href = "index.html"; return; }
         
+        // AGGIORNA DATI GLOBALI
+        currentGameData = data;
+        if(!data) { window.location.href = "index.html"; return; }
+            // AGGIORNA DATI GLOBALI
+    currentGameData = data;
+    
+    // APPLICA DIZIONARIO CUSTOM (solo una volta)
+    if(data.dizionarioCustom && !dizionarioCustomApplicato) {
+        (data.dizionarioCustom.extra || []).forEach(w => {
+            if(!EXTRA_WORDS.includes(w)) EXTRA_WORDS.push(w);
+            dictionary.add(w);
+        });
+        (data.dizionarioCustom.excluded || []).forEach(w => {
+            if(!EXCLUDED_WORDS.includes(w)) EXCLUDED_WORDS.push(w);
+            dictionary.delete(w);
+        });
+        
+        buildTrie();
+        dizionarioCustomApplicato = true;
+    }
         const overlay = document.getElementById('multiplayer-lobby');
         const statusDiv = document.getElementById('lobby-status');
         const actionDiv = document.getElementById('lobby-action');
@@ -2184,10 +2228,10 @@ if (!matchId) {
                 if (!isGameActive && !isAnalysisPhase) {
                     gridSize = parseInt(data.opzioni.griglia);
                     // FIX TIMER: lo imposta solo se non è già partito per evitare reset
-                    if (timeRemaining <= 0 || timeRemaining === 180) {
-                        timeRemaining = parseInt(data.opzioni.tempo);
-                        initialTime = timeRemaining;
-                    }
+					if (!isGameActive && timeRemaining !== parseInt(data.opzioni.tempo)) {
+					    timeRemaining = parseInt(data.opzioni.tempo);
+					    initialTime = timeRemaining;
+					}
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2243,20 +2287,44 @@ if (!matchId) {
             if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
-    
-    // ASCOLTO PROPOSTE PAROLE
-    db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-        snap.docChanges().forEach(change => {
-            if(change.type === "added") {
-                const prop = change.doc.data();
-                if(!prop.voti.includes(mioNome)) {
-                    if(confirm(`Voto: ${prop.voti[0]} vuole ${prop.tipo==='extra'?'aggiungere':'rimuovere'} "${prop.parola}". Approvi?`)) {
-                        db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({ voti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
-                    }
+	// LISTENER PROPOSTE (SEPARATO E PULITO)
+unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+    snap.docChanges().forEach(async change => {
+        if(change.type === "added" || change.type === "modified") {
+            const prop = change.doc.data();
+            
+            // VOTO SE NON L'HO GIÀ FATTO
+            if(!prop.voti.includes(mioNome)) {
+                const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
+                if(confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
+                    await db.collection("partite").doc(matchId)
+                        .collection("proposte").doc(prop.parola)
+                        .update({
+                            voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+                        })
+                        .catch(e => console.error("Errore voto:", e));
                 }
             }
-        });
+            
+            // VERIFICA SE TUTTI HANNO VOTATO (usa currentGameData!)
+            if(currentGameData && currentGameData.partecipanti) {
+                const numPartecipanti = currentGameData.partecipanti.length;
+                
+                if(prop.voti.length >= numPartecipanti) {
+                    // APPLICA MODIFICA
+                    await applicaModificaDizionario(prop.parola, prop.tipo);
+                    
+                    // ELIMINA PROPOSTA
+                    await db.collection("partite").doc(matchId)
+                        .collection("proposte").doc(prop.parola)
+                        .delete()
+                        .catch(e => console.error("Errore delete:", e));
+                }
+            }
+        }
     });
+});
+    
     loadDictionary();
 }
 
@@ -2282,16 +2350,20 @@ async function confermaVerificaOnline() {
 }
 
 async function attivaAnalisiMultiplayer() {
-    document.getElementById('multiplayer-lobby').style.display = 'none';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.innerHTML = '<div style="text-align:center; padding:20px;">⏳ Caricamento analisi...</div>';
+    document.getElementById('found-words').appendChild(loadingDiv);
+    
+    const snap = await db.collection("partite").doc(matchId).get();
+    const data = snap.data();
+	loadingDiv.remove(); // <-- Rimuovi dopo caricamento
+	document.getElementById('multiplayer-lobby').style.display = 'none';
     document.getElementById('proposta-manuale-container').style.display = 'block'; // Mostra campo input
     isAnalysisPhase = true;
     isGameActive = true; 
     
     if(document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
     if(document.getElementById('btn-missed')) document.getElementById('btn-missed').style.display = "block";
-
-    const snap = await db.collection("partite").doc(matchId).get();
-    const data = snap.data();
     
     // 1. Calcola le parole comuni per sbarrarle
     let conteggioParoleGlobali = {};
@@ -2347,10 +2419,15 @@ async function attivaAnalisiMultiplayer() {
 
 // Proposta manuale (per EXTRA_WORDS)
 function proponiParolaManuale() {
-    const parola = document.getElementById('input-nuova-parola').value.trim().toUpperCase();
-    if (parola.length < 4) return alert("Parola troppo corta!");
+    const parola = document.getElementById('input-nuova-parola').value
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z]/g, ''); // <-- Rimuovi caratteri speciali
+    
+    if (parola.length < 4) return alert("Minimo 4 lettere!");
+    if (parola.length > 20) return alert("Troppo lunga!");
+    
     inviaPropostaFirebase(parola, 'extra');
-    document.getElementById('input-nuova-parola').value = "";
 }
 
 // Invia al database la proposta
@@ -2367,42 +2444,57 @@ async function inviaPropostaFirebase(parola, tipo) {
     alert("Proposta inviata! Gli altri devono approvare.");
 }
 
-// Ascolto votazioni (Da mettere dentro il tuo onSnapshot della partita o in fondo)
-db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-    snap.docChanges().forEach(change => {
-        if(change.type === "added" || change.type === "modified") {
-            const prop = change.doc.data();
-            // Se non ho ancora votato questa parola
-            if(!prop.voti.includes(mioNome)) {
-                if(confirm(`VOTAZIONE: ${prop.proponente} vuole ${prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE'} "${prop.parola}". Approvi?`)) {
-                    db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
-                        voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                    });
-                }
-            }
-            // Se TUTTI hanno votato sì
-            const numPartecipanti = gameDoc ? gameDoc.partecipanti.length : 2; // gameDoc deve essere globale
-            if(prop.voti.length >= numPartecipanti) {
-                applicaModificaDizionario(prop.parola, prop.tipo);
-                db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).delete(); // Pulisci proposta
-            }
-        }
+async function applicaModificaDizionario(parola, tipo) {
+    // 1. Aggiorna array locali
+    if(tipo === 'extra') {
+        if(!EXTRA_WORDS.includes(parola)) EXTRA_WORDS.push(parola);
+        dictionary.add(parola);
+    } else {
+        if(!EXCLUDED_WORDS.includes(parola)) EXCLUDED_WORDS.push(parola);
+        dictionary.delete(parola);
+    }
+
+    // 2. Salva su Firebase (permanente)
+    await db.collection("partite").doc(matchId).update({
+        [`dizionarioCustom.extra`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'extra' ? parola : null),
+        [`dizionarioCustom.excluded`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'exclude' ? parola : null)
     });
+    
+    alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'}: "${parola}"`);
+}
+
+	// 🚪 CLEANUP QUANDO CHIUDE LA PAGINA O CAMBIA PAGINA
+window.addEventListener('beforeunload', () => {
+    if(unsubscribePartita) unsubscribePartita();
+    if(unsubscribeProposte) unsubscribeProposte();
 });
 
-function applicaModificaDizionario(parola, tipo) {
-    if(tipo === 'extra') {
-        EXTRA_WORDS.push(parola);
-        dictionary.add(parola);
-        alert(`✅ La parola "${parola}" è stata aggiunta al dizionario per questa partita!`);
-    } else {
-        EXCLUDED_WORDS.push(parola);
-        dictionary.delete(parola);
-        alert(`🚫 La parola "${parola}" è stata rimossa dal dizionario per questa partita!`);
+// ✅ FUNZIONA SEMPRE
+function setupHomeButtonCleanup() {
+    const homeBtn = document.querySelector('button[onclick*="index.html"]');
+    if(homeBtn) {
+        // Rimuovi l'onclick inline
+        homeBtn.removeAttribute('onclick');
+        
+        homeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Spegni listener
+            if(unsubscribePartita) unsubscribePartita();
+            if(unsubscribeProposte) unsubscribeProposte();
+            
+            // Vai alla home
+            window.location.href = 'index.html';
+        });
     }
+}
+
+// Chiamalo dopo che il DOM esiste (puoi metterlo DOPO loadDictionary)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHomeButtonCleanup);
+} else {
+    setupHomeButtonCleanup();
 }
 </script>
 </body>
 </html>
-
-
