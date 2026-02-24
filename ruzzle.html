@@ -2205,21 +2205,63 @@ db.collection("partite").doc(matchId).onSnapshot(doc => {
             `<p>Attendo che il collega confermi...</p>`;
     }
 
-        // 4. CONCLUSIONE CON ANALISI
-        if (data.stato === "conclusa") {
-            overlay.style.display = 'flex';
-            const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
-            const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "Pareggio");
-            document.getElementById('lobby-title').textContent = vinc === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
+// DENTRO ON SNAPSHOT -> STATO 4: CONCLUSIONE
+if (data.stato === "conclusa") {
+    overlay.style.display = 'flex';
+    
+    // Trova il punteggio più alto tra tutti
+    let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
+    let vincitore = classifica[0][0];
+    let isPareggio = classifica.length > 1 && classifica[0][1] === classifica[1][1];
+
+    document.getElementById('lobby-title').textContent = isPareggio ? "PAREGGIO! 🤝" : (vincitore === mioNome ? "CAMPIONE! 👑" : "SCONFITTA! 🐷");
+    
+    let classificaHtml = "<div style='font-size:1.2rem; margin:15px;'>";
+    classifica.forEach(([player, score], index) => {
+        classificaHtml += `${index+1}. ${player}: ${score} PT ${player === vincitore ? '🏆' : ''}<br>`;
+    });
+    classificaHtml += "</div>";
+    
+    statusDiv.innerHTML = classificaHtml + `
+        <button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; margin-bottom:10px; cursor:pointer;">🔍 ANALIZZA TUTTI</button>
+    `;
+    
+    document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">HOME</button>`;
+    if(vincitore === mioNome && !isPareggio) { fireConfetti(); startEndGameCelebration(); }
+}
+
+// FUNZIONE VERIFICA AGGIORNATA PER N GIOCATORI
+async function confermaVerificaOnline() {
+    await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
+    const snap = await db.collection("partite").doc(matchId).get();
+    const data = snap.data();
+    
+    // Se TUTTI i partecipanti hanno confermato
+    if (data.confermaVerifica.length >= data.partecipanti.length) {
+        let tuttiPunteggi = {};
+        
+        data.partecipanti.forEach(player => {
+            let mioScoreFinal = 0;
+            const mieParole = data.parole[player] || [];
             
-            statusDiv.innerHTML = `
-                <div style="font-size:1.8rem; margin-bottom:10px;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>
-                <button onclick="attivaAnalisiMultiplayer()" style="padding:10px 20px; background:#f39c12; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🔍 ANALIZZA PARTITA</button>
-            `;
-            
-            document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; margin-top:10px;">TORNA IN HOME</button>`;
-            if(vinc === mioNome) { fireConfetti(); startEndGameCelebration(); }
-        }
+            mieParole.forEach(parolaObj => {
+                let trovataDaAltri = false;
+                // Controlla se qualcun altro ha la stessa parola
+                data.partecipanti.forEach(altroPlayer => {
+                    if (player !== altroPlayer) {
+                        const paroleAltro = data.parole[altroPlayer] || [];
+                        if (paroleAltro.some(p => p.w === parolaObj.w)) trovataDaAltri = true;
+                    }
+                });
+                
+                if (!trovataDaAltri) mioScoreFinal += parolaObj.p;
+            });
+            tuttiPunteggi[player] = mioScoreFinal;
+        });
+
+        db.collection("partite").doc(matchId).update({ punteggi: tuttiPunteggi, stato: "conclusa" });
+    }
+}
 });
 
 function setProntoOnline() {
@@ -2286,13 +2328,12 @@ if (!matchId) {
                 }
             } else {
                 overlay.style.display = 'flex';
-                if (finito.length < 2) {
-                    document.getElementById('lobby-title').textContent = "ATTESA...";
-                    statusDiv.textContent = "Il collega sta ancora giocando il suo tempo.";
-                } else {
-                    // Entrambi finiti: uno dei due passa a verifica
-                    db.collection("partite").doc(matchId).update({ stato: "verifica" });
-                }
+				if (finito.length < data.partecipanti.length) {
+				    document.getElementById('lobby-title').textContent = "ATTESA...";
+				    statusDiv.textContent = `Hanno finito in ${finito.length} su ${data.partecipanti.length}.`;
+				} else {
+				    db.collection("partite").doc(matchId).update({ stato: "verifica" });
+				}
             }
             const avv = data.partecipanti.find(n => n !== mioNome);
             document.getElementById('live-opponent-score').textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
@@ -2387,6 +2428,7 @@ async function attivaAnalisiMultiplayer() {
 </body>
 
 </html>
+
 
 
 
