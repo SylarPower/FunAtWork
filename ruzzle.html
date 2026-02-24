@@ -1328,20 +1328,22 @@
 	    clearInterval(timerInterval);
 	    isGameActive = false;
 	
-	    // --- AGGIUNTA PER MULTIPLAYER ---
+	    // --- FINE PARTITA INDIVIDUALE ---
 	    if (typeof matchId !== 'undefined' && matchId) {
 	        const mieParole = [];
 	        foundWords.forEach((v, k) => mieParole.push({w: k, p: v.points}));
 	        
 	        db.collection("partite").doc(matchId).update({
 	            [`parole.${mioNome}`]: mieParole,
-	            finito: firebase.firestore.FieldValue.arrayUnion(mioNome) // Segna che IO ho finito
+	            finito: firebase.firestore.FieldValue.arrayUnion(mioNome) 
 	        });
 	
-	        document.getElementById('lobby-ready').style.display = 'flex';
-	        document.getElementById('lobby-title').textContent = "ATTENDI...";
-	        document.getElementById('lobby-status').textContent = "L'avversario sta ancora finendo la partita.";
-	    }		  
+	        document.getElementById('multiplayer-lobby').style.display = 'flex';
+	        document.getElementById('lobby-title').textContent = "FINE TEMPO!";
+	        document.getElementById('lobby-status').textContent = "Attendo che l'avversario finisca il suo tempo.";
+	    }
+	    // --------------------------------
+    // ... qui continua tutto il tuo codice originale (Achievements, Stats, etc.)
 		  // --- FIX PER GANDHI ---
         // Forziamo un controllo manuale in questo momento esatto
         // Creiamo un contesto fittizio perfetto per questo check
@@ -1615,7 +1617,7 @@ function updateTotalScore() {
     scoreDisplay.textContent = score;
     if(isAnalysisPhase) updateHistoryScore();
 
-    // AGGIUNTA PER FIREBASE
+    // Invia il punteggio live se sei in sfida
     if (typeof matchId !== 'undefined' && matchId && db) {
         db.collection("partite").doc(matchId).update({
             [`punteggi.${mioNome}`]: score
@@ -2224,30 +2226,31 @@ async function confermaVerificaOnline() {
 }
 // --- PARTE C: GESTIONE AVVIO (SOLO VS MULTI) ---
 
-// --- GESTIONE AVVIO DEFINITIVA ---
+// --- GESTIONE AVVIO (SOLO VS MULTI) ---
 if (!matchId) {
-    if(document.getElementById('lobby-ready')) document.getElementById('lobby-ready').style.display = 'none';
+    if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
-    loadDictionary();
+    loadDictionary(); // Carica e aspetta click su NUOVA
 } else {
     db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if(!data) { window.location.href = "index.html"; return; }
         
-        const overlay = document.getElementById('lobby-ready');
+        const overlay = document.getElementById('multiplayer-lobby');
         const statusDiv = document.getElementById('lobby-status');
+        const actionDiv = document.getElementById('lobby-action');
         const finito = data.finito || [];
 
-        // STATO 1: ATTESA
+        // 1. ATTESA PRONTI
         if (data.stato === "attesa") {
             overlay.style.display = 'flex';
             statusDiv.textContent = `Pronti: ${data.pronti.length} / 2`;
-            document.getElementById('lobby-action').innerHTML = !data.pronti.includes(mioNome) ? 
-                `<button onclick="db.collection('partite').doc(matchId).update({pronti:firebase.firestore.FieldValue.arrayUnion(mioNome)})" class="btn-ready">AVVIA! 🚀</button>` : `<p>In attesa...</p>`;
+            actionDiv.innerHTML = !data.pronti.includes(mioNome) ? 
+                `<button onclick="db.collection('partite').doc(matchId).update({pronti:firebase.firestore.FieldValue.arrayUnion(mioNome)})" class="btn-ready">AVVIA! 🚀</button>` : `<p>In attesa dell'altro...</p>`;
             if (data.pronti.length >= 2) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
         }
 
-        // STATO 2: IN CORSO
+        // 2. IN CORSO (Fix Lettere Invisibili)
         if (data.stato === "in_corso") {
             if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
@@ -2259,8 +2262,10 @@ if (!matchId) {
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
                     useBonuses = (data.opzioni.mode !== 'classic');
+                    
                     generateGridData(currentSeed.split('-')[0]);
                     renderGrid();
+                    
                     document.getElementById('start-screen').style.display = 'none';
                     document.getElementById('grid-overlay').style.display = 'none';
                     startRound(); 
@@ -2269,8 +2274,9 @@ if (!matchId) {
                 overlay.style.display = 'flex';
                 if (finito.length < 2) {
                     document.getElementById('lobby-title').textContent = "ATTESA...";
-                    statusDiv.textContent = "Il collega sta ancora giocando.";
+                    statusDiv.textContent = "Il collega sta ancora giocando il suo tempo.";
                 } else {
+                    // Entrambi finiti: uno dei due passa a verifica
                     db.collection("partite").doc(matchId).update({ stato: "verifica" });
                 }
             }
@@ -2278,23 +2284,23 @@ if (!matchId) {
             document.getElementById('live-opponent-score').textContent = `🆚 ${avv}: ${data.punteggi[avv] || 0}`;
         }
 
-        // STATO 3: VERIFICA
+        // 3. VERIFICA
         if (data.stato === "verifica") {
             overlay.style.display = 'flex';
-            document.getElementById('lobby-title').textContent = "VERIFICA...";
+            document.getElementById('lobby-title').textContent = "VERIFICA FINALE";
             const conf = data.confermaVerifica || [];
-            document.getElementById('lobby-action').innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI RISULTATI 🏁</button>` : `<p>Attendo conferma...</p>`;
+            actionDiv.innerHTML = !conf.includes(mioNome) ? 
+                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI CHI HA VINTO 🏁</button>` : `<p>Attendo l'avversario...</p>`;
         }
 
-        // STATO 4: CONCLUSIONE
+        // 4. CONCLUSIONE
         if (data.stato === "conclusa") {
             overlay.style.display = 'flex';
             const s1 = data.punteggi[data.partecipanti[0]], s2 = data.punteggi[data.partecipanti[1]];
             const vinc = s1 > s2 ? data.partecipanti[0] : (s2 > s1 ? data.partecipanti[1] : "Pareggio");
             document.getElementById('lobby-title').textContent = vinc === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
             statusDiv.innerHTML = `<div style="font-size:2rem;">${data.partecipanti[0]}: ${s1} PT<br>${data.partecipanti[1]}: ${s2} PT</div>`;
-            document.getElementById('lobby-action').innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">HOME</button>`;
+            actionDiv.innerHTML = `<button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db;">TORNA ALLA HOME</button>`;
             if(vinc === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
@@ -2318,6 +2324,7 @@ async function confermaVerificaOnline() {
 </body>
 
 </html>
+
 
 
 
