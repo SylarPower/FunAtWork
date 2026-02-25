@@ -1623,7 +1623,7 @@ dictionaryReady = true;
         if(!isSandboxMode && !wordDisplayLocked) {
             setTimeout(() => {
                 if (!wordDisplayLocked) clearSelection();
-            }, 100);
+            }, 300);
         }
     } 
 };
@@ -1659,7 +1659,23 @@ dictionaryReady = true;
 	    }
 	    drawLine();
 	}
-    function clearSelection() { selectedCells = []; updateVisuals(); lineLayer.innerHTML = ''; wordDisplay.textContent = ""; currentHighlightedWord = null; }
+    function clearSelection() { 
+    // ✅ FIX: Rimuovi tutte le classi di selezione
+    document.querySelectorAll('.tile').forEach(t => {
+        t.classList.remove('selected');
+        t.classList.remove('anim-valid');
+        t.classList.remove('anim-invalid');
+    });
+    
+    selectedCells = []; 
+    lineLayer.innerHTML = ''; 
+    
+    if (!wordDisplayLocked) {
+        wordDisplay.textContent = ""; 
+    }
+    
+    currentHighlightedWord = null; 
+}
     
     function drawLine() {
         lineLayer.innerHTML = ''; if (selectedCells.length < 2) return;
@@ -1757,8 +1773,14 @@ dictionaryReady = true;
 
             runAchievementCheck(word, pts);
             updateTotalScore();
-            selectedCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
-            setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
+		    selectedCells.forEach(i => {
+		        gridEl.children[i].classList.remove('selected'); // Rimuovi arancione
+		        gridEl.children[i].classList.add('anim-valid');   // Aggiungi verde
+		    });
+		    
+		    setTimeout(() => {
+		        document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
+		    }, 500);
             wordCountDisplay.textContent = foundWords.size;
             
             const li = document.createElement('li'); li.dataset.word = word;
@@ -2750,4 +2772,5 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
