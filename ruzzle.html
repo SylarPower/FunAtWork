@@ -829,6 +829,7 @@
 	let unsubscribePartita = null;
 	let unsubscribeProposte = null;
 	let wordDisplayLocked = false;
+	let dictionaryReady = false;
 
 	     // --- TRIE (struttura veloce per cercare prefissi) ---
     class TrieNode {
@@ -960,6 +961,7 @@
     console.error("Errore caricamento dizionario globale:", e); 
 }
 buildTrie();
+dictionaryReady = true;		
             
             // Aggiorna la UI
             loadingMsg.style.display = 'none';
@@ -1609,7 +1611,7 @@ buildTrie();
 		 }
 	}
 	 
-	 const endDrag = () => { 
+	const endDrag = () => { 
     if(isDragging) { 
         isDragging = false; 
         try { 
@@ -1618,7 +1620,11 @@ buildTrie();
             console.error("Errore validateWord:", e);
             forceResetInputState();
         }
-        if(!isSandboxMode && !wordDisplayLocked) clearSelection(); 
+        if(!isSandboxMode && !wordDisplayLocked) {
+            setTimeout(() => {
+                if (!wordDisplayLocked) clearSelection();
+            }, 100);
+        }
     } 
 };
 
@@ -1710,7 +1716,11 @@ buildTrie();
         }, 5000);
     }
     function validateWord() {
-        const word = wordDisplay.textContent;
+        if (!trieRoot || dictionary.size === 0) {
+	        console.warn("Dizionario non ancora pronto");
+	        return;
+	    }
+		const word = wordDisplay.textContent;
         if (isSandboxMode) {
             if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
                 // Calcola punti (solo per visualizzazione)
@@ -2351,12 +2361,11 @@ if (!matchId) {
     </div>`;
             actionDiv.innerHTML += `<br><button onclick="window.location.href='index.html'" style="background:none; color:#777; border:none; margin-top:20px; cursor:pointer; text-decoration:underline;">Annulla ed esci</button>`;
             
-            if (pronti.length >= data.partecipanti.length) {
-					 db.collection("partite").doc(matchId).update({ 
-						  stato: "in_corso",
-						  timestampInizio: firebase.firestore.FieldValue.serverTimestamp()
-					 });
-				}
+			if (pronti.length >= data.partecipanti.length) {
+			    db.collection("partite").doc(matchId).update({ 
+			        stato: "in_corso"
+			    });
+			}
         }
 
         // 2. IN CORSO
@@ -2366,16 +2375,8 @@ if (!matchId) {
                 if (!isGameActive && !isAnalysisPhase && !isPaused) {
                     gridSize = parseInt(data.opzioni.griglia);
 						// FIX 1: Timer sincronizzato con timestamp server
-							 if (data.timestampInizio) {
-								  // Calcola tempo rimanente basato su quando è iniziata la partita
-								  const elapsed = Math.floor((Date.now() - data.timestampInizio) / 1000);
-								  const tempoTotale = parseInt(data.opzioni.tempo);
-								  timeRemaining = Math.max(0, tempoTotale - elapsed);
-								  initialTime = tempoTotale;
-							 } else {
-								  timeRemaining = parseInt(data.opzioni.tempo);
-								  initialTime = timeRemaining;
-							 }
+							timeRemaining = parseInt(data.opzioni.tempo);
+							initialTime = timeRemaining;
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2383,10 +2384,12 @@ if (!matchId) {
                     generateGridData(currentSeed.split('-')[0]);
                     renderGrid();
                     document.getElementById('start-screen').style.display = 'none';
-                    document.getElementById('grid-overlay').style.display = 'none';
-                    startRound(); 
-						  document.getElementById('possible-count').parentElement.style.visibility = 'visible';
-						  calculatePossibleWordsCount();
+					gridOverlay.style.display = 'flex';
+                    document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
+					overlaySeed.textContent = currentSeed;
+            		timerDisplay.textContent = formatTime(timeRemaining);
+					document.getElementById('possible-count').parentElement.style.visibility = 'visible';
+					calculatePossibleWordsCount();
                 }
 					} else {
 						 // 🔧 FIX: Non coprire tutto, mostra un banner in alto
@@ -2697,6 +2700,24 @@ function tornaHome() {
 function apriModalRivincita() {
     // Chiudi la lobby
     document.getElementById('multiplayer-lobby').style.display = 'none';
+    
+    // ✅ Pre-seleziona i settaggi della partita appena giocata
+    if (currentGameData && currentGameData.opzioni) {
+        const opts = currentGameData.opzioni;
+        
+        // Timer
+        const timerSelect = document.getElementById('modal-timer-select');
+        if (timerSelect && opts.tempo) {
+            timerSelect.value = opts.tempo;
+        }
+        
+        // Griglia
+        const gridSelect = document.getElementById('modal-grid-select');
+        if (gridSelect && opts.griglia) {
+            gridSelect.value = opts.griglia;
+        }
+    }
+    
     // Apri il modal di selezione
     newGameModal.style.display = 'flex';
 }
@@ -2729,3 +2750,4 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
