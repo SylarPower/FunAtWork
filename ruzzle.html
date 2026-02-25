@@ -1648,13 +1648,11 @@
             
             // --- TRIGGER BIATCH MODE: RUOTA QUANDO TROVI UNA PAROLA ---
             if (isBiatchMode) {
-                    rotateGrid();
-                    showBiatchOverlay();
+				  rotateGrid();
+				  showBiatchOverlay();
             }
-            // ----------------------------------------------------------
 
             runAchievementCheck(word, pts);
-
             updateTotalScore();
             selectedCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
             setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
@@ -1670,7 +1668,7 @@
             wordDisplay.textContent = `${word} (+${pts})`;
 				wordDisplay.style.background = "#2ecc71";
         } else { shakeInvalid(); wordDisplay.style.background = "#e74c3c"; }
-        setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
+        setTimeout(()=>wordDisplay.style.background="#dfe6e9",2000);
     }
 
     function calculateScoreWithBonuses(word, cells) {
@@ -2562,4 +2560,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
