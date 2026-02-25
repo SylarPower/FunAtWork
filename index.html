@@ -602,33 +602,15 @@ input:focus, select:focus {
         appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    // ========================================
-	// 🛡️ APP CHECK CONFIGURAZIONE
-	// ========================================
+	firebase.initializeApp(firebaseConfig);
 	
-	// Self-hosted App Check Provider (necessario per compat mode)
 	const appCheck = firebase.appCheck();
+	appCheck.activate(
+	    '6Lcm8XcsAAAAAM0hTFXbGRLHYZAW9ZPcZkKbxGIR', // 👈 LA TUA CHIAVE
+	    true
+	);
 	
-	// Configurazione per PRODUZIONE
-	if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-	    appCheck.activate(
-	        '6LfZ7HcsAAAAALr9sHGxbrdFdoRS6-E4cTjyiyBF', // ⚠️ SOSTITUISCI con la TUA Site Key
-	        true // Auto-refresh del token
-	    );
-	    console.log('🛡️ App Check attivato (PRODUZIONE)');
-	} else {
-	    // Configurazione per LOCALHOST (sviluppo)
-	    // ⚠️ INSERISCI QUI IL DEBUG TOKEN che hai copiato dalla console
-	    self.FIREBASE_APPCHECK_DEBUG_TOKEN = 'AED17971-7281-4327-B10A-B8AE1097AF90';
-	    
-	    appCheck.activate(
-	        '6LfZ7HcsAAAAALr9sHGxbrdFdoRS6-E4cTjyiyBF', // Stessa Site Key
-	        true
-	    );
-	    console.log('🛡️ App Check attivato (DEBUG MODE)');
-	}
+	const db = firebase.firestore();
 	let mioNome = localStorage.getItem('mioNome') || "";
 	let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
     let amiciSelezionati = new Set();
@@ -1256,5 +1238,6 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
 
 
