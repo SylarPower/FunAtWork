@@ -905,7 +905,32 @@
             // Aggiunge le parole extra manuali
             EXTRA_WORDS.forEach(w => dictionary.add(w));
             // Costruisce il Trie per ricerche veloci
-            buildTrie();
+            try {
+    const globalDoc = await db.collection("config").doc("dizionario").get();
+    if (globalDoc.exists) {
+        const data = globalDoc.data();
+        if (data.extra) {
+            data.extra.forEach(w => {
+                if (w && !EXTRA_WORDS.includes(w)) {
+                    EXTRA_WORDS.push(w);
+                    dictionary.add(w);
+                }
+            });
+        }
+        if (data.excluded) {
+            data.excluded.forEach(w => {
+                if (w && !EXCLUDED_WORDS.includes(w)) {
+                    EXCLUDED_WORDS.push(w);
+                    dictionary.delete(w);
+                }
+            });
+        }
+        console.log("Dizionario permanente caricato.");
+    }
+} catch (e) { 
+    console.error("Errore caricamento dizionario globale:", e); 
+}
+buildTrie();
             
             // Aggiorna la UI
             loadingMsg.style.display = 'none';
@@ -1629,14 +1654,14 @@
             if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
                 // Calcola punti (solo per visualizzazione)
                 const pts = calculateScoreWithBonuses(word, selectedCells);                
-                // Mostra parola + punti
+                wordDisplayLocked = true;
                 wordDisplay.textContent = `${word} (${pts} pt)`; // <--- MODIFICA QUI
 					 wordDisplay.style.background = "#2ecc71";
                 selectedCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
                 setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
             } else { wordDisplay.style.background = "#e74c3c"; shakeInvalid(); }
 				if(errorTimeout) clearTimeout(errorTimeout);
-            errorTimeout = setTimeout(() => { wordDisplay.style.background = "#dfe6e9"; clearSelection(); errorTimeout=null;}, 2000);
+            errorTimeout = setTimeout(() => { wordDisplay.style.background = "#dfe6e9"; wordDisplayLocked = false; clearSelection(); errorTimeout=null;}, 2000);
             return;
         }
 
@@ -1672,15 +1697,20 @@
 				li.addEventListener('dblclick', () => {
             window.open(`https://www.treccani.it/vocabolario/${word.toLowerCase()}`, '_blank');
             });
+				wordDisplayLocked = true;
             wordDisplay.textContent = `${word} (+${pts})`;
-			wordDisplay.style.background = "#2ecc71";
+				wordDisplay.style.background = "#2ecc71";
+				// Reset dopo 2 secondi
+			  setTimeout(() => {
+					wordDisplay.style.background = "#dfe6e9";
+			  }, 400);
+			  
+			  setTimeout(() => {
+					wordDisplayLocked = false;
+					wordDisplay.textContent = "";
+			  }, 2000);
         } else { shakeInvalid(); wordDisplay.style.background = "#e74c3c"; }
         setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
-		if (!isSandboxMode) {
-    setTimeout(() => {
-        if (!isDragging) wordDisplay.textContent = "";
-    }, 2000);
-}
     }
 
     function calculateScoreWithBonuses(word, cells) {
@@ -2307,6 +2337,8 @@ if (!matchId) {
                     document.getElementById('start-screen').style.display = 'none';
                     document.getElementById('grid-overlay').style.display = 'none';
                     startRound(); 
+						  document.getElementById('possible-count').parentElement.style.visibility = 'visible';
+						  calculatePossibleWordsCount();
                 }
             } else {
                 overlay.style.display = 'flex';
@@ -2346,10 +2378,10 @@ if (!matchId) {
             let html = ""; classifica.forEach(([p, s]) => { html += `${p}: ${s} PT<br>`; });
             statusDiv.innerHTML = `<div style='font-size:1.5rem; margin:15px;'>${html}</div><button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
             
-            // TASTO RIVINCITA: default 4x4 Crazy 60s
-            actionDiv.innerHTML = `
-                <button onclick="confirmNewGame(true, true, false)" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA (4x4 Crazy 60s) 🔄</button>
-                <button onclick="window.location.href='index.html'" class="btn-ready" style="background:#3498db; width:100%;">HOME</button>`;
+			// TASTO RIVINCITA: apre modal per scegliere modalità
+			actionDiv.innerHTML = `
+				 <button onclick="apriModalRivincita()" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA 🔄</button>
+				 <button onclick="tornaHome()" class="btn-ready" style="background:#3498db; width:100%;">HOME</button>`;
             if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
@@ -2485,6 +2517,16 @@ async function attivaAnalisiMultiplayer() {
     };
 
     renderizzaAnalisiPlayer(mioNome);
+
+// 🔧 NUOVO: Pulsante per tornare alla lobby
+const btnTornaLobby = document.createElement('button');
+btnTornaLobby.textContent = "⬅️ TORNA ALLA LOBBY / RIVINCITA";
+btnTornaLobby.style = "width:100%; padding:12px; background:#03dac6; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:15px;";
+btnTornaLobby.onclick = () => {
+    document.getElementById('multiplayer-lobby').style.display = 'flex';
+    document.getElementById('proposta-manuale-container').style.display = 'none';
+};
+wordsListEl.parentNode.appendChild(btnTornaLobby);
 }
 
 // Proposta manuale (per EXTRA_WORDS)
@@ -2523,14 +2565,30 @@ async function applicaModificaDizionario(parola, tipo) {
         if(!EXCLUDED_WORDS.includes(parola)) EXCLUDED_WORDS.push(parola);
         dictionary.delete(parola);
     }
-
-    // 2. Salva su Firebase (permanente)
-    await db.collection("partite").doc(matchId).update({
-        [`dizionarioCustom.extra`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'extra' ? parola : null),
-        [`dizionarioCustom.excluded`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'exclude' ? parola : null)
-    });
     
-    alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'}: "${parola}"`);
+    buildTrie(); // Ricostruisci il trie
+
+    // 2. Salva su Firebase nella partita corrente
+    if (matchId) {
+        await db.collection("partite").doc(matchId).update({
+            [`dizionarioCustom.extra`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'extra' ? parola : null),
+            [`dizionarioCustom.excluded`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'exclude' ? parola : null)
+        });
+    }
+    
+    // 3. 🔧 SALVA PERMANENTEMENTE nel dizionario globale
+    const globalRef = db.collection("config").doc("dizionario");
+    if (tipo === 'extra') {
+        await globalRef.set({
+            extra: firebase.firestore.FieldValue.arrayUnion(parola)
+        }, { merge: true });
+    } else {
+        await globalRef.set({
+            excluded: firebase.firestore.FieldValue.arrayUnion(parola)
+        }, { merge: true });
+    }
+    
+    alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'} PERMANENTEMENTE: "${parola}"`);
 }
 
 // 🚪 FIX 2: CLEANUP COMPLETO
@@ -2545,6 +2603,13 @@ window.addEventListener('pagehide', cleanupFirebaseListeners); // Per mobile Saf
 function tornaHome() {
     cleanupFirebaseListeners();
     window.location.href = 'index.html';
+}
+
+function apriModalRivincita() {
+    // Chiudi la lobby
+    document.getElementById('multiplayer-lobby').style.display = 'none';
+    // Apri il modal di selezione
+    newGameModal.style.display = 'flex';
 }
 
 // ✅ FUNZIONA SEMPRE
@@ -2575,5 +2640,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
-
