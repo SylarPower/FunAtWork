@@ -1064,6 +1064,9 @@
 			// Calcola parole trovabili subito
 			calculatePossibleWordsCount();
 			
+			// Mostra il contatore trovabili
+			document.getElementById('possible-count').parentElement.style.visibility = 'visible';
+			
 		// FIX CRITICO: Gestisci overlay in base alla modalità
 		if (matchId) {
 			 // Multiplayer: nascondi overlay, la partita parte da Firebase
@@ -2171,7 +2174,6 @@ function fireConfetti(originElement = null) {
 		document.addEventListener('visibilitychange', () => {
 			 if (document.hidden && isGameActive && !isPaused && !isSandboxMode) togglePause();
 		});
-    // Sostituisci la parte finale (dove c'è loadDictionary) con questo:
 
 // --- LOGICA DI GESTIONE FINALE (PULITA E CORRETTA) ---
 
@@ -2196,6 +2198,8 @@ if (!matchId) {
     // MODALITÀ SOLO
     if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
+	 document.getElementById('manual-rotate-btn').style.display = 'none';
+	 document.getElementById('possible-count').parentElement.style.visibility = 'hidden';
     loadDictionary(); 
 } else {
     // MODALITÀ MULTIPLAYER
@@ -2558,3 +2562,4 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
