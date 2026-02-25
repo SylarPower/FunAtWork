@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Paroliere dei maiali 🐷</title>
+    <title>Ruzzle dei 🐷</title>
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <style>
@@ -496,7 +496,7 @@
     <!-- Header Allineato -->
 	<div class="header-bar">
 	    <div style="display:flex; align-items:center; gap:15px;">
-	        <button onclick="window.location.href='index.html'" style="background:#34495e; color:white; border:none; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">🏠 HOME</button>
+	        <button onclick="tornaHome()" style="background:#34495e; color:white; border:none; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">🏠 HOME</button>
 	        <h1>Paroliere dei 🐷</h1>
 	    </div>
 	    <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
@@ -1062,8 +1062,13 @@
 			generateGridData(cleanSeed);
 			renderGrid();
 
-		// FIX CRITICO: Mostra overlay VIA in modalità solo
-		if (!matchId) {
+		// FIX CRITICO: Gestisci overlay in base alla modalità
+		if (matchId) {
+			 // Multiplayer: nascondi overlay, la partita parte da Firebase
+			 gridOverlay.style.display = 'none';
+			 document.getElementById('start-screen').style.display = 'none';
+		} else {
+			 // Solitario: mostra overlay VIA
 			 document.getElementById('start-screen').style.display = 'none';
 			 gridOverlay.style.display = 'flex';
 			 document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
@@ -2540,6 +2545,11 @@ function cleanupFirebaseListeners() {
 
 window.addEventListener('beforeunload', cleanupFirebaseListeners);
 window.addEventListener('pagehide', cleanupFirebaseListeners); // Per mobile Safari
+
+function tornaHome() {
+    cleanupFirebaseListeners();
+    window.location.href = 'index.html';
+}
 
 // ✅ FUNZIONA SEMPRE
 function setupHomeButtonCleanup() {
