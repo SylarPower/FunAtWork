@@ -523,10 +523,67 @@
              background: rgba(0, 0, 0, 0.8); color: white; padding: 20px 40px; border-radius: 10px;
              font-size: 1.5rem; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-
+		/* 🏠 PULSANTE HOME FISSO IN BASSO */
+		#fixed-home-btn {
+		    position: fixed;
+		    bottom: 20px;
+		    right: 20px;
+		    z-index: 99999; /* Sopra a TUTTO */
+		    display: none; /* Nascosto di default */
+		}
+		
+		#fixed-home-btn button {
+		    background: var(--panel-bg);
+		    color: var(--text-main);
+		    border: 2px solid #555;
+		    padding: 12px 20px;
+		    border-radius: 50px;
+		    font-weight: bold;
+		    font-size: 1rem;
+		    cursor: pointer;
+		    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+		    transition: all 0.2s ease;
+		}
+		
+		#fixed-home-btn button:hover {
+		    transform: scale(1.05);
+		    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+		}
+		
+		/* Stile barra gestione partita */
+		.game-banner {
+		    position: fixed;
+		    top: 0;
+		    left: 0;
+		    right: 0;
+		    padding: 12px 20px;
+		    display: flex;
+		    justify-content: space-between;
+		    align-items: center;
+		    z-index: 9999;
+		    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+		    animation: slideDown 0.3s ease;
+		    color: white;
+		}
+		
+		.game-banner .banner-left {
+		    display: flex;
+		    align-items: center;
+		    gap: 10px;
+		}
+		
+		.game-banner .banner-right {
+		    display: flex;
+		    align-items: center;
+		    gap: 10px;
+		}
     </style>
 </head>
 <body class="dark-mode">
+<!-- 🏠 PULSANTE HOME FISSO (sempre sopra a tutto) -->
+<div id="fixed-home-btn">
+    <button onclick="tornaHome()">🏠 HOME</button>
+</div>
 	<!-- INNESTO 1: LOBBY MULTIPLAYER -->
 <div id="multiplayer-lobby" style="position:fixed; inset:0; background:rgba(0,0,0,0.98); z-index:10000; display:none; flex-direction:column; justify-content:center; align-items:center; text-align:center; color:white;">
     <h1 id="lobby-title" style="font-size:3rem; margin-bottom:10px;">SALA D'ATTESA 🐷</h1>
@@ -922,7 +979,109 @@
     const modalGridSelect = document.getElementById('modal-grid-select'); 
 	 const gameEndModal = document.getElementById('game-end-modal');
     // --- INIT ---
-async function loadDictionary() {
+// ========================================
+// 🔧 SISTEMA BANNER UNIFICATO
+// ========================================
+
+function showGameBanner(options) {
+    // Rimuovi banner esistente
+    removeGameBanner();
+    
+    const banner = document.createElement('div');
+    banner.id = 'game-banner';
+    banner.className = 'game-banner';
+    banner.style.background = `linear-gradient(135deg, ${options.color} 0%, ${adjustColor(options.color, -20)} 100%)`;
+    
+    let buttonsHtml = '';
+    if (options.buttons && options.buttons.length > 0) {
+        buttonsHtml = options.buttons.map(btn => {
+            const specialClass = btn.special ? 'btn-rivincita' : 'btn-action';
+            const specialStyle = btn.special ? '' : 'style="width:auto; padding:8px 16px; margin:0; background:white; color:#333; border:none;"';
+            return `<button onclick="${btn.onclick}" class="${specialClass}" ${specialStyle}>${btn.text}</button>`;
+        }).join('');
+    }
+    
+    let spinnerHtml = '';
+    if (options.spinner) {
+        spinnerHtml = `<div style="width:20px; height:20px; border:3px solid white; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>`;
+        
+        // Aggiungi animazione spin se non esiste
+        if (!document.getElementById('spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'spin-style';
+            style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+    }
+    
+    banner.innerHTML = `
+        <div class="banner-left">
+            <span style="font-size:1.5rem;">${options.icon}</span>
+            <div>
+                <div style="font-weight:bold;">${options.title}</div>
+                <div style="font-size:0.8rem; opacity:0.9;">${options.subtitle}</div>
+            </div>
+        </div>
+        <div class="banner-right">
+            ${buttonsHtml}
+            ${spinnerHtml}
+        </div>
+    `;
+    
+    document.body.appendChild(banner);
+}
+
+function removeGameBanner() {
+    const existing = document.getElementById('game-banner');
+    if (existing) existing.remove();
+    
+    // Rimuovi anche vecchi wait-banner se esistono
+    const oldBanner = document.getElementById('wait-banner');
+    if (oldBanner) oldBanner.remove();
+}
+
+function adjustColor(hex, amount) {
+    // Scurisce/schiarisce un colore hex
+    let color = hex.replace('#', '');
+    if (color.length === 3) {
+        color = color[0]+color[0]+color[1]+color[1]+color[2]+color[2];
+    }
+    const num = parseInt(color, 16);
+    let r = (num >> 16) + amount;
+    let g = ((num >> 8) & 0x00FF) + amount;
+    let b = (num & 0x0000FF) + amount;
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return '#' + (0x1000000 + r*0x10000 + g*0x100 + b).toString(16).slice(1);
+}
+
+function mostraRisultatiTemporanei() {
+    const lobby = document.getElementById('multiplayer-lobby');
+    lobby.style.display = 'flex';
+    document.getElementById('lobby-title').textContent = "RISULTATI PARZIALI";
+    
+    if (currentGameData) {
+        let html = "";
+        Object.entries(currentGameData.punteggi || {}).forEach(([p, s]) => {
+            const finito = (currentGameData.finito || []).includes(p);
+            html += `<div>${finito ? '✅' : '⏳'} ${p}: ${s} PT</div>`;
+        });
+        document.getElementById('lobby-status').innerHTML = html;
+    }
+    
+    document.getElementById('lobby-action').innerHTML = `
+        <button onclick="document.getElementById('multiplayer-lobby').style.display='none';" class="btn-action" style="width:auto; padding:12px 25px;">
+            🎮 TORNA ALLA GRIGLIA
+        </button>
+    `;
+}
+
+function avviaVerifica() {
+    db.collection("partite").doc(matchId).update({ stato: "verifica" });
+}
+	
+	async function loadDictionary() {
     console.log("🔄 Inizio caricamento dizionario...");
     
     try {
@@ -1051,8 +1210,10 @@ async function loadDictionary() {
     }
 
     function initGame(forceSeed) {
-	     timerDisplay.style.color = "";
-		  document.getElementById('start-screen').style.display = 'none';
+	    timerDisplay.style.color = "";
+		document.getElementById('start-screen').style.display = 'none';
+		// 🔧 FIX: Nascondi pulsante HOME fisso all'inizio di nuova partita
+		document.getElementById('fixed-home-btn').style.display = 'none';
         clearInterval(timerInterval);
         isGameActive = false; isAnalysisPhase = false; isPaused = false; isSandboxMode = false;
         
@@ -1607,7 +1768,8 @@ function togglePause() {
 		 const modal = document.getElementById('game-end-modal');
 		 modal.style.display = 'flex';
 		 document.getElementById('end-score-val').textContent = score;
-
+		// 🔧 FIX: Mostra pulsante HOME fisso
+		document.getElementById('fixed-home-btn').style.display = 'block';
 		 // Fuochi d'artificio
 		 startEndGameCelebration(); 
 
@@ -1667,23 +1829,36 @@ function togglePause() {
 		 }
 	}
 	 
-		const endDrag = () => { 
-		    if (!isDragging) return;
-		    
-		    isDragging = false;
-		    
-		    // 🔧 FIX: Salva snapshot PRIMA di qualsiasi operazione
-		    const wordSnapshot = wordDisplay.textContent;
-		    const cellsSnapshot = [...selectedCells];
-		    
-		    if (wordSnapshot.length >= MIN_WORD_LENGTH && cellsSnapshot.length > 0) {
-		        // Passa gli snapshot a validateWord
-		        validateWord(wordSnapshot, cellsSnapshot);
-		    }
-		    
-		    // 🔧 FIX: NON pulire qui - il prossimo startHandler lo farà
-		    // Questo permette all'utente di vedere la parola validata
-		};
+	const endDrag = () => { 
+	    if (!isDragging) return;
+	    
+	    isDragging = false;
+	    
+	    const wordSnapshot = wordDisplay.textContent;
+	    const cellsSnapshot = [...selectedCells];
+	    
+	    if (wordSnapshot.length >= MIN_WORD_LENGTH && cellsSnapshot.length > 0) {
+	        // Parola abbastanza lunga - valida
+	        validateWord(wordSnapshot, cellsSnapshot);
+	    } else {
+	        // 🔧 FIX: Parola troppo corta - pulisci tutto silenziosamente
+	        clearSelectionSilent();
+	    }
+	};
+	
+	// 🔧 NUOVA FUNZIONE: Pulisce senza shake (per parole < 4 lettere)
+	function clearSelectionSilent() {
+	    document.querySelectorAll('.tile').forEach(t => {
+	        t.classList.remove('selected');
+	        t.classList.remove('anim-valid');
+	        t.classList.remove('anim-invalid');
+	    });
+	    selectedCells = [];
+	    lineLayer.innerHTML = '';
+	    wordDisplay.textContent = '';
+	    wordDisplay.style.background = "#dfe6e9";
+	    currentHighlightedWord = null;
+	}
 
     function selectTile(i) { selectedCells = [i]; updateVisuals(); }
     function attemptSelection(i) {
@@ -2444,12 +2619,13 @@ if (!mioNome && matchId) {
     alert("Effettua il login per giocare in multiplayer.");
     window.location.href = "index.html";
 }
+
 if (!matchId) {
     // MODALITÀ SOLO
     if(document.getElementById('multiplayer-lobby')) document.getElementById('multiplayer-lobby').style.display = 'none';
     if(document.getElementById('live-opponent-score')) document.getElementById('live-opponent-score').style.display = 'none';
-	 document.getElementById('manual-rotate-btn').style.display = 'none';
-	 document.getElementById('possible-count').parentElement.style.visibility = 'hidden';
+    document.getElementById('manual-rotate-btn').style.display = 'none';
+    document.getElementById('possible-count').parentElement.style.visibility = 'hidden';
     loadDictionary(); 
 } else {
     // MODALITÀ MULTIPLAYER
@@ -2458,89 +2634,103 @@ if (!matchId) {
     if(unsubscribePartita) unsubscribePartita();
     if(unsubscribeProposte) unsubscribeProposte();
     
-    // ✅ ATTIVA NUOVO LISTENER E SALVA IL TELECOMANDO
+    // ========================================
+    // ✅ LISTENER PRINCIPALE PARTITA
+    // ========================================
     unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if(!data) { window.location.href = "index.html"; return; }
         
         currentGameData = data;
-	    const btnNewEl = document.querySelector('.btn-new');
-		if (btnNewEl) {
-		    btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
-		}
-	// FIX 3: APPLICA DIZIONARIO CUSTOM (con versioning)
-	if(data.dizionarioCustom) {
-		 const extraLen = (data.dizionarioCustom.extra || []).length;
-		 const excludedLen = (data.dizionarioCustom.excluded || []).length;
-		 const currentVersion = `${extraLen}-${excludedLen}`;
-		 
-		 // Riapplica solo se la versione è cambiata
-		 if(!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
-			  (data.dizionarioCustom.extra || []).forEach(w => {
-					if(w && !EXTRA_WORDS.includes(w)) {
-						 EXTRA_WORDS.push(w);
-						 dictionary.add(w);
-					}
-			  });
-			  (data.dizionarioCustom.excluded || []).forEach(w => {
-					if(w && !EXCLUDED_WORDS.includes(w)) {
-						 EXCLUDED_WORDS.push(w);
-						 dictionary.delete(w);
-					}
-			  });
-			  
-			  buildTrie();
-			  dizionarioCustomApplicato = true;
-			  window.lastDictVersion = currentVersion;
-			  if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
-		 }
-	}
+
+        // Nascondi NUOVA in multiplayer finché non è conclusa
+        const btnNewEl = document.querySelector('.btn-new');
+        if (btnNewEl) {
+            btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
+        }
+
+        // APPLICA DIZIONARIO CUSTOM (con versioning)
+        if(data.dizionarioCustom) {
+            const extraLen = (data.dizionarioCustom.extra || []).length;
+            const excludedLen = (data.dizionarioCustom.excluded || []).length;
+            const currentVersion = `${extraLen}-${excludedLen}`;
+            
+            if(!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
+                (data.dizionarioCustom.extra || []).forEach(w => {
+                    if(w && !EXTRA_WORDS.includes(w)) {
+                        EXTRA_WORDS.push(w);
+                        dictionary.add(w);
+                    }
+                });
+                (data.dizionarioCustom.excluded || []).forEach(w => {
+                    if(w && !EXCLUDED_WORDS.includes(w)) {
+                        EXCLUDED_WORDS.push(w);
+                        dictionary.delete(w);
+                    }
+                });
+                
+                buildTrie();
+                dizionarioCustomApplicato = true;
+                window.lastDictVersion = currentVersion;
+                if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
+            }
+        }
+        
         const overlay = document.getElementById('multiplayer-lobby');
         const statusDiv = document.getElementById('lobby-status');
         const actionDiv = document.getElementById('lobby-action');
         const pronti = data.pronti || [];
         const finito = data.finito || [];
 
+        // ========================================
         // 1. ATTESA (Sincronizzazione Start)
+        // ========================================
         if (data.stato === "attesa") {
             overlay.style.display = 'flex';
+            removeGameBanner();
+            document.getElementById('lobby-title').textContent = "SALA D'ATTESA 🐷";
+            document.getElementById('lobby-info').textContent = "Sincronizzazione sfida in corso...";
             statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
-            actionDiv.innerHTML = !pronti.includes(mioNome) ? 
-    `<button onclick="setProntoOnline()" class="btn-action" style="width:auto; padding:12px 30px;">🚀 AVVIA SFIDA</button>` 
-    : `<div style="background:rgba(3,218,198,0.1); padding:20px 40px; border-radius:15px; border:2px dashed #03dac6;">
-        <div style="font-size:1.5rem; margin-bottom:10px;">⏳</div>
-        <p style="margin:0; font-weight:bold;">In attesa dei colleghi...</p>
-    </div>`;
-            // Nella sezione "attesa"
-		actionDiv.innerHTML += `<br><button onclick="annullaPartita()" class="btn-action" style="width:auto; padding:10px 20px; margin-top:20px; background:#e74c3c; color:white; border-color:#c0392b;">🚫 ANNULLA PARTITA</button>`;
             
-			if (pronti.length >= data.partecipanti.length) {
-			    db.collection("partite").doc(matchId).update({ 
-			        stato: "in_corso"
-			    });
-			}
+            actionDiv.innerHTML = !pronti.includes(mioNome) ? 
+                `<button onclick="setProntoOnline()" class="btn-action" style="width:auto; padding:12px 30px;">🚀 AVVIA SFIDA</button>` 
+                : `<div style="background:rgba(3,218,198,0.1); padding:20px 40px; border-radius:15px; border:2px dashed #03dac6;">
+                    <div style="font-size:1.5rem; margin-bottom:10px;">⏳</div>
+                    <p style="margin:0; font-weight:bold;">In attesa dei colleghi...</p>
+                </div>`;
+            actionDiv.innerHTML += `<br><button onclick="annullaPartita()" class="btn-action" style="width:auto; padding:10px 20px; margin-top:20px; background:#e74c3c; color:white; border-color:#c0392b;">🚫 ANNULLA PARTITA</button>`;
+            
+            if (pronti.length >= data.partecipanti.length) {
+                db.collection("partite").doc(matchId).update({ stato: "in_corso" });
+            }
         }
 
+        // ========================================
         // 2. IN CORSO
+        // ========================================
         if (data.stato === "in_corso") {
-		    const altri = data.partecipanti.filter(n => n !== mioNome);
-		    let scoresHtml = "";
-		    altri.forEach(a => {
-		        const punteggio = data.punteggi && data.punteggi[a] ? data.punteggi[a] : 0;
-		        scoresHtml += `<span style="margin:0 5px;">🆚 ${a}: <strong>${punteggio}</strong></span>`;
-		    });
-		    const scoreEl = document.getElementById('live-opponent-score');
-		    if (scoreEl) {
-		        scoreEl.innerHTML = scoresHtml;
-		        scoreEl.style.display = 'block';
-		    }
-			if (!finito.includes(mioNome)) {
+            // Mostra punteggio avversari nella sidebar
+            const altri = data.partecipanti.filter(n => n !== mioNome);
+            let scoresHtml = "";
+            altri.forEach(a => {
+                const punteggio = data.punteggi && data.punteggi[a] ? data.punteggi[a] : 0;
+                scoresHtml += `<span style="margin:0 5px;">🆚 ${a}: <strong>${punteggio}</strong></span>`;
+            });
+            const scoreEl = document.getElementById('live-opponent-score');
+            if (scoreEl) {
+                scoreEl.innerHTML = scoresHtml;
+                scoreEl.style.display = 'block';
+            }
+            
+            if (!finito.includes(mioNome)) {
+                // === NON HO ANCORA FINITO - GIOCA! ===
                 overlay.style.display = 'none';
+                removeGameBanner();
+                
                 if (!isGameActive && !isAnalysisPhase && !isPaused) {
                     gridSize = parseInt(data.opzioni.griglia);
-						// FIX 1: Timer sincronizzato con timestamp server
-							timeRemaining = parseInt(data.opzioni.tempo);
-							initialTime = timeRemaining;
+                    timeRemaining = parseInt(data.opzioni.tempo);
+                    initialTime = timeRemaining;
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2548,275 +2738,189 @@ if (!matchId) {
                     generateGridData(currentSeed.split('-')[0]);
                     renderGrid();
                     document.getElementById('start-screen').style.display = 'none';
-					gridOverlay.style.display = 'flex';
+                    gridOverlay.style.display = 'flex';
                     document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
-					overlaySeed.textContent = currentSeed;
-            		timerDisplay.textContent = formatTime(timeRemaining);
-					document.getElementById('possible-count').parentElement.style.visibility = 'visible';
-					calculatePossibleWordsCount();
+                    overlaySeed.textContent = currentSeed;
+                    timerDisplay.textContent = formatTime(timeRemaining);
+                    document.getElementById('possible-count').parentElement.style.visibility = 'visible';
+                    calculatePossibleWordsCount();
                 }
-} else {
-    // Ho finito il mio tempo
-    if (finito.length < data.partecipanti.length) {
-        // Nascondi overlay grande - posso continuare a esplorare
-        overlay.style.display = 'none';
-        
-        // ✅ NUOVO: Banner con pulsante VEDI RISULTATI
-        let waitBanner = document.getElementById('wait-banner');
-        if (!waitBanner) {
-            waitBanner = document.createElement('div');
-            waitBanner.id = 'wait-banner';
-            waitBanner.style = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-                color: white;
-                padding: 12px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                z-index: 9999;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            `;
-            document.body.appendChild(waitBanner);
-        }
-        
-        waitBanner.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:1.5rem;">⏳</span>
-                <div>
-                    <div style="font-weight:bold;">ATTESA COLLEGHI (${finito.length}/${data.partecipanti.length})</div>
-                    <div style="font-size:0.8rem; opacity:0.8;">Esplora la griglia nel frattempo!</div>
-                </div>
-            </div>
-            <button onclick="mostraLobbyTemporanea()" class="btn-action" style="
-			    width: auto;
-			    padding: 10px 20px;
-			    margin: 0;
-			">
-                👀 VEDI RISULTATI
-            </button>
-        `;
-        
-        // Attiva modalità esplorazione
-        if (!isAnalysisPhase) {
-            isAnalysisPhase = true;
-            isGameActive = true;
-            isSandboxMode = true;
-            document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-            sortControls.style.display = "flex";
-            btnMissed.style.display = "block";
-            analysisMsg.style.display = "block";
-        }
-} else {
-    // Tutti hanno finito - AGGIORNA il banner invece di rimuoverlo
-    let waitBanner = document.getElementById('wait-banner');
-    if (waitBanner) {
-        waitBanner.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
-        waitBanner.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:1.5rem;">✅</span>
-                <div>
-                    <div style="font-weight:bold;">TUTTI HANNO FINITO!</div>
-                    <div style="font-size:0.8rem; opacity:0.8;">Clicca per procedere alla verifica</div>
-                </div>
-            </div>
-            <button onclick="document.getElementById('wait-banner').remove(); document.getElementById('multiplayer-lobby').style.display='flex';" class="btn-action" style="
-			    width: auto;
-			    padding: 12px 25px;
-			    margin: 0;
-			">
-                🏁 VERIFICA PAROLE
-            </button>
-        `;
-    }
-    
-    db.collection("partite").doc(matchId).update({ stato: "verifica" });
-}
-}
-        }
-
-// 3. VERIFICA - Usa la barra in alto, NON l'overlay
-if (data.stato === "verifica") {
-    overlay.style.display = 'none'; // Nascondi overlay grande
-    
-    const conf = data.confermaVerifica || [];
-    
-    // Aggiorna/crea il banner in alto
-    let waitBanner = document.getElementById('wait-banner');
-    if (!waitBanner) {
-        waitBanner = document.createElement('div');
-        waitBanner.id = 'wait-banner';
-        waitBanner.style = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
-            color: white;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 9999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        `;
-        document.body.appendChild(waitBanner);
-    } else {
-        waitBanner.style.background = 'linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%)';
-    }
-    
-    waitBanner.innerHTML = `
-        <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:1.5rem;">🏁</span>
-            <div>
-                <div style="font-weight:bold;">VERIFICA PAROLE (${conf.length}/${data.partecipanti.length})</div>
-                <div style="font-size:0.8rem; opacity:0.8;">Conferma per vedere chi ha vinto</div>
-            </div>
-        </div>
-        ${!conf.includes(mioNome) ? 
-            `<button onclick="confermaVerificaOnline()" class="btn-action" style="width:auto; padding:10px 20px; margin:0; background:white; color:#8e44ad; border:none; font-weight:bold;">
-                🏁 CONFERMA
-            </button>` 
-            : `<span style="opacity:0.8;">⏳ Attendo altri...</span>`
-        }
-    `;
-    
-    // Mantieni attiva l'esplorazione griglia
-    if (!isAnalysisPhase) {
-        isAnalysisPhase = true;
-        isGameActive = true;
-        isSandboxMode = true;
-        document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-        sortControls.style.display = "flex";
-        btnMissed.style.display = "block";
-    }
-}
-
-	// 4. CONCLUSIONE (CON RIVINCITA)
-	if (data.stato === "conclusa") {
-	    // Mostra pulsante NUOVA ora che la partita è finita
-	    const btnNewEl = document.querySelector('.btn-new');
-	    if (btnNewEl) btnNewEl.style.display = 'block';
-	    
-	    // 🔧 FIX: Se c'è una rivincita in arrivo, mostra BANNER invece di overlay
-	    if (data.prossimaPartita) {
-	        overlay.style.display = 'none'; // Nascondi overlay grande
-	        
-	        // Crea/aggiorna banner rivincita
-	        let waitBanner = document.getElementById('wait-banner');
-	        if (!waitBanner) {
-	            waitBanner = document.createElement('div');
-	            waitBanner.id = 'wait-banner';
-	            document.body.appendChild(waitBanner);
-	        }
-	        
-	        waitBanner.style = `
-	            position: fixed;
-	            top: 0;
-	            left: 0;
-	            right: 0;
-	            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-	            color: white;
-	            padding: 15px 20px;
-	            display: flex;
-	            justify-content: space-between;
-	            align-items: center;
-	            z-index: 9999;
-	            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-	            animation: slideDown 0.3s ease;
-	        `;
-	        
-	        waitBanner.innerHTML = `
-	            <div style="display:flex; align-items:center; gap:10px;">
-	                <span style="font-size:1.8rem;">🔄</span>
-	                <div>
-	                    <div style="font-weight:bold; font-size:1.1rem;">RIVINCITA IN ARRIVO!</div>
-	                    <div style="font-size:0.8rem; opacity:0.9;">Un avversario ha chiesto la rivincita</div>
-	                </div>
-	            </div>
-	            <div style="display:flex; gap:10px; align-items:center;">
-	                <span style="font-size:0.9rem; opacity:0.8;">Reindirizzamento...</span>
-	                <div style="width:20px; height:20px; border:3px solid white; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
-	            </div>
-	        `;
-	        
-	        // Aggiungi animazione spin se non esiste
-	        if (!document.getElementById('spin-style')) {
-	            const style = document.createElement('style');
-	            style.id = 'spin-style';
-	            style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
-	            document.head.appendChild(style);
-	        }
-	        
-	        setTimeout(() => { 
-	            window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
-	        }, 2000);
-	        return;
-	    }
-	    
-	    // Rimuovi eventuali banner precedenti
-	    const waitBanner = document.getElementById('wait-banner');
-	    if (waitBanner) waitBanner.remove();
-	    
-	    // Mostra overlay risultati finali
-	    overlay.style.display = 'flex';
-	    
-	    let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
-	    document.getElementById('lobby-title').textContent = classifica[0][0] === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
-	    let html = ""; 
-	    classifica.forEach(([p, s]) => { html += `${p}: ${s} PT<br>`; });
-	    statusDiv.innerHTML = `<div style='font-size:1.5rem; margin:15px;'>${html}</div><button onclick="attivaAnalisiMultiplayer()" class="btn-action" style="width:auto; padding:10px 20px; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
-	    
-	    // TASTO RIVINCITA: apre modal per scegliere modalità
-	    actionDiv.innerHTML = `
-	        <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
-	            <button onclick="apriModalRivincita()" class="btn-rivincita">🔄 RIVINCITA</button>
-	            <button onclick="tornaHome()" class="btn-action" style="width:auto; padding:10px 25px;">🏠 Torna alla Home</button>
-	        </div>
-	    `;
-	    if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
-	}
-    });
-	// LISTENER PROPOSTE (SEPARATO E PULITO)
-unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-    snap.docChanges().forEach(async change => {
-        if(change.type === "added" || change.type === "modified") {
-            const prop = change.doc.data();
-            
-            // VOTO SE NON L'HO GIÀ FATTO
-            if(!prop.voti.includes(mioNome)) {
-                const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
-                if(confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
-                    await db.collection("partite").doc(matchId)
-                        .collection("proposte").doc(prop.parola)
-                        .update({
-                            voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                        })
-                        .catch(e => console.error("Errore voto:", e));
-                }
-            }
-            
-            // VERIFICA SE TUTTI HANNO VOTATO (usa currentGameData!)
-            if(currentGameData && currentGameData.partecipanti) {
-                const numPartecipanti = currentGameData.partecipanti.length;
+            } else {
+                // === HO FINITO IL MIO TEMPO ===
+                overlay.style.display = 'none';
+                document.getElementById('fixed-home-btn').style.display = 'block';
                 
-                if(prop.voti.length >= numPartecipanti) {
-                    // APPLICA MODIFICA
-                    await applicaModificaDizionario(prop.parola, prop.tipo);
-                    
-                    // ELIMINA PROPOSTA
-                    await db.collection("partite").doc(matchId)
-                        .collection("proposte").doc(prop.parola)
-                        .delete()
-                        .catch(e => console.error("Errore delete:", e));
+                // Attiva modalità esplorazione se non già attiva
+                if (!isAnalysisPhase) {
+                    isAnalysisPhase = true;
+                    isGameActive = true;
+                    isSandboxMode = true;
+                    document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+                    sortControls.style.display = "flex";
+                    btnMissed.style.display = "block";
+                    analysisMsg.style.display = "block";
+                    const rotateBtn = document.getElementById('manual-rotate-btn');
+                    if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
+                }
+                
+                if (finito.length < data.partecipanti.length) {
+                    // Attendo altri giocatori
+                    showGameBanner({
+                        icon: '⏳',
+                        title: `ATTESA COLLEGHI (${finito.length}/${data.partecipanti.length})`,
+                        subtitle: 'Esplora la griglia nel frattempo!',
+                        color: '#2c3e50',
+                        buttons: [
+                            { text: '👀 VEDI RISULTATI', onclick: 'mostraRisultatiTemporanei()' }
+                        ]
+                    });
+                } else {
+                    // Tutti hanno finito - mostra pulsante per passare a verifica
+                    showGameBanner({
+                        icon: '✅',
+                        title: 'TUTTI HANNO FINITO!',
+                        subtitle: 'Procedi alla verifica delle parole',
+                        color: '#27ae60',
+                        buttons: [
+                            { text: '🏁 VERIFICA PAROLE', onclick: 'avviaVerifica()' }
+                        ]
+                    });
                 }
             }
         }
+
+        // ========================================
+        // 3. VERIFICA
+        // ========================================
+        if (data.stato === "verifica") {
+            overlay.style.display = 'none';
+            document.getElementById('fixed-home-btn').style.display = 'block';
+            
+            const conf = data.confermaVerifica || [];
+            
+            // Attiva modalità esplorazione se non già attiva
+            if (!isAnalysisPhase) {
+                isAnalysisPhase = true;
+                isGameActive = true;
+                isSandboxMode = true;
+                document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+                sortControls.style.display = "flex";
+                btnMissed.style.display = "block";
+            }
+            
+            if (!conf.includes(mioNome)) {
+                showGameBanner({
+                    icon: '🏁',
+                    title: `VERIFICA PAROLE (${conf.length}/${data.partecipanti.length})`,
+                    subtitle: 'Conferma per vedere chi ha vinto',
+                    color: '#8e44ad',
+                    buttons: [
+                        { text: '✅ CONFERMA RISULTATI', onclick: 'confermaVerificaOnline()' }
+                    ]
+                });
+            } else {
+                showGameBanner({
+                    icon: '⏳',
+                    title: `ATTESA CONFERME (${conf.length}/${data.partecipanti.length})`,
+                    subtitle: 'In attesa degli altri giocatori...',
+                    color: '#8e44ad',
+                    buttons: []
+                });
+            }
+        }
+
+        // ========================================
+        // 4. CONCLUSA
+        // ========================================
+        if (data.stato === "conclusa") {
+            overlay.style.display = 'none';
+            document.getElementById('fixed-home-btn').style.display = 'block';
+            
+            // Mostra pulsante NUOVA
+            const btnNewEl = document.querySelector('.btn-new');
+            if (btnNewEl) btnNewEl.style.display = 'block';
+            
+            // Se c'è rivincita in arrivo
+            if (data.prossimaPartita) {
+                showGameBanner({
+                    icon: '🔄',
+                    title: 'RIVINCITA IN ARRIVO!',
+                    subtitle: 'Reindirizzamento in corso...',
+                    color: '#e74c3c',
+                    buttons: [],
+                    spinner: true
+                });
+                
+                setTimeout(() => { 
+                    window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
+                }, 2000);
+                return;
+            }
+            
+            // Calcola classifica
+            let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
+            const haVinto = classifica[0][0] === mioNome;
+            
+            // Costruisci stringa risultati
+            let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+            
+            showGameBanner({
+                icon: haVinto ? '👑' : '🐷',
+                title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
+                subtitle: risultatiStr,
+                color: haVinto ? '#f1c40f' : '#7f8c8d',
+                buttons: [
+                    { text: '🔍 ANALIZZA', onclick: 'attivaAnalisiMultiplayer()' },
+                    { text: '🔄 RIVINCITA', onclick: 'apriModalRivincita()', special: true }
+                ]
+            });
+            
+            if(haVinto) { 
+                fireConfetti(); 
+                startEndGameCelebration(); 
+            }
+        }
     });
-});
+
+    // ========================================
+    // ✅ LISTENER PROPOSTE (SEPARATO - NON TOCCARE!)
+    // ========================================
+    unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+        snap.docChanges().forEach(async change => {
+            if(change.type === "added" || change.type === "modified") {
+                const prop = change.doc.data();
+                
+                // VOTO SE NON L'HO GIÀ FATTO
+                if(!prop.voti.includes(mioNome)) {
+                    const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
+                    if(confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
+                        await db.collection("partite").doc(matchId)
+                            .collection("proposte").doc(prop.parola)
+                            .update({
+                                voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+                            })
+                            .catch(e => console.error("Errore voto:", e));
+                    }
+                }
+                
+                // VERIFICA SE TUTTI HANNO VOTATO
+                if(currentGameData && currentGameData.partecipanti) {
+                    const numPartecipanti = currentGameData.partecipanti.length;
+                    
+                    if(prop.voti.length >= numPartecipanti) {
+                        // APPLICA MODIFICA
+                        await applicaModificaDizionario(prop.parola, prop.tipo);
+                        
+                        // ELIMINA PROPOSTA
+                        await db.collection("partite").doc(matchId)
+                            .collection("proposte").doc(prop.parola)
+                            .delete()
+                            .catch(e => console.error("Errore delete:", e));
+                    }
+                }
+            }
+        });
+    });
     
     loadDictionary();
 }
@@ -3090,6 +3194,7 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
 
