@@ -1110,10 +1110,9 @@ function mostraRisultatiTemporanei() {
 }
 
 function avviaVerifica() {
-    // 🔧 FIX: Chi clicca VERIFICA PAROLE ha già confermato!
+    // Passa solo allo stato "verifica", SENZA confermare automaticamente
     db.collection("partite").doc(matchId).update({ 
-        stato: "verifica",
-        confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome)
+        stato: "verifica"
     });
 }
 	
@@ -1795,22 +1794,11 @@ function togglePause() {
 		// 🔧 FIX: Mostra pulsante rotazione in fase analisi (se non Biatch)
 		const rotateBtn = document.getElementById('manual-rotate-btn');
 		if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
-		// Mostra Modale
-		 const modal = document.getElementById('game-end-modal');
-		 modal.style.display = 'flex';
-		 document.getElementById('end-score-val').textContent = score;
-		// 🔧 FIX: Mostra pulsante HOME fisso
+		// 🔧 FIX: Mostra pulsante HOME fisso (senza popup)
 		document.getElementById('fixed-home-btn').style.display = 'block';
-		 // Fuochi d'artificio
-		 startEndGameCelebration(); 
-
-		// FIX 4: AUTO-CHIUSURA CON CLEANUP GARANTITO
-		let autoCloseTimeout = setTimeout(() => {
-			 closeEndGameModal();
-		}, 5000);
-
-		// Salva il timeout per poterlo cancellare se chiuso prima
-		window.autoCloseEndGameTimeout = autoCloseTimeout;
+		
+		// Effetto celebrativo leggero (solo confetti)
+		fireConfettiLight();
     }
 
     function startSandbox() {
@@ -2815,7 +2803,6 @@ if (!matchId) {
 
 // ========================================
 // 3. VERIFICA
-// ========================================
 if (data.stato === "verifica") {
     overlay.style.display = 'none';
     document.getElementById('fixed-home-btn').style.display = 'block';
@@ -2834,12 +2821,24 @@ if (data.stato === "verifica") {
         if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
     }
     
-    // 🔧 FIX: Chi ha cliccato VERIFICA PAROLE ha già confermato, mostra solo attesa
-    if (conf.length < data.partecipanti.length) {
+    // 🔧 FIX: Ogni giocatore deve confermare INDIVIDUALMENTE
+    if (!conf.includes(mioNome)) {
+        // Questo giocatore NON ha ancora confermato
+        showGameBanner({
+            icon: '✅',
+            title: 'PRONTI PER I RISULTATI?',
+            subtitle: 'Clicca per confermare e calcolare il punteggio finale',
+            color: '#27ae60',
+            buttons: [
+                { text: '✔️ CONFERMA RISULTATI', onclick: 'confermaVerificaOnline()' }
+            ]
+        });
+    } else {
+        // Questo giocatore HA GIÀ confermato, attende gli altri
         showGameBanner({
             icon: '⏳',
             title: `ATTESA CONFERME (${conf.length}/${data.partecipanti.length})`,
-            subtitle: 'Calcolo risultati in corso...',
+            subtitle: 'Hai già confermato. Aspettiamo i colleghi...',
             color: '#8e44ad',
             buttons: [],
             spinner: true
@@ -2848,7 +2847,7 @@ if (data.stato === "verifica") {
     
     // Se tutti hanno confermato, passa automaticamente a conclusa
     if (conf.length >= data.partecipanti.length) {
-        // Il calcolo viene fatto da confermaVerificaOnline, qui aspettiamo solo
+        await confermaVerificaOnline(); // Calcola punteggi
     }
 }
 
@@ -3397,3 +3396,4 @@ if (document.readyState === 'loading') {
 </div>
 </body>
 </html>
+
