@@ -1651,7 +1651,7 @@ async function loadDictionary() {
 	    const cellsSnapshot = [...selectedCells];
 	    const wordSnapshot = wordDisplay.textContent;
 	    
-	    if (cellsSnapshot.length >= MIN_WORD_LENGTH && wordSnapshot.length >= MIN_WORD_LENGTH) {
+	    if (wordSnapshot.length >= MIN_WORD_LENGTH) {
 	        validateWord();
 	    }
 	    
@@ -2886,6 +2886,7 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
 
