@@ -304,6 +304,9 @@
         </div>
     </div>
 </div>
+<button onclick="resetTutteLeStatistiche()" style="background:#e74c3c; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold; margin-top:20px;">
+    🗑️ AZZERA TUTTE LE STATISTICHE
+</button>
 
         <div class="box">
             <h3>📜 Storico Partite</h3>
@@ -648,7 +651,6 @@ function calcolaStatistiche() {
         const tot = Object.values(stats.days[giorno]).reduce((a, b) => a + b, 0);
         if (tot > maxPartite) {
             maxPartite = tot;
-            // Formatta data
             const d = new Date(giorno);
             giornoTop = `${d.getDate()}/${d.getMonth() + 1}`;
         }
@@ -657,15 +659,12 @@ function calcolaStatistiche() {
         giornoTop += ` (${maxPartite})`;
     }
     
-    // Streak (giorni consecutivi)
+    // Streak
     let streak = 0;
     let bestStreak = 0;
     let currentStreak = 0;
     
-    // Ordina i giorni e calcola streak
     const sortedDays = [...giorni].sort().reverse();
-    
-    // Verifica se oggi o ieri abbiamo giocato
     const ieri = new Date();
     ieri.setDate(ieri.getDate() - 1);
     const ieriKey = ieri.toISOString().split('T')[0];
@@ -684,13 +683,11 @@ function calcolaStatistiche() {
             }
         }
     } else if (stats.days[ieriKey]) {
-        // Se oggi non abbiamo giocato, la streak è a rischio!
-        currentStreak = 0; // Streak interrotta
+        currentStreak = 0;
     }
     
     streak = currentStreak;
     
-    // Best streak (calcolo completo)
     let tempStreak = 0;
     for (let i = 0; i < sortedDays.length; i++) {
         const currentDay = new Date(sortedDays[i]);
@@ -710,15 +707,26 @@ function calcolaStatistiche() {
     }
     if (tempStreak > bestStreak) bestStreak = tempStreak;
     
-    // Ultimi 7 giorni
-    const ultimi7Giorni = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
+    // 🔧 FIX: Settimana da LUNEDÌ a DOMENICA con giorni fissi
+    const settimanaCorrente = [];
+    const oggi_date = new Date();
+    
+    // Trova il lunedì di questa settimana
+    const dayOfWeek = oggi_date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domenica, torna indietro di 6 giorni
+    
+    const lunedi = new Date(oggi_date);
+    lunedi.setDate(oggi_date.getDate() + diffToMonday);
+    
+    // Genera i 7 giorni da LUN a DOM
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(lunedi);
+        d.setDate(lunedi.getDate() + i);
         const key = d.toISOString().split('T')[0];
-        const dayName = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][d.getDay()];
+        const dayName = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'][i];
         const count = stats.days[key] ? Object.values(stats.days[key]).reduce((a, b) => a + b, 0) : 0;
-        ultimi7Giorni.push({
+        
+        settimanaCorrente.push({
             key,
             dayName,
             count,
@@ -735,7 +743,7 @@ function calcolaStatistiche() {
         giorniAttivi,
         streak,
         bestStreak,
-        ultimi7Giorni,
+        ultimi7Giorni: settimanaCorrente, // 👈 Ora parte da Lunedì
         totals: stats.totals
     };
 }
@@ -824,8 +832,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Aggiorna ogni minuto (per aggiornare "oggi" se cambia giorno)
 setInterval(aggiornaStatsUI, 60000);
-	 
+
+function resetTutteLeStatistiche() {
+    if(!confirm("⚠️ ATTENZIONE!\n\nQuesta azione cancellerà TUTTE le statistiche:\n- Partite giocate\n- Punteggi\n- Achievement\n- Storico\n\nSei sicuro?")) return;
+    
+    if(!confirm("🔴 CONFERMA FINALE\n\nI dati saranno persi per sempre. Continuare?")) return;
+    
+    // Cancella statistiche Ruzzle
+    localStorage.removeItem('paroliere_data');
+    
+    // Cancella statistiche giornaliere
+    localStorage.removeItem('funatwork_daily_stats');
+    
+    // Cancella altri dati se presenti
+    localStorage.removeItem('mioNome');
+    
+    alert("✅ Statistiche azzerate!");
+    location.reload();
+}
 </script>
 </body>
 </html>
-
