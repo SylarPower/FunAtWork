@@ -214,8 +214,10 @@
 
     <!-- DASHBOARD -->
     <div id="main-app" style="display:none;">
-        <div id="user-display"></div>
-        
+<div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+    <div id="user-display"></div>
+    <button id="btn-disponibilita" onclick="toggleDisponibilita()" style="padding:8px 15px; border-radius:20px; border:none; cursor:pointer; font-weight:bold; font-size:0.85rem;"></button>
+</div>
         <div class="box">
             <h3>🎮 Partite In Corso</h3>
             <div id="lista-partite"></div>
@@ -399,7 +401,7 @@
             document.getElementById('login-div').style.display = 'none';
             document.getElementById('main-app').style.display = 'block';
             document.getElementById('user-display').textContent = "👤 " + mioNome;
-
+				aggiornaUIDisponibilita();
             aggiornaPresenza(); 
             setInterval(aggiornaPresenza, 20000);
             listen();
@@ -409,9 +411,31 @@
         }
     }
 
-    function aggiornaPresenza() { 
-        db.collection("presenze").doc(mioNome).set({ nome: mioNome, last: Date.now() }); 
-    }
+		async function aggiornaPresenza() { 
+			 // Controlla se sono in una partita attiva
+			 let inPartita = false;
+			 let partitaId = null;
+			 
+			 try {
+				  const snap = await db.collection("partite")
+						.where("partecipanti", "array-contains", mioNome)
+						.where("stato", "in", ["attesa", "in_corso"])
+						.get();
+				  
+				  if (!snap.empty) {
+						inPartita = true;
+						partitaId = snap.docs[0].id;
+				  }
+			 } catch(e) {}
+			 
+			 db.collection("presenze").doc(mioNome).set({ 
+				  nome: mioNome, 
+				  last: Date.now(),
+				  inPartita: inPartita,
+				  partitaId: partitaId,
+				  disponibile: localStorage.getItem('disponibile') !== 'false' // Default: disponibile
+			 }); 
+		}
 
     function mostraNotifica(testo, colore, callback) {
         const div = document.createElement('div');
@@ -451,22 +475,50 @@
                         </div>`;
                     }
                     
-                    // Gestione Lista Amici
-                    let nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
-                    if(nomeAmico && d.stato === 'amici') {
-                        amiciSet.add(nomeAmico);
-                        const isSel = amiciSelezionati.has(nomeAmico);
-                        const isOnline = utentiOnline[nomeAmico]; // <--- CONTROLLO PALLINO
+					// Gestione Lista Amici
+					let nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
+					if(nomeAmico && d.stato === 'amici') {
+						 amiciSet.add(nomeAmico);
+						 const isSel = amiciSelezionati.has(nomeAmico);
+						 const isOnline = utentiOnline[nomeAmico];
+						 
+						 // Recupera stato dettagliato
+						 const presenzaAmico = presSnap.docs.find(d => d.id === nomeAmico)?.data() || {};
+						 const inPartita = presenzaAmico.inPartita || false;
+						 const disponibile = presenzaAmico.disponibile !== false;
+						 
+						 // Determina colore e testo stato
+						 let statoColor, statoText, statoIcon;
+						 if (!isOnline) {
+							  statoColor = '#555';
+							  statoText = 'Offline';
+							  statoIcon = '⚫';
+						 } else if (!disponibile) {
+							  statoColor = '#e74c3c';
+							  statoText = 'Non disponibile';
+							  statoIcon = '🔴';
+						 } else if (inPartita) {
+							  statoColor = '#f39c12';
+							  statoText = 'In partita';
+							  statoIcon = '🎮';
+						 } else {
+							  statoColor = '#2ecc71';
+							  statoText = 'Disponibile';
+							  statoIcon = '🟢';
+						 }
 
-                        div.innerHTML += `
-                            <div class="user-item ${isSel?'selected':''}" onclick="toggleAmico('${nomeAmico}', this)">
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <span style="height:10px; width:100px; width:10px; background:${isOnline ? '#2ecc71' : '#555'}; border-radius:50%; display:inline-block; box-shadow: ${isOnline ? '0 0 8px #2ecc71' : 'none'};"></span>
-                                    <span style="font-weight:bold;">${nomeAmico}</span>
-                                </div>
-                                <button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere amico?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
-                            </div>`;
-                    }
+						 div.innerHTML += `
+							  <div class="user-item ${isSel?'selected':''}" onclick="toggleAmico('${nomeAmico}', this)" style="opacity: ${disponibile && isOnline ? 1 : 0.6};">
+									<div style="display:flex; align-items:center; gap:10px;">
+										 <span style="font-size:1.2rem;">${statoIcon}</span>
+										 <div>
+											  <span style="font-weight:bold;">${nomeAmico}</span>
+											  <div style="font-size:0.7rem; color:${statoColor};">${statoText}</div>
+										 </div>
+									</div>
+									<button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere amico?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
+							  </div>`;
+					}
                 });
                 updateGlobal(amiciSet);
             });
@@ -847,7 +899,29 @@ function resetTutteLeStatistiche() {
     alert("✅ Statistiche azzerate!");
     location.reload();
 }
+function toggleDisponibilita() {
+    const attuale = localStorage.getItem('disponibile') !== 'false';
+    const nuovo = !attuale;
+    localStorage.setItem('disponibile', nuovo);
+    aggiornaUIDisponibilita();
+    aggiornaPresenza(); // Aggiorna Firebase
+}
+
+function aggiornaUIDisponibilita() {
+    const disponibile = localStorage.getItem('disponibile') !== 'false';
+    const btn = document.getElementById('btn-disponibilita');
+    if (btn) {
+        if (disponibile) {
+            btn.textContent = '🟢 Disponibile';
+            btn.style.background = '#2ecc71';
+            btn.style.color = 'white';
+        } else {
+            btn.textContent = '🔴 Non disturbare';
+            btn.style.background = '#e74c3c';
+            btn.style.color = 'white';
+        }
+    }
+}
 </script>
 </body>
 </html>
-
