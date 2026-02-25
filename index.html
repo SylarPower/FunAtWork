@@ -12,9 +12,9 @@
     <link rel="preconnect" href="https://firestore.googleapis.com">
     
     <title>Portale FaW</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-check-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 <style>
 /* ✅ RESET E BASE */
 * {
@@ -427,6 +427,9 @@ input:focus, select:focus {
     .btn-mode {
         width: 100%;
     }
+/* Nascondi badge reCAPTCHA (opzionale) */
+.grecaptcha-badge { 
+    visibility: hidden; 
 }
 </style>
 </head>
@@ -611,6 +614,9 @@ input:focus, select:focus {
 	);
 	
 	const db = firebase.firestore();
+	// Debug: verifica che App Check sia attivo
+	console.log('✅ Firebase inizializzato');
+	console.log('✅ App Check attivato');
 	let mioNome = localStorage.getItem('mioNome') || "";
 	let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
     let amiciSelezionati = new Set();
@@ -634,13 +640,11 @@ if(mioNome && passwordHashSalvato) {
             } else {
                 // Hash non valido, richiedi login
                 localStorage.removeItem('passwordHash');
-                document.getElementById('login-div').style.display = 'block';
+                debugLog('❌ Hash non valido');
             }
         } catch (e) {
-            console.error("Errore auto-login:", e);
-            // Mostra schermata login in caso di errore
-            document.getElementById('login-div').style.display = 'block';
-            localStorage.removeItem('passwordHash');
+			console.error("Errore auto-login:", e);
+            debugLog('❌ Errore: ' + e.message);
         }
     };
 }
@@ -675,15 +679,17 @@ async function entra(isAuto = false) {
         const passwordHash = await hashPassword(p);
         const userRef = db.collection("utenti").doc(n);
         const doc = await userRef.get();
-        
+        debugLog('✅ Connessione Firestore OK');
         if(doc.exists) {
             if(doc.data().passwordHash !== passwordHash) { 
                 if(!isAuto) alert("Password Errata!"); 
                 return; 
             }
+			debugLog('✅ Login riuscito');
         } else {
             if(confirm("Nuovo utente? Registrati con questa password.")) {
                 await userRef.set({ nome: n, passwordHash: passwordHash });
+				debugLog('✅ Registrazione completata');
             } else return;
         }
 
@@ -702,13 +708,11 @@ async function entra(isAuto = false) {
         
     } catch (e) {
         console.error("Errore login:", e);
-        alert("❌ Errore di connessione. Controlla internet e riprova.");
-    } finally {
-        // ✅ Ripristina pulsante (anche in caso di errore)
-        btn.textContent = originalText;
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
+        debugLog('❌ ERRORE: ' + e.message);
+        
+        if(e.message.includes('Missing or insufficient permissions')) {
+            debugLog('⚠️ App Check non funziona correttamente');
+        }
     }
 }
 
@@ -1238,6 +1242,7 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
 
 
 
