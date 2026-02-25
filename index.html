@@ -838,16 +838,11 @@ setInterval(aggiornaStatsUI, 60000);
 function resetTutteLeStatistiche() {
     if(!confirm("⚠️ ATTENZIONE!\n\nQuesta azione cancellerà TUTTE le statistiche:\n- Partite giocate\n- Punteggi\n- Achievement\n- Storico\n\nSei sicuro?")) return;
     
-    if(!confirm("🔴 CONFERMA FINALE\n\nI dati saranno persi per sempre. Continuare?")) return;
-    
     // Cancella statistiche Ruzzle
     localStorage.removeItem('paroliere_data');
     
     // Cancella statistiche giornaliere
     localStorage.removeItem('funatwork_daily_stats');
-    
-    // Cancella altri dati se presenti
-    localStorage.removeItem('mioNome');
     
     alert("✅ Statistiche azzerate!");
     location.reload();
@@ -855,3 +850,4 @@ function resetTutteLeStatistiche() {
 </script>
 </body>
 </html>
+
