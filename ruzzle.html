@@ -569,7 +569,7 @@
             <div class="status-bar">
                 <span>Tempo: <span id="timer">03:00</span></span>
 					 <span>Trovabili: <span id="possible-count" style="opacity:0.6;">...</span></span>
-                <button id="manual-rotate-btn" class="rotate-btn" onclick="rotateGrid()" title="Ruota Griglia">🔄</button>
+                <button id="manual-rotate-btn" class="rotate-btn" onclick="rotateGrid()" title="Ruota Griglia" style="display:none;">🔄</button>
             </div>
             
             <div id="current-word"></div>
@@ -1127,10 +1127,8 @@ async function loadDictionary() {
             currentSeed = baseSeed + tags;
         }
         
-        // --- UI BIATCH ---
-        // Nascondi il pulsante di rotazione manuale se sei in modalità Biatch
-			const manualRotBtn = document.getElementById('manual-rotate-btn');
-			if(manualRotBtn) manualRotBtn.style.display = 'none';
+		const manualRotBtn = document.getElementById('manual-rotate-btn');
+		if(manualRotBtn) manualRotBtn.style.display = 'none';
 
         initialTime = timeRemaining;
         if (gridSize === 4 && timeRemaining === 45) showElenaPopup();
@@ -1811,13 +1809,19 @@ function validateWord(wordParam = null, cellsParam = null) {
             wordDisplayLocked = true;
             wordDisplay.textContent = `${word} (+${pts} pt)`;
             wordDisplay.style.background = "#2ecc71";
+            
+            // 🔧 FIX: Pulisci selezione e linea SUBITO
+            selectedCells = [];
+            lineLayer.innerHTML = '';
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+            
             currentCells.forEach(i => {
                 if(gridEl.children[i]) gridEl.children[i].classList.add('anim-valid');
             });
             setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
         } else { 
-            wordDisplay.style.background = "#e74c3c"; 
-            shakeInvalidCells(currentCells); 
+            // 🔧 FIX: Parola sbagliata - shake e poi pulisci tutto
+            shakeAndClear(currentCells);
         }
         errorTimeout = setTimeout(() => { 
             wordDisplay.style.background = "#dfe6e9"; 
@@ -1829,12 +1833,16 @@ function validateWord(wordParam = null, cellsParam = null) {
 
     // === MODALITÀ GIOCO ===
     if (word.length < MIN_WORD_LENGTH) { 
-        shakeInvalidCells(currentCells); 
+        shakeAndClear(currentCells); 
         return; 
     }
     
     if (foundWords.has(word)) { 
         wordDisplay.style.background = "#f1c40f"; 
+        // 🔧 FIX: Pulisci anche per parole duplicate
+        selectedCells = [];
+        lineLayer.innerHTML = '';
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
         setTimeout(()=>wordDisplay.style.background="#dfe6e9", 400); 
         return; 
     }
@@ -1857,10 +1865,14 @@ function validateWord(wordParam = null, cellsParam = null) {
         runAchievementCheck(word, pts);
         updateTotalScore();
         
-        // Feedback visivo
+        // 🔧 FIX: Pulisci selezione e linea SUBITO
+        selectedCells = [];
+        lineLayer.innerHTML = '';
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+        
+        // Feedback visivo verde
         currentCells.forEach(i => {
             if(gridEl.children[i]) {
-                gridEl.children[i].classList.remove('selected');
                 gridEl.children[i].classList.add('anim-valid');
             }
         });
@@ -1894,23 +1906,37 @@ function validateWord(wordParam = null, cellsParam = null) {
             if(wordDisplay.textContent.includes(word)) {
                 wordDisplay.textContent = "";
             }
-        }, 1200); // Ridotto da 2000 a 1200 per reattività
+        }, 1200);
         
     } else { 
         // PAROLA NON VALIDA
-        shakeInvalidCells(currentCells); 
-        wordDisplay.style.background = "#e74c3c";
-        setTimeout(()=>wordDisplay.style.background="#dfe6e9", 400);
+        shakeAndClear(currentCells);
     }
 }
 
-// 🔧 NUOVA FUNZIONE: Shake solo celle specifiche
-function shakeInvalidCells(cells) {
+// 🔧 NUOVA FUNZIONE: Shake rosso e poi pulisci tutto
+function shakeAndClear(cells) {
     errorCount++;
+    
+    // Mostra errore rosso
+    wordDisplay.style.background = "#e74c3c";
+    
+    // Shake sulle celle
     cells.forEach(i => {
         if(gridEl.children[i]) gridEl.children[i].classList.add('anim-invalid');
     });
-    setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-invalid')), 400);
+    
+    // Dopo 400ms: pulisci TUTTO
+    setTimeout(() => {
+        document.querySelectorAll('.tile').forEach(t => {
+            t.classList.remove('anim-invalid');
+            t.classList.remove('selected');
+        });
+        selectedCells = [];
+        lineLayer.innerHTML = '';
+        wordDisplay.style.background = "#dfe6e9";
+        wordDisplay.textContent = "";
+    }, 400);
 }
 
     function calculateScoreWithBonuses(word, cells) {
@@ -2669,36 +2695,90 @@ if (data.stato === "verifica") {
     }
 }
 
-		// 4. CONCLUSIONE (CON RIVINCITA)
-		if (data.stato === "conclusa") {
-		    // Mostra pulsante NUOVA ora che la partita è finita
-		    const btnNewEl = document.querySelector('.btn-new');
-		    if (btnNewEl) btnNewEl.style.display = 'block';
-		    
-		    // Rimuovi il banner superiore
-		    const waitBanner = document.getElementById('wait-banner');
-		    if (waitBanner) waitBanner.remove();
-		    
-		    overlay.style.display = 'flex';
-            if (data.prossimaPartita) {
-                document.getElementById('lobby-title').textContent = "RIVINCITA!";
-                setTimeout(() => { window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; }, 1000);
-                return;
-            }
-            let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
-            document.getElementById('lobby-title').textContent = classifica[0][0] === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
-            let html = ""; classifica.forEach(([p, s]) => { html += `${p}: ${s} PT<br>`; });
-            statusDiv.innerHTML = `<div style='font-size:1.5rem; margin:15px;'>${html}</div><button onclick="attivaAnalisiMultiplayer()" style="padding:10px; background:#f39c12; border:none; cursor:pointer; border-radius:5px; font-weight:bold; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
-            
-			// TASTO RIVINCITA: apre modal per scegliere modalità
-			actionDiv.innerHTML = `
-			    <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
-			        <button onclick="apriModalRivincita()" class="btn-rivincita">🔄 RIVINCITA</button>
-			        <button onclick="tornaHome()" class="btn-action" style="width:auto; padding:10px 25px;">🏠 Torna alla Home</button>
-			    </div>
-			`;
-            if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
-        }
+	// 4. CONCLUSIONE (CON RIVINCITA)
+	if (data.stato === "conclusa") {
+	    // Mostra pulsante NUOVA ora che la partita è finita
+	    const btnNewEl = document.querySelector('.btn-new');
+	    if (btnNewEl) btnNewEl.style.display = 'block';
+	    
+	    // 🔧 FIX: Se c'è una rivincita in arrivo, mostra BANNER invece di overlay
+	    if (data.prossimaPartita) {
+	        overlay.style.display = 'none'; // Nascondi overlay grande
+	        
+	        // Crea/aggiorna banner rivincita
+	        let waitBanner = document.getElementById('wait-banner');
+	        if (!waitBanner) {
+	            waitBanner = document.createElement('div');
+	            waitBanner.id = 'wait-banner';
+	            document.body.appendChild(waitBanner);
+	        }
+	        
+	        waitBanner.style = `
+	            position: fixed;
+	            top: 0;
+	            left: 0;
+	            right: 0;
+	            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+	            color: white;
+	            padding: 15px 20px;
+	            display: flex;
+	            justify-content: space-between;
+	            align-items: center;
+	            z-index: 9999;
+	            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+	            animation: slideDown 0.3s ease;
+	        `;
+	        
+	        waitBanner.innerHTML = `
+	            <div style="display:flex; align-items:center; gap:10px;">
+	                <span style="font-size:1.8rem;">🔄</span>
+	                <div>
+	                    <div style="font-weight:bold; font-size:1.1rem;">RIVINCITA IN ARRIVO!</div>
+	                    <div style="font-size:0.8rem; opacity:0.9;">Un avversario ha chiesto la rivincita</div>
+	                </div>
+	            </div>
+	            <div style="display:flex; gap:10px; align-items:center;">
+	                <span style="font-size:0.9rem; opacity:0.8;">Reindirizzamento...</span>
+	                <div style="width:20px; height:20px; border:3px solid white; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
+	            </div>
+	        `;
+	        
+	        // Aggiungi animazione spin se non esiste
+	        if (!document.getElementById('spin-style')) {
+	            const style = document.createElement('style');
+	            style.id = 'spin-style';
+	            style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+	            document.head.appendChild(style);
+	        }
+	        
+	        setTimeout(() => { 
+	            window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
+	        }, 2000);
+	        return;
+	    }
+	    
+	    // Rimuovi eventuali banner precedenti
+	    const waitBanner = document.getElementById('wait-banner');
+	    if (waitBanner) waitBanner.remove();
+	    
+	    // Mostra overlay risultati finali
+	    overlay.style.display = 'flex';
+	    
+	    let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
+	    document.getElementById('lobby-title').textContent = classifica[0][0] === mioNome ? "VITTORIA! 👑" : "SCONFITTA! 🐷";
+	    let html = ""; 
+	    classifica.forEach(([p, s]) => { html += `${p}: ${s} PT<br>`; });
+	    statusDiv.innerHTML = `<div style='font-size:1.5rem; margin:15px;'>${html}</div><button onclick="attivaAnalisiMultiplayer()" class="btn-action" style="width:auto; padding:10px 20px; margin-bottom:10px;">🔍 ANALIZZA TUTTI</button>`;
+	    
+	    // TASTO RIVINCITA: apre modal per scegliere modalità
+	    actionDiv.innerHTML = `
+	        <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
+	            <button onclick="apriModalRivincita()" class="btn-rivincita">🔄 RIVINCITA</button>
+	            <button onclick="tornaHome()" class="btn-action" style="width:auto; padding:10px 25px;">🏠 Torna alla Home</button>
+	        </div>
+	    `;
+	    if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
+	}
     });
 	// LISTENER PROPOSTE (SEPARATO E PULITO)
 unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
@@ -3010,6 +3090,7 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
 
