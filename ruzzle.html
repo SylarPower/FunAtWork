@@ -1304,32 +1304,48 @@ async function loadDictionary() {
                 tile.appendChild(badge);
             }
             
-				const startHandler = (e) => {
-					 // Reset forzato di tutti i blocchi
-					 if(errorTimeout){
-						  clearTimeout(errorTimeout);
-						  errorTimeout = null;
-					 }
-					 if(isRotating) return; // Blocca durante rotazione
-					 
-					 wordDisplay.style.background = "#dfe6e9";
-					 document.querySelectorAll('.tile').forEach(t => {
-						  t.classList.remove('anim-invalid');
-						  t.classList.remove('anim-valid');
-					 });
-					 
-					 // Sblocca wordDisplay se era bloccato da troppo tempo
-					 wordDisplayLocked = false;
-					 // 🔧 FIX: Reset completo stato selezione
-					if (inputMode === 'drag' && !isDragging) {
-						selectedCells = [];
-						lineLayer.innerHTML = '';
-						wordDisplay.textContent = '';
-					}
-					 if(!isGameActive) return;
-                if (inputMode === 'drag') { e.preventDefault(); isDragging = true; selectTile(i); }
-                else handleClickMode(i);
-            };
+			const startHandler = (e) => {
+			    // 🔧 FIX COMPLETO: Reset TOTALE di tutti gli stati
+			    if(errorTimeout){
+			        clearTimeout(errorTimeout);
+			        errorTimeout = null;
+			    }
+			    
+			    // Blocca solo durante rotazione attiva
+			    if(isRotating) return;
+			    
+			    // RESET IMMEDIATO di tutti i lock
+			    wordDisplayLocked = false;
+			    isDragging = false; // Reset forzato
+			    
+			    // Pulisci visualizzazione
+			    wordDisplay.style.background = "#dfe6e9";
+			    wordDisplay.textContent = '';
+			    
+			    // Rimuovi tutte le classi dalle tile
+			    document.querySelectorAll('.tile').forEach(t => {
+			        t.classList.remove('selected');
+			        t.classList.remove('anim-invalid');
+			        t.classList.remove('anim-valid');
+			    });
+			    
+			    // Reset completo selezione
+			    selectedCells = [];
+			    lineLayer.innerHTML = '';
+			    currentHighlightedWord = null;
+			    
+			    // Se il gioco non è attivo, esci
+			    if(!isGameActive) return;
+			    
+			    // Inizia nuova selezione
+			    if (inputMode === 'drag') { 
+			        e.preventDefault(); 
+			        isDragging = true; 
+			        selectTile(i); 
+			    } else {
+			        handleClickMode(i);
+			    }
+			};
 
             tile.addEventListener('mousedown', startHandler);
             tile.addEventListener('touchstart', startHandler, {passive:false});
@@ -1351,45 +1367,44 @@ async function loadDictionary() {
         return newArr;
     }
 
-    function rotateGrid() {
-        // Esci se il gioco non è attivo o se è in pausa
-    	if (!isGameActive || isPaused || isAnalysisPhase) return; 
-		// 1. BLOCCO ANTI-SPAM: Se sta già girando, ignora il click
-        if (isRotating) return; 
-        
-        // Controlli standard
-        if ((!isGameActive && !isAnalysisPhase) || isPaused) return; 
-        
-        // Attiva il blocco
-        isRotating = true;
-        clearSelection();
-
-        // Configurazione Animazione: SCATTANTE E VELOCE (0.3s)
-        const duration = 300; 
-        const easing = "cubic-bezier(0.25, 1, 0.5, 1)"; 
-
-        // 2. Applica transizione
-        const transitionStyle = `transform ${duration}ms ${easing}`;
-        gridEl.style.transition = transitionStyle;
-        
-        const tiles = document.querySelectorAll('.tile');
-        tiles.forEach(t => t.style.transition = transitionStyle);
-
-        // 3. Esegui la rotazione visiva
-        gridEl.style.transform = "rotate(90deg)";
-        tiles.forEach(t => t.style.transform = "rotate(-90deg)");
-
-        // 4. Aspetta la fine dell'animazione
-        setTimeout(() => {
-            gridEl.style.transition = "none";
-            rotationIndex = (rotationIndex + 1) % 4;
-            if(typeof rotationCount !== 'undefined') rotationCount++; 
-            runAchievementCheck();
-            renderGrid();
-            gridEl.style.transform = "rotate(0deg)";
-            isRotating = false;
-        }, duration);
-    }
+	function rotateGrid() {
+	    // 🔧 FIX: Permetti rotazione anche in fase analisi (post-partita)
+	    if (isPaused) return;
+	    if (!isGameActive && !isAnalysisPhase && !isSandboxMode) return;
+	    
+	    // BLOCCO ANTI-SPAM: Se sta già girando, ignora il click
+	    if (isRotating) return; 
+	    
+	    // Attiva il blocco
+	    isRotating = true;
+	    clearSelection();
+	
+	    // Configurazione Animazione: SCATTANTE E VELOCE (0.3s)
+	    const duration = 300; 
+	    const easing = "cubic-bezier(0.25, 1, 0.5, 1)"; 
+	
+	    // Applica transizione
+	    const transitionStyle = `transform ${duration}ms ${easing}`;
+	    gridEl.style.transition = transitionStyle;
+	    
+	    const tiles = document.querySelectorAll('.tile');
+	    tiles.forEach(t => t.style.transition = transitionStyle);
+	
+	    // Esegui la rotazione visiva
+	    gridEl.style.transform = "rotate(90deg)";
+	    tiles.forEach(t => t.style.transform = "rotate(-90deg)");
+	
+	    // Aspetta la fine dell'animazione
+	    setTimeout(() => {
+	        gridEl.style.transition = "none";
+	        rotationIndex = (rotationIndex + 1) % 4;
+	        if(typeof rotationCount !== 'undefined') rotationCount++; 
+	        runAchievementCheck();
+	        renderGrid();
+	        gridEl.style.transform = "rotate(0deg)";
+	        isRotating = false;
+	    }, duration);
+	}
 	
 	function calculatePossibleWordsCount() {
     const countEl = document.getElementById('possible-count');
@@ -1457,18 +1472,24 @@ async function loadDictionary() {
 function togglePause() {
     if(!isGameActive && !isPaused) return;
     const listEl = document.getElementById('found-words');
+    const rotateBtn = document.getElementById('manual-rotate-btn');
+    
     if(!isPaused) {
         isPaused = true; isGameActive = false; clearInterval(timerInterval);
         runAchievementCheck();
         pauseOverlay.style.display = 'flex'; listEl.classList.add('blurred-list');
         btnPause.textContent = "RIPRENDI"; 
         btnPause.classList.add('paused');
+        // 🔧 FIX: Nascondi rotazione durante pausa
+        if (rotateBtn) rotateBtn.style.display = 'none';
         clearSelection();
     } else {
         isPaused = false; isGameActive = true; pauseOverlay.style.display = 'none';
         listEl.classList.remove('blurred-list'); 
         btnPause.textContent = "PAUSA"; 
         btnPause.classList.remove('paused');
+        // 🔧 FIX: Rimostra rotazione (se non Biatch)
+        if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
         timerInterval = setInterval(() => { timeRemaining--; updateTimerDisplay(); if (timeRemaining <= 0) endGame(); }, 1000);
     }
 }
@@ -1581,7 +1602,9 @@ function togglePause() {
         analysisMsg.style.display = "block"; 
         sortControls.style.display = "flex";
         btnMissed.style.display = "block";
-
+		// 🔧 FIX: Mostra pulsante rotazione in fase analisi (se non Biatch)
+		const rotateBtn = document.getElementById('manual-rotate-btn');
+		if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
 		// Mostra Modale
 		 const modal = document.getElementById('game-end-modal');
 		 modal.style.display = 'flex';
@@ -1646,26 +1669,23 @@ function togglePause() {
 		 }
 	}
 	 
-	const endDrag = () => { 
-	    if (!isDragging) return;
-	    
-	    isDragging = false;
-	    
-	    const wordSnapshot = wordDisplay.textContent;
-	    
-	    if (wordSnapshot.length >= MIN_WORD_LENGTH) {
-	        validateWord();
-	    }
-	    
-	    // NON pulire subito - lascia che validateWord gestisca tutto
-	    if (!isSandboxMode && !wordDisplayLocked) {
-	        setTimeout(() => {
-	            if (!wordDisplayLocked && !isDragging) {
-	                clearSelection();
-	            }
-	        }, 400); // Aumentato da 300 a 400
-	    }
-	};
+		const endDrag = () => { 
+		    if (!isDragging) return;
+		    
+		    isDragging = false;
+		    
+		    // 🔧 FIX: Salva snapshot PRIMA di qualsiasi operazione
+		    const wordSnapshot = wordDisplay.textContent;
+		    const cellsSnapshot = [...selectedCells];
+		    
+		    if (wordSnapshot.length >= MIN_WORD_LENGTH && cellsSnapshot.length > 0) {
+		        // Passa gli snapshot a validateWord
+		        validateWord(wordSnapshot, cellsSnapshot);
+		    }
+		    
+		    // 🔧 FIX: NON pulire qui - il prossimo startHandler lo farà
+		    // Questo permette all'utente di vedere la parola validata
+		};
 
     function selectTile(i) { selectedCells = [i]; updateVisuals(); }
     function attemptSelection(i) {
@@ -1770,12 +1790,12 @@ function togglePause() {
             stopFireworks();
         }, 5000);
     }
-function validateWord() {
-    // 🔧 FIX CRITICO: Salva SUBITO lo stato prima di qualsiasi operazione
-    const word = wordDisplay.textContent;
-    const currentCells = [...selectedCells]; // Snapshot prima che venga modificato
+function validateWord(wordParam = null, cellsParam = null) {
+    // 🔧 FIX: Usa parametri passati o fallback ai valori correnti
+    const word = wordParam || wordDisplay.textContent;
+    const currentCells = cellsParam || [...selectedCells];
     
-    if (!word || word.length === 0) {
+    if (!word || word.length === 0 || currentCells.length === 0) {
         return;
     }
     
@@ -1784,55 +1804,51 @@ function validateWord() {
         errorTimeout = null;
     }
     
+    // === MODALITÀ SANDBOX ===
     if (isSandboxMode) {
         if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
             const pts = calculateScoreWithBonuses(word, currentCells);                
             wordDisplayLocked = true;
             wordDisplay.textContent = `${word} (+${pts} pt)`;
             wordDisplay.style.background = "#2ecc71";
-            currentCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
+            currentCells.forEach(i => {
+                if(gridEl.children[i]) gridEl.children[i].classList.add('anim-valid');
+            });
             setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
         } else { 
             wordDisplay.style.background = "#e74c3c"; 
-            shakeInvalid(); 
+            shakeInvalidCells(currentCells); 
         }
-        if(errorTimeout) clearTimeout(errorTimeout);
         errorTimeout = setTimeout(() => { 
             wordDisplay.style.background = "#dfe6e9"; 
             wordDisplayLocked = false; 
-            clearSelection(); 
-            errorTimeout=null;
-        }, 2000);
+            errorTimeout = null;
+        }, 1500);
         return;
     }
 
+    // === MODALITÀ GIOCO ===
     if (word.length < MIN_WORD_LENGTH) { 
-        shakeInvalid(); 
+        shakeInvalidCells(currentCells); 
         return; 
     }
     
     if (foundWords.has(word)) { 
         wordDisplay.style.background = "#f1c40f"; 
-        setTimeout(()=>wordDisplay.style.background="#dfe6e9",400); 
+        setTimeout(()=>wordDisplay.style.background="#dfe6e9", 400); 
         return; 
     }
     
-    if (currentCells.length === 0) {
-        console.warn("currentCells vuoto durante validateWord");
-        return;
-    }
-    
     if (dictionary.has(word)) {
+        // PAROLA VALIDA!
         const pts = calculateScoreWithBonuses(word, currentCells);
         const originalPath = currentCells.map(vIdx => getOriginalIndexFromVisual(vIdx, rotationIndex));
         foundWords.set(word, { points: pts, active: true, index: ++wordCounter, path: originalPath });
 
         if (pts >= 10) fireConfetti();
-        if (word === "BUSET") {
-            triggerBusetExplosion();
-        }
+        if (word === "BUSET") triggerBusetExplosion();
         
-        // --- TRIGGER BIATCH MODE: RUOTA QUANDO TROVI UNA PAROLA ---
+        // BIATCH MODE
         if (isBiatchMode) {
             rotateGrid();
             showBiatchOverlay();
@@ -1841,14 +1857,13 @@ function validateWord() {
         runAchievementCheck(word, pts);
         updateTotalScore();
         
+        // Feedback visivo
         currentCells.forEach(i => {
-            gridEl.children[i].classList.remove('selected');
-            gridEl.children[i].classList.add('anim-valid');
+            if(gridEl.children[i]) {
+                gridEl.children[i].classList.remove('selected');
+                gridEl.children[i].classList.add('anim-valid');
+            }
         });
-        
-        // 🔧 FIX: Reset IMMEDIATO per permettere nuova selezione
-        selectedCells = [];
-        lineLayer.innerHTML = '';
         
         setTimeout(() => {
             document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
@@ -1856,6 +1871,7 @@ function validateWord() {
         
         wordCountDisplay.textContent = foundWords.size;
         
+        // Aggiungi alla lista
         const li = document.createElement('li'); 
         li.dataset.word = word;
         li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${word}')" title="Mostra">👁️</button><span>${word}</span></div><span class="pts">+${pts}</span>`;
@@ -1864,6 +1880,7 @@ function validateWord() {
         });
         wordsListEl.insertBefore(li, wordsListEl.firstChild);
         
+        // Mostra conferma
         wordDisplayLocked = true;
         wordDisplay.textContent = `${word} (+${pts})`;
         wordDisplay.style.background = "#2ecc71";
@@ -1874,13 +1891,26 @@ function validateWord() {
         
         setTimeout(() => {
             wordDisplayLocked = false;
-            wordDisplay.textContent = "";
-        }, 2000);
+            if(wordDisplay.textContent.includes(word)) {
+                wordDisplay.textContent = "";
+            }
+        }, 1200); // Ridotto da 2000 a 1200 per reattività
+        
     } else { 
-        shakeInvalid(); 
-        wordDisplay.style.background = "#e74c3c"; 
+        // PAROLA NON VALIDA
+        shakeInvalidCells(currentCells); 
+        wordDisplay.style.background = "#e74c3c";
+        setTimeout(()=>wordDisplay.style.background="#dfe6e9", 400);
     }
-    setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
+}
+
+// 🔧 NUOVA FUNZIONE: Shake solo celle specifiche
+function shakeInvalidCells(cells) {
+    errorCount++;
+    cells.forEach(i => {
+        if(gridEl.children[i]) gridEl.children[i].classList.add('anim-invalid');
+    });
+    setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-invalid')), 400);
 }
 
     function calculateScoreWithBonuses(word, cells) {
@@ -1914,11 +1944,6 @@ function updateTotalScore() {
         li.classList.toggle('deleted', !d.active); li.querySelector('.pts').textContent = d.active ? "+" + d.points : "0";
         updateTotalScore();
 		  runAchievementCheck();
-    }
-    function shakeInvalid() {
-		errorCount++;
-        selectedCells.forEach(i => gridEl.children[i].classList.add('anim-invalid'));
-        setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-invalid')),400);
     }
 
     // --- ACHIEVEMENTS E STATISTICHE ---
@@ -2413,7 +2438,10 @@ if (!matchId) {
         if(!data) { window.location.href = "index.html"; return; }
         
         currentGameData = data;
-    
+	    const btnNewEl = document.querySelector('.btn-new');
+		if (btnNewEl) {
+		    btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
+		}
 	// FIX 3: APPLICA DIZIONARIO CUSTOM (con versioning)
 	if(data.dizionarioCustom) {
 		 const extraLen = (data.dizionarioCustom.extra || []).length;
@@ -2982,6 +3010,7 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
 
