@@ -497,7 +497,7 @@
 	<div class="header-bar">
 	    <div style="display:flex; align-items:center; gap:15px;">
 	        <button onclick="tornaHome()" style="background:#34495e; color:white; border:none; border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:bold;">🏠 HOME</button>
-	        <h1>Paroliere dei 🐷</h1>
+	        <h1>Ruzzle dei 🐷</h1>
 	    </div>
 	    <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
 	</div>
@@ -1044,8 +1044,8 @@
         
         // --- UI BIATCH ---
         // Nascondi il pulsante di rotazione manuale se sei in modalità Biatch
-        const manualRotBtn = document.getElementById('manual-rotate-btn');
-        if(manualRotBtn) manualRotBtn.style.display = isBiatchMode ? 'none' : 'block';
+			const manualRotBtn = document.getElementById('manual-rotate-btn');
+			if(manualRotBtn) manualRotBtn.style.display = 'none';
 
         initialTime = timeRemaining;
         if (gridSize === 4 && timeRemaining === 45) showElenaPopup();
@@ -1060,7 +1060,10 @@
         
 			generateGridData(cleanSeed);
 			renderGrid();
-
+			
+			// Calcola parole trovabili subito
+			calculatePossibleWordsCount();
+			
 		// FIX CRITICO: Gestisci overlay in base alla modalità
 		if (matchId) {
 			 // Multiplayer: nascondi overlay, la partita parte da Firebase
@@ -1285,32 +1288,8 @@
             isRotating = false;
         }, duration);
     }
-	 
-	function startRound() {
-		 isGameActive = true; isPaused = false; gridOverlay.style.display = 'none';
-		 gameControls.style.display = 'flex'; btnTerminate.style.display = 'block';
-		 document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-		 
-		 // FIX 5: Gestione bottone rotazione
-		 const rotateBtn = document.getElementById('manual-rotate-btn');
-		 if (rotateBtn) {
-			  // Nascondi in Biatch mode (la griglia gira da sola)
-			  // Nascondi anche in multiplayer per evitare vantaggi
-			  if (isBiatchMode) {
-					rotateBtn.style.display = 'none';
-			  } else if (matchId) {
-					rotateBtn.style.display = 'block'; // In multiplayer normale, mostra
-			  } else {
-					rotateBtn.style.display = 'block'; // In solo, mostra sempre
-			  }
-		 }
-		 
-		 updateTimerDisplay();
-        timerInterval = setInterval(() => {
-            timeRemaining--; updateTimerDisplay();
-            if (timeRemaining <= 0) endGame();
-        }, 1000);
-    // --- CALCOLO PAROLE TROVABILI (in background) ---
+	
+	function calculatePossibleWordsCount() {
     const countEl = document.getElementById('possible-count');
     countEl.textContent = '...';
     countEl.style.opacity = '0.6';
@@ -1322,23 +1301,17 @@
         const total = gridSize * gridSize;
         const adjMap = Array.from({length: total}, (_, i) => getNeighbors(i));
         const found = new Set();
-        const maxTime = 8000; // massimo 8 secondi di calcolo
+        const maxTime = 8000;
         const startCalc = performance.now();
 
         function countSolve(idx, word, visited) {
             if (performance.now() - startCalc > maxTime) return;
             visited[idx] = true;
-
-            // PRUNING: se nessuna parola inizia così, taglia subito
             if (!hasPrefix(word)) { visited[idx] = false; return; }
-
             if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
                 found.add(word);
             }
-
-            // Limite profondità per evitare blocchi su griglie grandi
             if (word.length >= 12) { visited[idx] = false; return; }
-
             for (let n of adjMap[idx]) {
                 if (!visited[n]) {
                     let ch = vizL[n];
@@ -1359,7 +1332,25 @@
         countEl.textContent = found.size;
         countEl.style.opacity = '1';
     }, 300);
+}
+	
+	function startRound() {
+    isGameActive = true; isPaused = false; gridOverlay.style.display = 'none';
+    gameControls.style.display = 'flex'; btnTerminate.style.display = 'block';
+    document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+    
+    // Mostra pulsante rotazione (tranne Biatch)
+    const rotateBtn = document.getElementById('manual-rotate-btn');
+    if (rotateBtn) {
+        rotateBtn.style.display = isBiatchMode ? 'none' : 'block';
     }
+    
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        timeRemaining--; updateTimerDisplay();
+        if (timeRemaining <= 0) endGame();
+    }, 1000);
+}
 
     function togglePause() {
         if(!isGameActive && !isPaused) return;
@@ -1673,7 +1664,8 @@
 				li.addEventListener('dblclick', () => {
             window.open(`https://www.treccani.it/vocabolario/${word.toLowerCase()}`, '_blank');
             });
-            wordDisplay.style.background = "#2ecc71";
+            wordDisplay.textContent = `${word} (+${pts})`;
+				wordDisplay.style.background = "#2ecc71";
         } else { shakeInvalid(); wordDisplay.style.background = "#e74c3c"; }
         setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
     }
