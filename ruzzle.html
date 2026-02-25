@@ -182,6 +182,8 @@
         .tile.small-font { font-size: 0.9rem; border-radius: 3px; box-shadow: 0 1px 0 var(--tile-shadow); }
         .tile.medium-font { font-size: 2.2rem; } /* Per 4x4 */
 
+			.tile.five-font { font-size: 1.8rem; }
+
         /* Stile per la griglia 6x6 */
         .tile.six-font { font-size: 1.55rem; }
         .tile.six-font .bonus-badge { font-size: 0.58rem; padding: 1px 3px; }
@@ -564,9 +566,9 @@
         <div class="sidebar">
             <div class="score-box-container">
                 <div class="score-box">
-                    <div style="font-size:0.8rem; font-weight:bold;">PUNTEGGIO</div>
-                    <div class="score-val" id="total-score">0</div>
-					<div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1rem; margin-top:10px;"></div>
+                  <div style="font-size:0.8rem; font-weight:bold;">PUNTEGGIO</div>
+                  <div class="score-val" id="total-score">0</div>
+						<div id="live-opponent-score" style="color: #ff4081; font-weight: 900; font-size: 1.1rem; margin-top:10px;"></div>
                 </div>
                 <button class="info-btn" onclick="openLegend()" title="Legenda">i</button>
             </div>
@@ -1057,15 +1059,18 @@
         // Estrae il seme pulito per l'RNG (tutto ciò che precede il primo trattino)
         const cleanSeed = currentSeed.split('-')[0];
         
-        generateGridData(cleanSeed);
-        renderGrid();
-        gridOverlay.style.display = 'flex';
-        
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?code=' + currentSeed;
-        window.history.pushState({path:newUrl},'',newUrl);
-		if(!matchId) {
-        gridOverlay.style.display = 'flex'; // Riabilita il tasto VIA per il solitario
-    }
+			generateGridData(cleanSeed);
+			renderGrid();
+
+		// FIX CRITICO: Mostra overlay VIA in modalità solo
+		if (!matchId) {
+			 document.getElementById('start-screen').style.display = 'none';
+			 gridOverlay.style.display = 'flex';
+			 document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
+		}
+
+		const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?code=' + currentSeed;
+		window.history.pushState({path:newUrl},'',newUrl);
     }
 
     function generateGridData(rngSeedStr) {
@@ -1180,7 +1185,8 @@
             
             // --- GESTIONE CLASSI DIMENSIONI ---
             if(gridSize === 4) tile.classList.add('medium-font'); 
-				else if(gridSize === 5) tile.classList.add('six-font'); 				
+				else if(gridSize === 5) tile.classList.add('five-font');
+				else if(gridSize === 6) tile.classList.add('six-font'); 				
             else if(gridSize === 7) tile.classList.add('compact-font'); 
             else if(gridSize >= 10) tile.classList.add('small-font');   
 
@@ -1276,11 +1282,26 @@
         }, duration);
     }
 	 
-    function startRound() {
-        isGameActive = true; isPaused = false; gridOverlay.style.display = 'none';
-        gameControls.style.display = 'flex'; btnTerminate.style.display = 'block';
-        document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-        updateTimerDisplay();
+	function startRound() {
+		 isGameActive = true; isPaused = false; gridOverlay.style.display = 'none';
+		 gameControls.style.display = 'flex'; btnTerminate.style.display = 'block';
+		 document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+		 
+		 // FIX 5: Gestione bottone rotazione
+		 const rotateBtn = document.getElementById('manual-rotate-btn');
+		 if (rotateBtn) {
+			  // Nascondi in Biatch mode (la griglia gira da sola)
+			  // Nascondi anche in multiplayer per evitare vantaggi
+			  if (isBiatchMode) {
+					rotateBtn.style.display = 'none';
+			  } else if (matchId) {
+					rotateBtn.style.display = 'block'; // In multiplayer normale, mostra
+			  } else {
+					rotateBtn.style.display = 'block'; // In solo, mostra sempre
+			  }
+		 }
+		 
+		 updateTimerDisplay();
         timerInterval = setInterval(() => {
             timeRemaining--; updateTimerDisplay();
             if (timeRemaining <= 0) endGame();
@@ -1353,7 +1374,20 @@
     }
 
     function endGameManually() { if(confirm("Terminare ora?")) endGame(); }
+   
+	function closeEndGameModal() {
+    const modal = document.getElementById('game-end-modal');
+    if (modal) modal.style.display = 'none';
+    stopFireworks();
+    document.body.classList.remove('mega-win-effect');
     
+    // Cancella timeout se esiste
+    if (window.autoCloseEndGameTimeout) {
+        clearTimeout(window.autoCloseEndGameTimeout);
+        window.autoCloseEndGameTimeout = null;
+    }
+}	
+	
 	function endGame() {
 	    clearInterval(timerInterval);
 	    isGameActive = false;
@@ -1373,7 +1407,6 @@
 	        document.getElementById('lobby-status').textContent = "Attendo che l'avversario finisca il suo tempo.";
 	    }
 	    // --------------------------------
-    // ... qui continua tutto il tuo codice originale (Achievements, Stats, etc.)
 		  // --- FIX PER GANDHI ---
         // Forziamo un controllo manuale in questo momento esatto
         // Creiamo un contesto fittizio perfetto per questo check
@@ -1446,12 +1479,13 @@
 		 // Fuochi d'artificio
 		 startEndGameCelebration(); 
 
-		 // --- AUTO-CHIUSURA ---
-		 // Timer unico e sicuro
-		 setTimeout(() => {
-			  document.getElementById('game-end-modal').style.display = 'none';
-			  stopFireworks(); // <--- AGGIUNGI QUESTO: Ferma i lanci immediatamente
-		 }, 5000); 
+		// FIX 4: AUTO-CHIUSURA CON CLEANUP GARANTITO
+		let autoCloseTimeout = setTimeout(() => {
+			 closeEndGameModal();
+		}, 5000);
+
+		// Salva il timeout per poterlo cancellare se chiuso prima
+		window.autoCloseEndGameTimeout = autoCloseTimeout;
     }
 
     function startSandbox() {
@@ -2128,20 +2162,16 @@ function fireConfetti(originElement = null) {
 			 setTimeout(() => overlay.remove(), 800);
 		}
 
-    // CHIUSURA MODAL CLICCANDO FUORI
-    window.addEventListener('click', (e) => {
-        // Se clicco sullo sfondo scuro (overlay)
-        if (e.target.classList.contains('modal-overlay')) {
-            
-            // 1. Se sto chiudendo il modale di fine partita, FERMA I FUOCHI
-            if (e.target.id === 'game-end-modal') {
-                stopFireworks();
-            }
-
-            // 2. Chiudi il modale cliccato
-            e.target.style.display = 'none';
-        }
-    });
+		// FIX 4: Listener chiusura modali con cleanup completo
+		window.addEventListener('click', (e) => {
+			 if (e.target.classList.contains('modal-overlay')) {
+				  if (e.target.id === 'game-end-modal') {
+						closeEndGameModal(); // Usa la funzione centralizzata
+						return; // Evita doppia chiusura
+				  }
+				  e.target.style.display = 'none';
+			 }
+		});
 		document.addEventListener('visibilitychange', () => {
 			 if (document.hidden && isGameActive && !isPaused && !isSandboxMode) togglePause();
 		});
@@ -2188,20 +2218,33 @@ if (!matchId) {
             // AGGIORNA DATI GLOBALI
     currentGameData = data;
     
-    // APPLICA DIZIONARIO CUSTOM (solo una volta)
-    if(data.dizionarioCustom && !dizionarioCustomApplicato) {
-        (data.dizionarioCustom.extra || []).forEach(w => {
-            if(!EXTRA_WORDS.includes(w)) EXTRA_WORDS.push(w);
-            dictionary.add(w);
-        });
-        (data.dizionarioCustom.excluded || []).forEach(w => {
-            if(!EXCLUDED_WORDS.includes(w)) EXCLUDED_WORDS.push(w);
-            dictionary.delete(w);
-        });
-        
-        buildTrie();
-        dizionarioCustomApplicato = true;
-    }
+	// FIX 3: APPLICA DIZIONARIO CUSTOM (con versioning)
+	if(data.dizionarioCustom) {
+		 const extraLen = (data.dizionarioCustom.extra || []).length;
+		 const excludedLen = (data.dizionarioCustom.excluded || []).length;
+		 const currentVersion = `${extraLen}-${excludedLen}`;
+		 
+		 // Riapplica solo se la versione è cambiata
+		 if(!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
+			  (data.dizionarioCustom.extra || []).forEach(w => {
+					if(w && !EXTRA_WORDS.includes(w)) {
+						 EXTRA_WORDS.push(w);
+						 dictionary.add(w);
+					}
+			  });
+			  (data.dizionarioCustom.excluded || []).forEach(w => {
+					if(w && !EXCLUDED_WORDS.includes(w)) {
+						 EXCLUDED_WORDS.push(w);
+						 dictionary.delete(w);
+					}
+			  });
+			  
+			  buildTrie();
+			  dizionarioCustomApplicato = true;
+			  window.lastDictVersion = currentVersion;
+			  console.log("Dizionario custom aggiornato:", currentVersion);
+		 }
+	}
         const overlay = document.getElementById('multiplayer-lobby');
         const statusDiv = document.getElementById('lobby-status');
         const actionDiv = document.getElementById('lobby-action');
@@ -2210,28 +2253,37 @@ if (!matchId) {
 
         // 1. ATTESA (Sincronizzazione Start)
         if (data.stato === "attesa") {
-			document.querySelector('.rotate-btn').style.display = 'none';
             overlay.style.display = 'flex';
             statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
             actionDiv.innerHTML = !pronti.includes(mioNome) ? 
                 `<button onclick="setProntoOnline()" class="btn-ready">AVVIA SFIDA! 🚀</button>` : `<p>In attesa dei colleghi...</p>`;
             actionDiv.innerHTML += `<br><button onclick="window.location.href='index.html'" style="background:none; color:#777; border:none; margin-top:20px; cursor:pointer; text-decoration:underline;">Annulla ed esci</button>`;
             
-            if (pronti.length >= data.partecipanti.length) db.collection("partite").doc(matchId).update({ stato: "in_corso" });
+            if (pronti.length >= data.partecipanti.length) {
+					 db.collection("partite").doc(matchId).update({ 
+						  stato: "in_corso",
+						  timestampInizio: firebase.firestore.FieldValue.serverTimestamp()
+					 });
+				}
         }
 
         // 2. IN CORSO
         if (data.stato === "in_corso") {
-			document.querySelector('.rotate-btn').style.display = 'block';
             if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase) {
                     gridSize = parseInt(data.opzioni.griglia);
-                    // FIX TIMER: lo imposta solo se non è già partito per evitare reset
-					if (!isGameActive && timeRemaining !== parseInt(data.opzioni.tempo)) {
-					    timeRemaining = parseInt(data.opzioni.tempo);
-					    initialTime = timeRemaining;
-					}
+						// FIX 1: Timer sincronizzato con timestamp server
+							 if (data.timestampInizio) {
+								  // Calcola tempo rimanente basato su quando è iniziata la partita
+								  const elapsed = Math.floor((Date.now() - data.timestampInizio) / 1000);
+								  const tempoTotale = parseInt(data.opzioni.tempo);
+								  timeRemaining = Math.max(0, tempoTotale - elapsed);
+								  initialTime = tempoTotale;
+							 } else {
+								  timeRemaining = parseInt(data.opzioni.tempo);
+								  initialTime = timeRemaining;
+							 }
                     currentSeed = data.opzioni.seed;
                     isBiatchMode = (data.opzioni.mode === 'biatch');
                     isCrazyMode = (data.opzioni.mode === 'crazy');
@@ -2328,7 +2380,11 @@ unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte
     loadDictionary();
 }
 
-function setProntoOnline() { db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) }); }
+function setProntoOnline() { 
+    db.collection("partite").doc(matchId).update({ 
+        pronti: firebase.firestore.FieldValue.arrayUnion(mioNome),
+    }); 
+}
 
 async function confermaVerificaOnline() {
     await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
@@ -2463,30 +2519,32 @@ async function applicaModificaDizionario(parola, tipo) {
     alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'}: "${parola}"`);
 }
 
-	// 🚪 CLEANUP QUANDO CHIUDE LA PAGINA O CAMBIA PAGINA
-window.addEventListener('beforeunload', () => {
-    if(unsubscribePartita) unsubscribePartita();
-    if(unsubscribeProposte) unsubscribeProposte();
-});
+// 🚪 FIX 2: CLEANUP COMPLETO
+function cleanupFirebaseListeners() {
+    if(unsubscribePartita) { unsubscribePartita(); unsubscribePartita = null; }
+    if(unsubscribeProposte) { unsubscribeProposte(); unsubscribeProposte = null; }
+}
+
+window.addEventListener('beforeunload', cleanupFirebaseListeners);
+window.addEventListener('pagehide', cleanupFirebaseListeners); // Per mobile Safari
 
 // ✅ FUNZIONA SEMPRE
 function setupHomeButtonCleanup() {
-    const homeBtn = document.querySelector('button[onclick*="index.html"]');
-    if(homeBtn) {
-        // Rimuovi l'onclick inline
-        homeBtn.removeAttribute('onclick');
+    // Intercetta TUTTI i link verso index.html
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('a, button');
+        if (!target) return;
         
-        homeBtn.addEventListener('click', (e) => {
+        const href = target.getAttribute('href') || '';
+        const onclick = target.getAttribute('onclick') || '';
+        
+        if (href.includes('index.html') || onclick.includes('index.html')) {
             e.preventDefault();
-            
-            // Spegni listener
-            if(unsubscribePartita) unsubscribePartita();
-            if(unsubscribeProposte) unsubscribeProposte();
-            
-            // Vai alla home
+            e.stopPropagation();
+            cleanupFirebaseListeners();
             window.location.href = 'index.html';
-        });
-    }
+        }
+    }, true); // Capture phase per intercettare prima
 }
 
 // Chiamalo dopo che il DOM esiste (puoi metterlo DOPO loadDictionary)
