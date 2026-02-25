@@ -14,6 +14,7 @@
     <title>Portale FaW</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-check-compat.js"></script>
 <style>
 /* ✅ RESET E BASE */
 * {
@@ -603,7 +604,31 @@ input:focus, select:focus {
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    
+    // ========================================
+	// 🛡️ APP CHECK CONFIGURAZIONE
+	// ========================================
+	
+	// Self-hosted App Check Provider (necessario per compat mode)
+	const appCheck = firebase.appCheck();
+	
+	// Configurazione per PRODUZIONE
+	if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+	    appCheck.activate(
+	        '6LfZ7HcsAAAAALr9sHGxbrdFdoRS6-E4cTjyiyBF', // ⚠️ SOSTITUISCI con la TUA Site Key
+	        true // Auto-refresh del token
+	    );
+	    console.log('🛡️ App Check attivato (PRODUZIONE)');
+	} else {
+	    // Configurazione per LOCALHOST (sviluppo)
+	    // ⚠️ INSERISCI QUI IL DEBUG TOKEN che hai copiato dalla console
+	    self.FIREBASE_APPCHECK_DEBUG_TOKEN = 'AED17971-7281-4327-B10A-B8AE1097AF90';
+	    
+	    appCheck.activate(
+	        '6LfZ7HcsAAAAALr9sHGxbrdFdoRS6-E4cTjyiyBF', // Stessa Site Key
+	        true
+	    );
+	    console.log('🛡️ App Check attivato (DEBUG MODE)');
+	}
 	let mioNome = localStorage.getItem('mioNome') || "";
 	let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
     let amiciSelezionati = new Set();
@@ -1231,4 +1256,5 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
 
