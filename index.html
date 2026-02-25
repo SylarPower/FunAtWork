@@ -101,27 +101,29 @@
 </div>
 
 <!-- MODALE OPZIONI SFIDA -->
-<div class="modal-content" style="text-align:center;">
-    <h2 id="target-name">Nuova Sfida</h2>
-    <div style="margin-bottom: 20px;">
-        <label>Durata:</label>
-        <select id="opt-tempo">
-            <option value="45">45s</option><option value="60" selected>60s</option>
-            <option value="90">90s</option><option value="180">180s</option>
-        </select>
-    </div>
-    <div style="margin-bottom: 20px;">
-        <label>Dimensione Griglia:</label>
-        <select id="opt-griglia"><option value="4" selected>4x4</option><option value="5">5x5</option><option value="6">6x6</option><option value="10">10x10</option></select>
-    </div>
-    <p>Scegli la modalità per il gruppo:</p>
-    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-         <button onclick="creaPartitaMultipla(false, false, false)" style="background:#7f8c8d; flex:1;">CLASSICA</button>
-         <button onclick="creaPartitaMultipla(true, false, false)" style="background:#e67e22; flex:1;">BONUS ⭐</button>
-         <button onclick="creaPartitaMultipla(true, true, false)" style="background:#9b59b6; flex:1;">CRAZY 🤪</button>
-         <button onclick="creaPartitaMultipla(true, true, true)" style="background:#ff00ff; flex:1;">BIATCH 💅</button>
-    </div>
-    <button onclick="closeModal()" style="background:none; color:#777; margin-top:15px;">Annulla</button>
+<div id="modal-sfida-ruzzle" class="modal">
+	<div class="modal-content" style="text-align:center;">
+		 <h2 id="target-name">Nuova Sfida</h2>
+		 <div style="margin-bottom: 20px;">
+			  <label>Durata:</label>
+			  <select id="opt-tempo">
+					<option value="45">45s</option><option value="60" selected>60s</option>
+					<option value="90">90s</option><option value="180">180s</option>><option value="300">300s</option>
+			  </select>
+		 </div>
+		 <div style="margin-bottom: 20px;">
+			  <label>Dimensione Griglia:</label>
+			  <select id="opt-griglia"><option value="4" selected>4x4</option><option value="5">5x5</option><option value="6">6x6</option><option value="7">7x7</option><option value="10">10x10</option></select>
+		 </div>
+		 <p>Scegli la modalità per il gruppo:</p>
+		 <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+				<button onclick="creaPartitaMultipla(false, false, false)" style="background:#7f8c8d; flex:1;">CLASSICA</button>
+				<button onclick="creaPartitaMultipla(true, false, false)" style="background:#e67e22; flex:1;">BONUS ⭐</button>
+				<button onclick="creaPartitaMultipla(true, true, false)" style="background:#9b59b6; flex:1;">CRAZY 🤪</button>
+				<button onclick="creaPartitaMultipla(true, true, true)" style="background:#ff00ff; flex:1;">BIATCH 💅</button>
+		 </div>
+		 <button onclick="closeModal()" style="background:none; color:#777; margin-top:15px;">Annulla</button>
+	</div>
 </div>
 
 <script>
@@ -309,8 +311,8 @@
         el.classList.add('selected'); 
     }
 
-    function apriModalSfida() { document.getElementById('modal-sfida').style.display = 'flex'; }
-    function closeModal() { document.getElementById('modal-sfida').style.display = 'none'; }
+    function apriModalSfida() { document.getElementById('modal-sfida-ruzzle').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modal-sfida-ruzzle').style.display = 'none'; }
 
     async function creaPartitaMultipla(bonus, crazy, biatch) {
         let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
@@ -361,16 +363,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
