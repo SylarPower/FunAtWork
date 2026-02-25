@@ -329,7 +329,7 @@
 			  <label>Durata:</label>
 			  <select id="opt-tempo">
 					<option value="45">45s</option><option value="60" selected>60s</option>
-					<option value="90">90s</option><option value="180">180s</option>><option value="300">300s</option>
+					<option value="90">90s</option><option value="180">180s</option><option value="300">300s</option>
 			  </select>
 		 </div>
 		 <div style="margin-bottom: 20px;">
@@ -361,55 +361,99 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     
-    let mioNome = localStorage.getItem('mioNome') || "";
-    let miaPass = localStorage.getItem('miaPass') || "";
+	let mioNome = localStorage.getItem('mioNome') || "";
+	let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
     let amiciSelezionati = new Set();
     let giocoSelezionato = "ruzzle";
 
-    // Esegui accesso automatico se i dati esistono
-    if(mioNome && miaPass) {
-        window.onload = () => {
-            document.getElementById('username').value = mioNome;
-            document.getElementById('password').value = miaPass;
-            entra(true);
-        };
-    }
-
-    async function entra(isAuto = false) {
-        const n = document.getElementById('username').value.trim().toUpperCase();
-        const p = document.getElementById('password').value.trim();
-        if(n.length < 2 || p.length < 3) return;
-
-        const userRef = db.collection("utenti").doc(n);
-        try {
-            const doc = await userRef.get();
-            if(doc.exists) {
-                if(doc.data().password !== p) { 
-                    if(!isAuto) alert("Password Errata!"); 
-                    return; 
-                }
-            } else {
-                if(confirm("Nuovo utente? Registrati con questa password.")) {
-                    await userRef.set({ nome: n, password: p });
-                } else return;
-            }
-
-            mioNome = n;
-            localStorage.setItem('mioNome', n);
-            localStorage.setItem('miaPass', p);
-            
+if(mioNome && passwordHashSalvato) {
+    window.onload = async () => {
+        // Verifica hash salvato con Firebase
+        const userRef = db.collection("utenti").doc(mioNome);
+        const doc = await userRef.get();
+        
+        if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
             document.getElementById('login-div').style.display = 'none';
             document.getElementById('main-app').style.display = 'block';
             document.getElementById('user-display').textContent = "👤 " + mioNome;
-				aggiornaUIDisponibilita();
-            aggiornaPresenza(); 
+            aggiornaUIDisponibilita();
+            aggiornaPresenza();
             setInterval(aggiornaPresenza, 20000);
             listen();
             caricaStorico();
-        } catch (e) {
-            console.error("Errore login:", e);
+        } else {
+            // Hash non valido, richiedi login
+            localStorage.removeItem('passwordHash');
         }
+    };
+}
+
+// Funzione per creare hash SHA-256 (sicuro lato client)
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function entra(isAuto = false) {
+    const n = document.getElementById('username').value.trim().toUpperCase();
+    const p = document.getElementById('password').value.trim();
+    
+    if(n.length < 2 || p.length < 3) {
+        if (!isAuto) alert("Nome minimo 2 caratteri, password minimo 3");
+        return;
     }
+
+    // ✅ LOADING STATE
+    const btn = document.querySelector('#login-div button');
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Caricamento...';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+
+    try {
+        const passwordHash = await hashPassword(p);
+        const userRef = db.collection("utenti").doc(n);
+        const doc = await userRef.get();
+        
+        if(doc.exists) {
+            if(doc.data().passwordHash !== passwordHash) { 
+                if(!isAuto) alert("Password Errata!"); 
+                return; 
+            }
+        } else {
+            if(confirm("Nuovo utente? Registrati con questa password.")) {
+                await userRef.set({ nome: n, passwordHash: passwordHash });
+            } else return;
+        }
+
+        mioNome = n;
+        localStorage.setItem('mioNome', n);
+        localStorage.setItem('passwordHash', passwordHash);
+        
+        document.getElementById('login-div').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('user-display').textContent = "👤 " + mioNome;
+        aggiornaUIDisponibilita();
+        aggiornaPresenza(); 
+        setInterval(aggiornaPresenza, 20000);
+        listen();
+        caricaStorico();
+        
+    } catch (e) {
+        console.error("Errore login:", e);
+        alert("❌ Errore di connessione. Controlla internet e riprova.");
+    } finally {
+        // ✅ Ripristina pulsante (anche in caso di errore)
+        btn.textContent = originalText;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
+}
 
 		async function aggiornaPresenza() { 
 			 // Controlla se sono in una partita attiva
@@ -437,136 +481,142 @@
 			 }); 
 		}
 
-    function mostraNotifica(testo, colore, callback) {
-        const div = document.createElement('div');
-        div.style = `position:fixed; top:20px; left:50%; transform:translateX(-50%); background:${colore}; color:white; padding:25px; border-radius:12px; z-index:5000; font-weight:bold; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; border:3px solid white;`;
-        div.innerHTML = `<p style="margin:0 0 15px 0; font-size:1.3rem;">${testo}</p>
-                         <button style="background:white; color:black; padding:10px 25px; border-radius:5px; font-weight:900; cursor:pointer;" onclick="this.parentElement.remove(); callback();">ACCETTA</button>
-                         <button style="background:none; color:white; margin-left:15px; border:none; cursor:pointer; text-decoration:underline;" onclick="this.parentElement.remove();">CHIUDI</button>`;
-        document.body.appendChild(div);
-    }
+function listen() {
+    // ✅ VARIABILE CONDIVISA tra i due listener
+    let presenzeData = {};
+    let amicizieSnapshot = null;
 
-    function listen() {
-        // ASCOLTO AMICI E STATO ONLINE
-        // Usiamo un doppio ascolto: uno per le amicizie e uno per le presenze globali
-        db.collection("presenze").onSnapshot(presSnap => {
-            let utentiOnline = {};
-            presSnap.forEach(doc => {
-                const u = doc.data();
-                // Un utente è considerato online se l'ultimo "battito" è di meno di 60 secondi fa
-                if (u.last > Date.now() - 60000) {
-                    utentiOnline[u.nome] = true;
-                }
-            });
-
-            db.collection("amicizie").onSnapshot(snap => {
-                const div = document.getElementById('lista-amici'); 
-                div.innerHTML = "";
-                let amiciSet = new Set();
-
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    
-                    // Gestione Richieste in arrivo (Box Viola)
-                    if (d.a === mioNome && d.stato === 'pendente') {
-                        div.innerHTML += `<div class="user-item" style="background:#3700b3; color:white;">
-                            <span>🤝 Richiesta Amicizia: ${d.da}</span>
-                            <button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
-                        </div>`;
-                    }
-                    
-					// Gestione Lista Amici
-					let nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
-					if(nomeAmico && d.stato === 'amici') {
-						 amiciSet.add(nomeAmico);
-						 const isSel = amiciSelezionati.has(nomeAmico);
-						 const isOnline = utentiOnline[nomeAmico];
-						 
-						 // Recupera stato dettagliato
-						 const presenzaAmico = presSnap.docs.find(d => d.id === nomeAmico)?.data() || {};
-						 const inPartita = presenzaAmico.inPartita || false;
-						 const disponibile = presenzaAmico.disponibile !== false;
-						 
-						 // Determina colore e testo stato
-						 let statoColor, statoText, statoIcon;
-						 if (!isOnline) {
-							  statoColor = '#555';
-							  statoText = 'Offline';
-							  statoIcon = '⚫';
-						 } else if (!disponibile) {
-							  statoColor = '#e74c3c';
-							  statoText = 'Non disponibile';
-							  statoIcon = '🔴';
-						 } else if (inPartita) {
-							  statoColor = '#f39c12';
-							  statoText = 'In partita';
-							  statoIcon = '🎮';
-						 } else {
-							  statoColor = '#2ecc71';
-							  statoText = 'Disponibile';
-							  statoIcon = '🟢';
-						 }
-
-						 div.innerHTML += `
-							  <div class="user-item ${isSel?'selected':''}" onclick="toggleAmico('${nomeAmico}', this)" style="opacity: ${disponibile && isOnline ? 1 : 0.6};">
-									<div style="display:flex; align-items:center; gap:10px;">
-										 <span style="font-size:1.2rem;">${statoIcon}</span>
-										 <div>
-											  <span style="font-weight:bold;">${nomeAmico}</span>
-											  <div style="font-size:0.7rem; color:${statoColor};">${statoText}</div>
-										 </div>
-									</div>
-									<button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere amico?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
-							  </div>`;
-					}
-                });
-                updateGlobal(amiciSet);
-            });
+    // LISTENER 1: Presenze (si aggiorna ogni 20 secondi quando aggiorni presenza)
+    db.collection("presenze").onSnapshot(presSnap => {
+        // Aggiorna cache presenze
+        presenzeData = {};
+        presSnap.forEach(doc => {
+            const u = doc.data();
+            if (u.last > Date.now() - 60000) {
+                presenzeData[u.nome] = u;
+            }
         });
+        
+        // Se abbiamo già i dati amicizie, aggiorna la vista
+        if (amicizieSnapshot) {
+            aggiornaListaAmici(amicizieSnapshot, presenzeData);
+        }
+        
+        // Aggiorna lista globale
+        aggiornaListaGlobale(presenzeData);
+    });
 
-        // ASCOLTO PARTITE (Resta invariato)
-        db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
+    // LISTENER 2: Amicizie (si aggiorna solo quando aggiungi/rimuovi amici)
+    db.collection("amicizie").onSnapshot(snap => {
+        amicizieSnapshot = snap;
+        aggiornaListaAmici(snap, presenzeData);
+    });
+
+    // LISTENER 3: Partite (invariato)
+    db.collection("partite")
+        .where("partecipanti", "array-contains", mioNome)
+        .onSnapshot(snap => {
             const div = document.getElementById('lista-partite'); 
-            div.innerHTML = `<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'"><span>Allenamento Solo (Ruzzle)</span><button>GIOCA</button></div>`;
+            div.innerHTML = `<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'"><span>🎯 Allenamento Solo</span><button>GIOCA</button></div>`;
+            
             snap.forEach(doc => {
                 const p = doc.data();
                 if(p.stato === "conclusa") return;
+                
                 if(p.stato === "attesa" && p.partecipanti[0] !== mioNome) {
                     div.innerHTML += `<div class="user-item" style="background:#f1c40f; color:black;">
-                        <span>⚔️ SFIDA A ${p.gioco.toUpperCase()} DA ${p.partecipanti[0]}</span>
+                        <span>⚔️ SFIDA DA ${p.partecipanti[0]}</span>
                         <button onclick="window.location.href='${p.gioco}.html?matchId=${doc.id}'">ACCETTA</button>
                     </div>`;
                 } else {
-                    let altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
-                    div.innerHTML += `
-                        <div class="user-item live-match">
-                            <span>vs ${altri} (${p.gioco})</span>
-                            <div>
-                                <button onclick="window.location.href='${p.gioco}.html?matchId=${doc.id}'" style="background:#03dac6; color:#000;">ENTRA</button>
-                                <button onclick="if(confirm('Eliminare partita?')) db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
-                            </div>
-                        </div>`;
-                }
-            });
-        });
-    }
-
-    function updateGlobal(amiciSet) {
-        db.collection("presenze").get().then(snap => {
-            const div = document.getElementById('lista-global'); 
-            div.innerHTML = "";
-            snap.forEach(doc => {
-                const u = doc.data();
-                // Mostra solo utenti diversi da me, non amici, ed entrati di recente (1 ora)
-                if(u.nome !== mioNome && !amiciSet.has(u.nome) && u.last > Date.now() - 3600000) {
-                    div.innerHTML += `<div class="user-item">
-                        <span>${u.nome}</span>
-                        <button onclick="addFriend('${u.nome}')">+AMICO</button>
+                    const altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
+                    div.innerHTML += `<div class="user-item live-match">
+                        <span>vs ${altri} (${p.gioco})</span>
+                        <div>
+                            <button onclick="window.location.href='${p.gioco}.html?matchId=${doc.id}'" style="background:#03dac6; color:#000;">ENTRA</button>
+                            <button onclick="if(confirm('Eliminare?')) db.collection('partite').doc('${doc.id}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+                        </div>
                     </div>`;
                 }
             });
         });
-    }
+}
+// FUNZIONE 1: Aggiorna lista amici
+function aggiornaListaAmici(amicizieSnap, presenzeData) {
+    const div = document.getElementById('lista-amici');
+    div.innerHTML = "";
+    const amiciSet = new Set();
+
+    amicizieSnap.forEach(doc => {
+        const d = doc.data();
+        
+        // Richieste pendenti
+        if (d.a === mioNome && d.stato === 'pendente') {
+            div.innerHTML += `<div class="user-item" style="background:#3700b3; color:white;">
+                <span>🤝 Richiesta da: ${d.da}</span>
+                <button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
+            </div>`;
+            return;
+        }
+        
+        // Lista amici
+        const nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
+        if (!nomeAmico || d.stato !== 'amici') return;
+        
+        amiciSet.add(nomeAmico);
+        
+        const presenza = presenzeData[nomeAmico] || {};
+        const isOnline = !!presenza.nome;
+        const inPartita = presenza.inPartita || false;
+        const disponibile = presenza.disponibile !== false;
+        
+        let statoIcon, statoColor, statoText;
+        if (!isOnline) {
+            statoIcon = '⚫'; statoColor = '#555'; statoText = 'Offline';
+        } else if (!disponibile) {
+            statoIcon = '🔴'; statoColor = '#e74c3c'; statoText = 'Non disponibile';
+        } else if (inPartita) {
+            statoIcon = '🎮'; statoColor = '#f39c12'; statoText = 'In partita';
+        } else {
+            statoIcon = '🟢'; statoColor = '#2ecc71'; statoText = 'Disponibile';
+        }
+
+        const isSel = amiciSelezionati.has(nomeAmico);
+
+        div.innerHTML += `
+            <div class="user-item ${isSel ? 'selected' : ''}" 
+                 onclick="toggleAmico('${nomeAmico}', this)" 
+                 style="opacity: ${disponibile && isOnline ? 1 : 0.6};">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:1.2rem;">${statoIcon}</span>
+                    <div>
+                        <span style="font-weight:bold;">${nomeAmico}</span>
+                        <div style="font-size:0.7rem; color:${statoColor};">${statoText}</div>
+                    </div>
+                </div>
+                <button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
+            </div>`;
+    });
+
+    // Salva per uso in aggiornaListaGlobale
+    window.amiciSetGlobal = amiciSet;
+}
+
+// FUNZIONE 2: Aggiorna lista globale
+function aggiornaListaGlobale(presenzeData) {
+    const div = document.getElementById('lista-global');
+    div.innerHTML = "";
+    const amiciSet = window.amiciSetGlobal || new Set();
+
+    Object.values(presenzeData).forEach(u => {
+        if (u.nome !== mioNome && !amiciSet.has(u.nome) && u.last > Date.now() - 3600000) {
+            div.innerHTML += `<div class="user-item">
+                <span>${u.nome}</span>
+                <button onclick="addFriend('${u.nome}')">+AMICO</button>
+            </div>`;
+        }
+    });
+}
 
     function toggleAmico(nome, el) {
         if(amiciSelezionati.has(nome)) amiciSelezionati.delete(nome); else amiciSelezionati.add(nome);
