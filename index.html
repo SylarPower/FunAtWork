@@ -3,16 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#121212">
+    <meta name="description" content="Portale giochi Fun at Work">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
+    
+    <!-- ✅ PRECONNECT per velocità -->
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    
     <title>Portale FaW</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <style>
+	 /* ✅ Aggiungi all'inizio del blocco <style> */
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile */
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background: #121212; 
+    color: #eee; 
+    padding: 20px; 
+    margin: 0;
+    min-height: 100vh; /* ✅ Evita pagina corta */
+}
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; margin: 0; }
         .container { max-width: 800px; margin: auto; }
         .box { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         h1, h3 { color: #03dac6; margin-top: 0; }
         
-        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 6px; }
         button { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
         
         .user-item { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; margin: 8px 0; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
@@ -25,7 +51,7 @@
         .live-match { border-left: 5px solid #f1c40f; }
         .history-item { font-size: 0.85rem; border-bottom: 1px solid #333; padding: 8px 0; display: flex; justify-content: space-between; }
         
-        #user-display { background: #03dac6; color: #000; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 20px; }
+        #user-display { background: #03dac6; color: #000; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; }
                 
         .game-card { 
             min-width: 100px; padding: 15px; background: #252525; border-radius: 10px; 
@@ -166,36 +192,6 @@
     font-size: 0.7rem;
     color: #03dac6;
     font-weight: bold;
-}
-
-/* Giochi breakdown */
-.games-breakdown {
-    margin-top: 10px;
-    padding: 10px;
-    background: #1a1a1a;
-    border-radius: 8px;
-}
-
-.game-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #333;
-}
-
-.game-row:last-child {
-    border-bottom: none;
-}
-
-.game-name {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.game-count {
-    font-weight: bold;
-    color: #03dac6;
 }
 	 
 	 </style>
@@ -368,21 +364,28 @@
 
 if(mioNome && passwordHashSalvato) {
     window.onload = async () => {
-        // Verifica hash salvato con Firebase
-        const userRef = db.collection("utenti").doc(mioNome);
-        const doc = await userRef.get();
-        
-        if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
-            document.getElementById('login-div').style.display = 'none';
-            document.getElementById('main-app').style.display = 'block';
-            document.getElementById('user-display').textContent = "👤 " + mioNome;
-            aggiornaUIDisponibilita();
-            aggiornaPresenza();
-            setInterval(aggiornaPresenza, 20000);
-            listen();
-            caricaStorico();
-        } else {
-            // Hash non valido, richiedi login
+        try {
+            const userRef = db.collection("utenti").doc(mioNome);
+            const doc = await userRef.get();
+            
+            if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
+                document.getElementById('login-div').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                document.getElementById('user-display').textContent = "👤 " + mioNome;
+                aggiornaUIDisponibilita();
+                aggiornaPresenza();
+                setInterval(aggiornaPresenza, 20000);
+                listen();
+                caricaStorico();
+            } else {
+                // Hash non valido, richiedi login
+                localStorage.removeItem('passwordHash');
+                document.getElementById('login-div').style.display = 'block';
+            }
+        } catch (e) {
+            console.error("Errore auto-login:", e);
+            // Mostra schermata login in caso di errore
+            document.getElementById('login-div').style.display = 'block';
             localStorage.removeItem('passwordHash');
         }
     };
@@ -856,6 +859,12 @@ function calcolaStatistiche() {
 function aggiornaStatsUI() {
     const s = calcolaStatistiche();
     
+    // ✅ Feedback caricamento
+    const statsContent = document.getElementById('stats-content');
+    if (statsContent) {
+        statsContent.style.opacity = '0.5';
+        setTimeout(() => statsContent.style.opacity = '1', 200);
+    }
     // Valori oggi
     const elOggiTotale = document.getElementById('stat-oggi-totale');
     const elOggiRuzzle = document.getElementById('stat-oggi-ruzzle');
