@@ -799,6 +799,8 @@
 	let dizionarioCustomApplicato = false;
 	let unsubscribePartita = null;
 	let unsubscribeProposte = null;
+	let wordDisplayLocked = false;
+
 	     // --- TRIE (struttura veloce per cercare prefissi) ---
     class TrieNode {
         constructor() { this.children = {}; this.isWord = false; }
@@ -1554,12 +1556,17 @@
     
     function isAdjacent(i1, i2) { return getNeighbors(i1).includes(i2); }
     
-    function updateVisuals() {
-        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
-        let txt = ""; const letters = JSON.parse(gridEl.dataset.letters);
-        selectedCells.forEach(idx => { gridEl.children[idx].classList.add('selected'); txt += (letters[idx] === 'Q' ? 'QU' : letters[idx]); });
-        wordDisplay.textContent = txt; drawLine();
-    }
+	function updateVisuals() {
+	    document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
+	    let txt = ""; const letters = JSON.parse(gridEl.dataset.letters);
+	    selectedCells.forEach(idx => { gridEl.children[idx].classList.add('selected'); txt += (letters[idx] === 'Q' ? 'QU' : letters[idx]); });
+	    
+	    // 🔧 FIX: Non sovrascrivere se è bloccato (parola appena trovata)
+	    if (!wordDisplayLocked) {
+	        wordDisplay.textContent = txt;
+	    }
+	    drawLine();
+	}
     function clearSelection() { selectedCells = []; updateVisuals(); lineLayer.innerHTML = ''; wordDisplay.textContent = ""; currentHighlightedWord = null; }
     
     function drawLine() {
@@ -2175,7 +2182,10 @@ function fireConfetti(originElement = null) {
 			 }
 		});
 		document.addEventListener('visibilitychange', () => {
-			 if (document.hidden && isGameActive && !isPaused && !isSandboxMode) togglePause();
+		    // Metti in pausa SOLO in modalità solitario, NON in multiplayer
+		    if (document.hidden && isGameActive && !isPaused && !isSandboxMode && !matchId) {
+		        togglePause();
+		    }
 		});
 
 // --- LOGICA DI GESTIONE FINALE (PULITA E CORRETTA) ---
@@ -2275,7 +2285,7 @@ if (!matchId) {
         if (data.stato === "in_corso") {
             if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
-                if (!isGameActive && !isAnalysisPhase) {
+                if (!isGameActive && !isAnalysisPhase && !isPaused) {
                     gridSize = parseInt(data.opzioni.griglia);
 						// FIX 1: Timer sincronizzato con timestamp server
 							 if (data.timestampInizio) {
@@ -2565,4 +2575,5 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
