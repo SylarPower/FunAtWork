@@ -1666,9 +1666,14 @@
             window.open(`https://www.treccani.it/vocabolario/${word.toLowerCase()}`, '_blank');
             });
             wordDisplay.textContent = `${word} (+${pts})`;
-				wordDisplay.style.background = "#2ecc71";
+			wordDisplay.style.background = "#2ecc71";
         } else { shakeInvalid(); wordDisplay.style.background = "#e74c3c"; }
-        setTimeout(()=>wordDisplay.style.background="#dfe6e9",2000);
+        setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
+		if (!isSandboxMode) {
+    setTimeout(() => {
+        if (!isDragging) wordDisplay.textContent = "";
+    }, 2000);
+}
     }
 
     function calculateScoreWithBonuses(word, cells) {
@@ -2560,3 +2565,4 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
