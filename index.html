@@ -14,11 +14,11 @@
     <title>Portale FaW</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
-    <style>
-	 /* ✅ Aggiungi all'inizio del blocco <style> */
+<style>
+/* ✅ RESET E BASE */
 * {
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile */
+    -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -31,35 +31,192 @@ body {
     color: #eee; 
     padding: 20px; 
     margin: 0;
-    min-height: 100vh; /* ✅ Evita pagina corta */
+    min-height: 100vh;
 }
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; margin: 0; }
-        .container { max-width: 800px; margin: auto; }
-        .box { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
-        h1, h3 { color: #03dac6; margin-top: 0; }
-        
-        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 6px; }
-        button { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        
-        .user-item { display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 12px; margin: 8px 0; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
-        .user-item:hover { border-color: #444; }
-        .user-item.selected { background: #03dac6 !important; color: #000; border-color: white; }
-        
-        .btn-sfida-multi { background: #f1c40f; color: #000; width: 100%; height: 50px; font-size: 1.1rem; margin-bottom: 15px; display: none; }
-        .btn-del { background: #cf6679; color: white; padding: 5px 10px; font-size: 0.8rem; }
-        
-        .live-match { border-left: 5px solid #f1c40f; }
-        .history-item { font-size: 0.85rem; border-bottom: 1px solid #333; padding: 8px 0; display: flex; justify-content: space-between; }
-        
-        #user-display { background: #03dac6; color: #000; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; }
-                
-        .game-card { 
-            min-width: 100px; padding: 15px; background: #252525; border-radius: 10px; 
-            text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.3s;
-        }
-        .game-card.selected { border-color: #03dac6; background: #1a3a3a; opacity: 1 !important; }
-        .modal { 
-    display: none; /* Inizia nascosto */
+
+.container { max-width: 800px; margin: auto; }
+
+.box { 
+    background: #1e1e1e; 
+    padding: 20px; 
+    border-radius: 12px; 
+    margin-bottom: 20px; 
+    border: 1px solid #333; 
+}
+
+h1, h3 { color: #03dac6; margin-top: 0; }
+
+/* ========================================
+   🎮 PULSANTI - STILE RUZZLE (Semplici e Leggeri)
+   ======================================== */
+button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #1e1e1e;
+    color: #eee;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+button:hover {
+    background: #2d2d2d;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+/* Pulsante primario (verde acqua) */
+.btn-primary {
+    background: #03dac6 !important;
+    color: #000 !important;
+    border-color: #018786 !important;
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background: #00c4b0 !important;
+}
+
+/* Pulsante pericolo (rosso) */
+.btn-danger {
+    background: #cf6679 !important;
+    color: white !important;
+    border-color: #b00020 !important;
+}
+
+/* Pulsante secondario (grigio) */
+.btn-secondary {
+    background: #444 !important;
+    color: #eee !important;
+}
+
+/* ========================================
+   📝 INPUT E SELECT
+   ======================================== */
+input, select { 
+    width: 100%; 
+    padding: 12px; 
+    margin: 10px 0; 
+    background: #2c2c2c; 
+    color: white; 
+    border: 1px solid #444; 
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #03dac6;
+}
+
+/* ========================================
+   👤 LISTA UTENTI/AMICI
+   ======================================== */
+.user-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: #252525; 
+    padding: 12px; 
+    margin: 8px 0; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.user-item:hover { 
+    border-color: #444;
+    background: #2a2a2a;
+}
+
+.user-item.selected { 
+    background: #03dac6 !important; 
+    color: #000; 
+    border-color: white; 
+}
+
+/* Pulsante sfida multipla */
+.btn-sfida-multi { 
+    background: #f1c40f !important; 
+    color: #000 !important; 
+    border: none !important;
+    width: 100%; 
+    height: 50px; 
+    font-size: 1.1rem; 
+    margin-bottom: 15px; 
+    display: none;
+    font-weight: bold;
+}
+
+/* Pulsante elimina piccolo */
+.btn-del { 
+    background: #cf6679 !important; 
+    color: white !important; 
+    padding: 5px 10px; 
+    font-size: 0.8rem;
+    border: none !important;
+}
+
+/* ========================================
+   🎮 PARTITE LIVE E STORICO
+   ======================================== */
+.live-match { 
+    border-left: 5px solid #f1c40f; 
+}
+
+.history-item { 
+    font-size: 0.85rem; 
+    border-bottom: 1px solid #333; 
+    padding: 8px 0; 
+    display: flex; 
+    justify-content: space-between; 
+}
+
+/* ========================================
+   👤 USER DISPLAY
+   ======================================== */
+#user-display { 
+    background: #03dac6; 
+    color: #000; 
+    padding: 5px 15px; 
+    border-radius: 20px; 
+    display: inline-block; 
+    font-weight: bold; 
+}
+
+/* ========================================
+   🎮 GAME CARDS
+   ======================================== */
+.game-card { 
+    min-width: 100px; 
+    padding: 15px; 
+    background: #252525; 
+    border-radius: 10px; 
+    text-align: center; 
+    cursor: pointer; 
+    border: 2px solid transparent; 
+    transition: 0.3s;
+}
+
+.game-card:hover {
+    border-color: #444;
+}
+
+.game-card.selected { 
+    border-color: #03dac6; 
+    background: #1a3a3a; 
+}
+
+/* ========================================
+   🎯 MODAL
+   ======================================== */
+.modal { 
+    display: none;
     position: fixed; 
     top: 0; 
     left: 0; 
@@ -70,9 +227,72 @@ body {
     justify-content: center; 
     align-items: center; 
 }
-    .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; border: 2px solid #333; }
-    
-	 /* STATISTICHE HOMEPAGE */
+
+.modal-content { 
+    background: #1e1e1e; 
+    padding: 30px; 
+    border-radius: 15px; 
+    width: 90%; 
+    max-width: 450px; 
+    border: 2px solid #333; 
+}
+
+.modal-content h2 {
+    color: #03dac6;
+    margin-top: 0;
+    text-align: center;
+}
+
+/* ========================================
+   🎮 PULSANTI MODALITÀ GIOCO (Come Ruzzle)
+   ======================================== */
+.mode-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.btn-mode {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 15px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #1e1e1e;
+    color: #eee;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+
+.btn-mode:hover {
+    background: #2d2d2d;
+    border-color: #777;
+}
+
+.btn-mode:active {
+    transform: scale(0.97);
+}
+
+/* Annulla nel modal */
+.btn-cancel {
+    background: none !important;
+    border: none !important;
+    color: #777 !important;
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+.btn-cancel:hover {
+    color: #aaa !important;
+}
+
+/* ========================================
+   📊 STATISTICHE HOMEPAGE
+   ======================================== */
 .stats-tabs {
     display: flex;
     gap: 5px;
@@ -85,7 +305,7 @@ body {
     flex: 1;
     padding: 8px 12px;
     background: #2c2c2c;
-    border: none;
+    border: 1px solid #444;
     border-radius: 6px 6px 0 0;
     color: #888;
     cursor: pointer;
@@ -96,6 +316,7 @@ body {
 .stats-tab.active {
     background: #03dac6;
     color: #000;
+    border-color: #03dac6;
 }
 
 .stats-tab:hover:not(.active) {
@@ -193,8 +414,20 @@ body {
     color: #03dac6;
     font-weight: bold;
 }
-	 
-	 </style>
+
+/* ========================================
+   📱 RESPONSIVE
+   ======================================== */
+@media (max-width: 400px) {
+    .mode-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-mode {
+        width: 100%;
+    }
+}
+</style>
 </head>
 <body>
 
@@ -205,7 +438,7 @@ body {
         <h1>Login dei 🐷</h1>
         <input type="text" id="username" placeholder="IL TUO NOME">
         <input type="password" id="password" placeholder="PASSWORD">
-        <button onclick="entra()" style="background:#03dac6; width:100%; height:50px; color:#000;">ENTRA / REGISTRATI</button>
+        <button onclick="entra()" class="btn-primary" style="width:100%; height:50px; font-size:1rem;">ENTRA / REGISTRATI</button>
     </div>
 
     <!-- DASHBOARD -->
@@ -301,9 +534,9 @@ body {
             </div>
         </div>
 		  <div style="margin-top:20px; text-align:center; border-top:1px solid #333; padding-top:15px;">
-            <button onclick="resetTutteLeStatistiche()" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-size:0.8rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
-                🗑️ Azzera Statistiche
-            </button>
+			<button onclick="resetTutteLeStatistiche()" class="btn-danger" style="font-size:0.8rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+			    🗑️ Azzera Statistiche
+			</button>
         </div>
     </div>
 </div>
@@ -313,34 +546,48 @@ body {
             <div id="lista-storico"></div>
         </div>
         
-        <button onclick="logout()" style="background:#444; width:100%; margin-top:20px;">ESCI (LOGOUT)</button>
+        <button onclick="logout()" class="btn-secondary" style="width:100%; margin-top:20px;">ESCI (LOGOUT)</button>
     </div>
 </div>
 
 <!-- MODALE OPZIONI SFIDA -->
 <div id="modal-sfida-ruzzle" class="modal">
-	<div class="modal-content" style="text-align:center;">
-		 <h2 id="target-name">Nuova Sfida</h2>
-		 <div style="margin-bottom: 20px;">
-			  <label>Durata:</label>
-			  <select id="opt-tempo">
-					<option value="45">45s</option><option value="60" selected>60s</option>
-					<option value="90">90s</option><option value="180">180s</option><option value="300">300s</option>
-			  </select>
-		 </div>
-		 <div style="margin-bottom: 20px;">
-			  <label>Dimensione Griglia:</label>
-			  <select id="opt-griglia"><option value="4" selected>4x4</option><option value="5">5x5</option><option value="6">6x6</option><option value="7">7x7</option><option value="10">10x10</option></select>
-		 </div>
-		 <p>Scegli la modalità per il gruppo:</p>
-		 <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-				<button onclick="creaPartitaMultipla(false, false, false)" style="background:#7f8c8d; flex:1;">CLASSICA</button>
-				<button onclick="creaPartitaMultipla(true, false, false)" style="background:#e67e22; flex:1;">BONUS ⭐</button>
-				<button onclick="creaPartitaMultipla(true, true, false)" style="background:#9b59b6; flex:1;">CRAZY 🤪</button>
-				<button onclick="creaPartitaMultipla(true, true, true)" style="background:#ff00ff; flex:1;">BIATCH 💅</button>
-		 </div>
-		 <button onclick="closeModal()" style="background:none; color:#777; margin-top:15px;">Annulla</button>
-	</div>
+    <div class="modal-content">
+        <h2 id="target-name">⚔️ Nuova Sfida</h2>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="font-size:0.9rem; color:#888;">Durata:</label>
+            <select id="opt-tempo">
+                <option value="45">45s (Fulmine)</option>
+                <option value="60" selected>60s (Blitz)</option>
+                <option value="90">90s</option>
+                <option value="180">180s (Standard)</option>
+                <option value="300">300s (Relax)</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="font-size:0.9rem; color:#888;">Dimensione Griglia:</label>
+            <select id="opt-griglia">
+                <option value="4">4x4 (Easy)</option>
+                <option value="5" selected>5x5 (Classica)</option>
+                <option value="6">6x6 (Intermedia)</option>
+                <option value="7">7x7 (Grande)</option>
+                <option value="10">10x10 (Estrema!)</option>
+            </select>
+        </div>
+        
+        <p style="margin-bottom:10px; color:#888; font-size:0.9rem;">Scegli la modalità:</p>
+        
+        <div class="mode-buttons">
+            <button class="btn-mode" onclick="creaPartitaMultipla(false, false, false)">CLASSICA</button>
+            <button class="btn-mode" onclick="creaPartitaMultipla(true, false, false)">BONUS ⭐</button>
+            <button class="btn-mode" onclick="creaPartitaMultipla(true, true, false)">CRAZY 🤪</button>
+            <button class="btn-mode" onclick="creaPartitaMultipla(true, true, true)">BIATCH 💅</button>
+        </div>
+        
+        <button class="btn-cancel" onclick="closeModal()">Annulla</button>
+    </div>
 </div>
 
 <script>
@@ -984,3 +1231,4 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
