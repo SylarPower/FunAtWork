@@ -930,88 +930,89 @@
     const modalGridSelect = document.getElementById('modal-grid-select'); 
 	 const gameEndModal = document.getElementById('game-end-modal');
     // --- INIT ---
-    async function loadDictionary() {
+async function loadDictionary() {
+    console.log("🔄 Inizio caricamento dizionario...");
+    
+    try {
+        const urls = [
+            'https://raw.githubusercontent.com/napolux/paroleitaliane/refs/heads/main/paroleitaliane/280000_parole_italiane.txt',
+            'https://raw.githubusercontent.com/napolux/paroleitaliane/refs/heads/main/paroleitaliane/9000_nomi_propri.txt'
+        ];
+
+        console.log("📡 Download file dizionari...");
+        const responses = await Promise.all(
+            urls.filter(u => u).map(u => fetch(u))
+        );
+
+        console.log("📄 Conversione testi...");
+        const texts = await Promise.all(responses.map(r => r.text()));
+
+        const addWordsToDictionary = (textData) => {
+            textData.split('\n').forEach(w => {
+                const clean = w.trim().toUpperCase()
+                               .normalize('NFD')
+                               .replace(/[\u0300-\u036f]/g, "")
+                               .replace(/[^A-Z]/g, "");
+                if (clean.length >= MIN_WORD_LENGTH && !EXCLUDED_WORDS.includes(clean)) {
+                    dictionary.add(clean);
+                }
+            });
+        };
+
+        texts.forEach(t => addWordsToDictionary(t));
+        EXTRA_WORDS.forEach(w => dictionary.add(w));
+        
+        console.log("🔥 Caricamento dizionario Firebase...");
         try {
-            // 1. LISTA DEGLI URL
-            const urls = [
-                'https://raw.githubusercontent.com/napolux/paroleitaliane/refs/heads/main/paroleitaliane/280000_parole_italiane.txt',
-                'https://raw.githubusercontent.com/napolux/paroleitaliane/refs/heads/main/paroleitaliane/9000_nomi_propri.txt'
-            ];
-
-            // 2. FILTRA E SCARICA
-            // .filter(u => u) rimuove le stringhe vuote automaticamente
-            const responses = await Promise.all(
-                urls.filter(u => u).map(u => fetch(u))
-            );
-
-            // 3. CONVERTI I TESTI
-            const texts = await Promise.all(responses.map(r => r.text()));
-
-            // 4. FUNZIONE DI PULIZIA
-            const addWordsToDictionary = (textData) => {
-                textData.split('\n').forEach(w => {
-                    const clean = w.trim().toUpperCase()
-                                   .normalize('NFD')
-                                   .replace(/[\u0300-\u036f]/g, "")
-                                   .replace(/[^A-Z]/g, "");
-                    if (clean.length >= MIN_WORD_LENGTH && !EXCLUDED_WORDS.includes(clean)) {
-                        dictionary.add(clean);}
-                });
-            };
-
-            // 5. AGGIUNGI TUTTO AL DIZIONARIO
-            texts.forEach(t => addWordsToDictionary(t));
-
-            // Aggiunge le parole extra manuali
-            EXTRA_WORDS.forEach(w => dictionary.add(w));
-            // Costruisce il Trie per ricerche veloci
-            try {
-    const globalDoc = await db.collection("config").doc("dizionario").get();
-    if (globalDoc.exists) {
-        const data = globalDoc.data();
-        if (data.extra) {
-            data.extra.forEach(w => {
-                if (w && !EXTRA_WORDS.includes(w)) {
-                    EXTRA_WORDS.push(w);
-                    dictionary.add(w);
+            const globalDoc = await db.collection("config").doc("dizionario").get();
+            if (globalDoc.exists) {
+                const data = globalDoc.data();
+                if (data.extra) {
+                    data.extra.forEach(w => {
+                        if (w && !EXTRA_WORDS.includes(w)) {
+                            EXTRA_WORDS.push(w);
+                            dictionary.add(w);
+                        }
+                    });
                 }
-            });
-        }
-        if (data.excluded) {
-            data.excluded.forEach(w => {
-                if (w && !EXCLUDED_WORDS.includes(w)) {
-                    EXCLUDED_WORDS.push(w);
-                    dictionary.delete(w);
+                if (data.excluded) {
+                    data.excluded.forEach(w => {
+                        if (w && !EXCLUDED_WORDS.includes(w)) {
+                            EXCLUDED_WORDS.push(w);
+                            dictionary.delete(w);
+                        }
+                    });
                 }
-            });
-        }
-		  if (DEBUG_MODE) console.log("Dizionario permanente caricato.");
-    }
-} catch (e) { 
-    console.error("Errore caricamento dizionario globale:", e); 
-}
-buildTrie();
-dictionaryReady = true;		
-            
-            // Aggiorna la UI
-            loadingMsg.style.display = 'none';
-            if (DEBUG_MODE) console.log(`Dizionario caricato: ${dictionary.size} parole totali.`);
-            // Gestione URL param code
-            const urlParams = new URLSearchParams(window.location.search);
-            const codeParam = urlParams.get('code');
-            
-            if(codeParam) {
-                initGame(codeParam);
-            } else {
-                gridEl.innerHTML = '';
-                displaySeed.textContent = "----";
+                console.log("✅ Dizionario Firebase caricato");
             }
-            
-        } catch (error) { 
-            console.error(error);
-            loadingMsg.innerHTML = "Errore caricamento dizionari.<br>Controlla i link o la connessione."; 
+        } catch (e) { 
+            console.error("⚠️ Errore Firebase (non bloccante):", e); 
         }
+        
+        console.log("🌳 Costruzione Trie...");
+        buildTrie();
+        dictionaryReady = true;
+        
+        loadingMsg.style.display = 'none';
+        console.log(`✅ DIZIONARIO PRONTO: ${dictionary.size} parole`);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeParam = urlParams.get('code');
+        
+        if(codeParam) {
+            console.log("🎮 Avvio partita con codice:", codeParam);
+            initGame(codeParam);
+        } else {
+            console.log("🏠 Nessun codice - Schermata home");
+            gridEl.innerHTML = '';
+            displaySeed.textContent = "----";
+        }
+        
+    } catch (error) { 
+        console.error("❌ ERRORE FATALE:", error);
+        loadingMsg.innerHTML = "Errore caricamento dizionari.<br>Controlla i link o la connessione."; 
     }
+}
 
     // --- CORE GAME LOGIC ---
     function startNewGame() { newGameModal.style.display = 'flex'; }
@@ -2885,5 +2886,6 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
