@@ -2191,8 +2191,9 @@ function fireConfetti(originElement = null) {
 
 // --- LOGICA DI GESTIONE FINALE (PULITA E CORRETTA) ---
 
-if (!mioNome) {
-    alert("Effettua il login in Dashboard.");
+// Richiedi login SOLO in multiplayer
+if (!mioNome && matchId) {
+    alert("Effettua il login per giocare in multiplayer.");
     window.location.href = "index.html";
 }
 async function caricaDizionarioPermanente() {
@@ -2568,3 +2569,4 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
