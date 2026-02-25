@@ -81,7 +81,7 @@
 		
 		@keyframes urgentPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); color: red; } }
 		@keyframes pulseGreen { 0% { background: var(--tile-valid); } 100% { background: var(--tile-bg); } }
-      @keyframes shakeRed { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); background: var(--accent); } 75% { transform: translateX(5px); } }
+       @keyframes shakeRed { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); background: var(--accent); } 75% { transform: translateX(5px); } }
 		@keyframes pulseBtn {
 			0%, 100% { transform: scale(1); }
 			50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(231, 76, 60, 0.8); }
@@ -90,6 +90,10 @@
 			0% { transform: scale(0); opacity: 0; }
 			60% { transform: scale(1.1); opacity: 1; }
 			100% { transform: scale(1); }
+		}
+		@keyframes slideDown {
+		    from { transform: translateY(-100%); }
+		    to { transform: translateY(0); }
 		}
         body.mega-win-effect {
             animation: earthquake 0.5s infinite, disco-flash 0.5s infinite;
@@ -358,7 +362,12 @@
             z-index: 50; color: var(--text-main); font-size: 2rem; font-weight: bold; letter-spacing: 2px;
             flex-direction: column; gap: 10px;
         }
-
+#wait-banner {
+    animation: slideDown 0.3s ease;
+}
+		#wait-banner button:active {
+    transform: scale(0.95) !important;
+}
         #btn-via {
             width: 100px; height: 100px; border-radius: 50%; background: #e74c3c; border: 4px solid white;
             color: white; font-size: 1.8rem; font-weight: bold; cursor: pointer;
@@ -2413,55 +2422,75 @@ if (!matchId) {
 					document.getElementById('possible-count').parentElement.style.visibility = 'visible';
 					calculatePossibleWordsCount();
                 }
-					} else {
-						 // 🔧 FIX: Non coprire tutto, mostra un banner in alto
-						 if (finito.length < data.partecipanti.length) {
-							  // Nascondi overlay grande
-							  overlay.style.display = 'none';
-							  
-							  // Mostra/aggiorna banner di attesa
-							  let waitBanner = document.getElementById('wait-banner');
-							  if (!waitBanner) {
-									waitBanner = document.createElement('div');
-									waitBanner.id = 'wait-banner';
-									waitBanner.style = `
-										 position: fixed;
-										 top: 0;
-										 left: 0;
-										 right: 0;
-										 background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-										 color: #000;
-										 padding: 15px;
-										 text-align: center;
-										 font-weight: bold;
-										 z-index: 9999;
-										 box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-									`;
-									document.body.appendChild(waitBanner);
-							  }
-							  waitBanner.innerHTML = `
-									⏳ ATTESA COLLEGHI... (${finito.length}/${data.partecipanti.length}) 
-									<span style="opacity:0.7; margin-left:10px;">Esplora la griglia nel frattempo!</span>
-							  `;
-							  
-							  // Attiva modalità esplorazione
-							  if (!isAnalysisPhase) {
-									isAnalysisPhase = true;
-									isGameActive = true;
-									isSandboxMode = true;
-									document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-									sortControls.style.display = "flex";
-									btnMissed.style.display = "block";
-									analysisMsg.style.display = "block";
-							  }
-						 } else {
-							  // Tutti hanno finito, rimuovi banner e vai alla verifica
-							  const waitBanner = document.getElementById('wait-banner');
-							  if (waitBanner) waitBanner.remove();
-							  
-							  db.collection("partite").doc(matchId).update({ stato: "verifica" });
-						 }
-					}
+} else {
+    // Ho finito il mio tempo
+    if (finito.length < data.partecipanti.length) {
+        // Nascondi overlay grande - posso continuare a esplorare
+        overlay.style.display = 'none';
+        
+        // ✅ NUOVO: Banner con pulsante VEDI RISULTATI
+        let waitBanner = document.getElementById('wait-banner');
+        if (!waitBanner) {
+            waitBanner = document.createElement('div');
+            waitBanner.id = 'wait-banner';
+            waitBanner.style = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                color: white;
+                padding: 12px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                z-index: 9999;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(waitBanner);
+        }
+        
+        waitBanner.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.5rem;">⏳</span>
+                <div>
+                    <div style="font-weight:bold;">ATTESA COLLEGHI (${finito.length}/${data.partecipanti.length})</div>
+                    <div style="font-size:0.8rem; opacity:0.8;">Esplora la griglia nel frattempo!</div>
+                </div>
+            </div>
+            <button onclick="mostraLobbyTemporanea()" style="
+                background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 25px;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+                transition: transform 0.2s;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                👀 VEDI RISULTATI
+            </button>
+        `;
+        
+        // Attiva modalità esplorazione
+        if (!isAnalysisPhase) {
+            isAnalysisPhase = true;
+            isGameActive = true;
+            isSandboxMode = true;
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+            sortControls.style.display = "flex";
+            btnMissed.style.display = "block";
+            analysisMsg.style.display = "block";
+        }
+    } else {
+        // Tutti hanno finito, rimuovi banner e vai alla verifica
+        const waitBanner = document.getElementById('wait-banner');
+        if (waitBanner) waitBanner.remove();
+        
+        db.collection("partite").doc(matchId).update({ stato: "verifica" });
+    }
+}
             const altri = data.partecipanti.filter(n => n !== mioNome);
             let scoresHtml = "";
             altri.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
@@ -2494,8 +2523,8 @@ if (!matchId) {
             
 			// TASTO RIVINCITA: apre modal per scegliere modalità
 			actionDiv.innerHTML = `
-				 <button onclick="apriModalRivincita()" style="padding:15px 30px; background:#03dac6; color:black; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-bottom:10px;">RIVINCITA 🔄</button>
-				 <button onclick="tornaHome()" class="btn-ready" style="background:#3498db; width:100%;">HOME</button>`;
+			    <button onclick="apriModalRivincita()" class="btn-fancy" style="width:100%; margin-bottom:15px;">🔄 RIVINCITA</button>
+			    <button onclick="tornaHome()" class="btn-fancy" style="width:100%; background:linear-gradient(135deg, #3498db 0%, #2c3e50 100%); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);">🏠 HOME</button>`;
             if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
@@ -2744,7 +2773,40 @@ function apriModalRivincita() {
     newGameModal.style.display = 'flex';
 }
 
-// ✅ FUNZIONA SEMPRE
+// ✅ NUOVA FUNZIONE: Mostra lobby senza bloccare il gioco
+function mostraLobbyTemporanea() {
+    const lobby = document.getElementById('multiplayer-lobby');
+    lobby.style.display = 'flex';
+    
+    // Aggiungi pulsante per tornare alla griglia
+    const actionDiv = document.getElementById('lobby-action');
+    
+    // Controlla se il pulsante esiste già
+    if (!document.getElementById('btn-torna-griglia')) {
+        const btnTorna = document.createElement('button');
+        btnTorna.id = 'btn-torna-griglia';
+        btnTorna.innerHTML = '🎮 TORNA ALLA GRIGLIA';
+        btnTorna.style = `
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
+            transition: all 0.3s ease;
+        `;
+        btnTorna.onmouseover = () => btnTorna.style.transform = 'scale(1.05)';
+        btnTorna.onmouseout = () => btnTorna.style.transform = 'scale(1)';
+        btnTorna.onclick = () => {
+            lobby.style.display = 'none';
+        };
+        actionDiv.appendChild(btnTorna);
+    }
+}
 function setupHomeButtonCleanup() {
     // Intercetta TUTTI i link verso index.html
     document.addEventListener('click', (e) => {
@@ -2772,5 +2834,6 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
