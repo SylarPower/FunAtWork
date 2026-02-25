@@ -6,7 +6,6 @@
     <title>Ruzzle dei 🐷</title>
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-check-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
@@ -838,31 +837,6 @@
         appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
     };
 	firebase.initializeApp(firebaseConfig);
-	// ========================================
-	// 🛡️ APP CHECK CONFIGURAZIONE
-	// ========================================
-	
-	// Self-hosted App Check Provider (necessario per compat mode)
-	const appCheck = firebase.appCheck();
-	
-	// Configurazione per PRODUZIONE
-	if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-	    appCheck.activate(
-	        '6LcS5HcsAAAAAKeVIJoJaQDhd_RVVOTJD_7f9kwb', // ⚠️ SOSTITUISCI con la TUA Site Key
-	        true // Auto-refresh del token
-	    );
-	    console.log('🛡️ App Check attivato (PRODUZIONE)');
-	} else {
-	    // Configurazione per LOCALHOST (sviluppo)
-	    // ⚠️ INSERISCI QUI IL DEBUG TOKEN che hai copiato dalla console
-	    self.FIREBASE_APPCHECK_DEBUG_TOKEN = 'B7B9013A-7C23-4B83-9AFF-FBCE9CAA7C31';
-	    
-	    appCheck.activate(
-	        '6LcS5HcsAAAAAKeVIJoJaQDhd_RVVOTJD_7f9kwb', // Stessa Site Key
-	        true
-	    );
-	    console.log('🛡️ App Check attivato (DEBUG MODE)');
-	}
 	const db = firebase.firestore();
 	
 	const DEBUG_MODE = false;
@@ -3396,4 +3370,5 @@ if (document.readyState === 'loading') {
 </div>
 </body>
 </html>
+
 
