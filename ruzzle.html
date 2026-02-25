@@ -452,35 +452,53 @@
 			  transform: scale(1.05);
 			  background: #ecf0f1;
 		 }
-		 .btn-fancy {
-    background: linear-gradient(135deg, #03dac6 0%, #018786 100%);
-    color: #000;
-    padding: 20px 50px;
-    font-size: 1.3rem;
-    font-weight: 900;
-    border: none;
-    border-radius: 50px;
-    cursor: pointer;
-    box-shadow: 0 8px 25px rgba(3, 218, 198, 0.4);
-    animation: pulse-ready 1.5s infinite;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    transition: all 0.3s ease;
-}
+		.btn-fancy {
+		    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		    color: white;
+		    border: none;
+		    padding: 15px 40px;
+		    border-radius: 50px;
+		    font-weight: 900;
+		    font-size: 1.1rem;
+		    cursor: pointer;
+		    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+		    transition: all 0.3s ease;
+		    text-transform: uppercase;
+		    letter-spacing: 1px;
+		}
+		
+		.btn-fancy:hover {
+		    transform: translateY(-3px);
+		    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+		}
+		
+		.btn-fancy:active {
+		    transform: translateY(0);
+		}
+		
+		.btn-fancy.gold {
+		    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+		    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+		}
 
-.btn-fancy:hover {
-    transform: scale(1.08);
-    box-shadow: 0 15px 40px rgba(3, 218, 198, 0.7);
-}
+		.btn-fancy.gold:hover {
+		    box-shadow: 0 15px 40px rgba(241, 196, 15, 0.7);
+		} 
 
-.btn-fancy.gold {
-    background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%);
-    box-shadow: 0 8px 25px rgba(241, 196, 15, 0.4);
-}
-
-.btn-fancy.gold:hover {
-    box-shadow: 0 15px 40px rgba(241, 196, 15, 0.7);
-} 
+		.header-bar button {
+		    background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%) !important;
+		    padding: 10px 20px !important;
+		    border-radius: 25px !important;
+		    font-weight: 700 !important;
+		    font-size: 0.9rem !important;
+		    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+		    transition: all 0.3s ease !important;
+		}
+		
+		.header-bar button:hover {
+		    transform: translateY(-2px);
+		    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5) !important;
+		}
         /* Aggiungi un sottotitolo all'achievement nel JS se vuoi, o usa quello esistente */
         #ach-text { text-shadow: 2px 2px 0px rgba(0,0,0,0.2); }
 
@@ -1621,21 +1639,24 @@ dictionaryReady = true;
 	}
 	 
 	const endDrag = () => { 
-    if(isDragging) { 
-        isDragging = false; 
-        try { 
-            validateWord(); 
-        } catch(e) {
-            console.error("Errore validateWord:", e);
-            forceResetInputState();
-        }
-        if(!isSandboxMode && !wordDisplayLocked) {
-            setTimeout(() => {
-                if (!wordDisplayLocked) clearSelection();
-            }, 300);
-        }
-    } 
-};
+	    if (!isDragging) return; // ✅ Evita doppie chiamate
+	    
+	    isDragging = false;
+	    
+	    // ✅ Salva selectedCells PRIMA di qualsiasi operazione asincrona
+	    const cellsSnapshot = [...selectedCells];
+	    const wordSnapshot = wordDisplay.textContent;
+	    
+	    if (cellsSnapshot.length >= MIN_WORD_LENGTH && wordSnapshot.length >= MIN_WORD_LENGTH) {
+	        validateWord();
+	    }
+	    
+	    if (!isSandboxMode && !wordDisplayLocked) {
+	        setTimeout(() => {
+	            if (!wordDisplayLocked) clearSelection();
+	        }, 300);
+	    }
+	};
 
     function selectTile(i) { selectedCells = [i]; updateVisuals(); }
     function attemptSelection(i) {
@@ -1741,11 +1762,14 @@ dictionaryReady = true;
         }, 5000);
     }
     function validateWord() {
-        if (!trieRoot || dictionary.size === 0) {
-	        console.warn("Dizionario non ancora pronto");
-	        return;
-	    }
 		const word = wordDisplay.textContent;
+		if (!word || word.length === 0) {
+			return;
+		}
+		if (errorTimeout) {
+			clearTimeout(errorTimeout);
+			errorTimeout = null;
+		}
         if (isSandboxMode) {
             if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
                 // Calcola punti (solo per visualizzazione)
@@ -1763,12 +1787,15 @@ dictionaryReady = true;
 
         if (word.length < MIN_WORD_LENGTH) { shakeInvalid(); return; }
         if (foundWords.has(word)) { wordDisplay.style.background = "#f1c40f"; setTimeout(()=>wordDisplay.style.background="#dfe6e9",400); return; }
-
+	    if (selectedCells.length === 0) {
+	        console.warn("selectedCells vuoto durante validateWord");
+	        return;
+	    }
         if (dictionary.has(word)) {
             const pts = calculateScoreWithBonuses(word, selectedCells);
             const originalPath = selectedCells.map(vIdx => getOriginalIndexFromVisual(vIdx, rotationIndex));
             foundWords.set(word, { points: pts, active: true, index: ++wordCounter, path: originalPath });
-            
+
             if (pts >= 10) fireConfetti();
 				if (word === "BUSET") {
                 triggerBusetExplosion();
@@ -1789,6 +1816,8 @@ dictionaryReady = true;
 		    
 		    setTimeout(() => {
 		        document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
+		        lineLayer.innerHTML = ''; // ✅ PULISCI LA LINEA
+		        selectedCells = []; // ✅ RESET ARRAY
 		    }, 500);
             wordCountDisplay.textContent = foundWords.size;
             
@@ -2344,7 +2373,6 @@ if (!matchId) {
         const data = doc.data();
         if(!data) { window.location.href = "index.html"; return; }
         
-        // AGGIORNA DATI GLOBALI
         currentGameData = data;
     
 	// FIX 3: APPLICA DIZIONARIO CUSTOM (con versioning)
@@ -2390,7 +2418,8 @@ if (!matchId) {
         <div style="font-size:1.5rem; margin-bottom:10px;">⏳</div>
         <p style="margin:0; font-weight:bold;">In attesa dei colleghi...</p>
     </div>`;
-            actionDiv.innerHTML += `<br><button onclick="window.location.href='index.html'" style="background:none; color:#777; border:none; margin-top:20px; cursor:pointer; text-decoration:underline;">Annulla ed esci</button>`;
+            // Nella sezione "attesa"
+actionDiv.innerHTML += `<br><button onclick="annullaPartita()" style="background:#e74c3c; color:white; border:none; padding:10px 20px; margin-top:20px; cursor:pointer; border-radius:5px; font-weight:bold;">🚫 ANNULLA E CANCELLA PARTITA</button>`;
             
 			if (pronti.length >= data.partecipanti.length) {
 			    db.collection("partite").doc(matchId).update({ 
@@ -2401,7 +2430,18 @@ if (!matchId) {
 
         // 2. IN CORSO
         if (data.stato === "in_corso") {
-            if (!finito.includes(mioNome)) {
+		    const altri = data.partecipanti.filter(n => n !== mioNome);
+		    let scoresHtml = "";
+		    altri.forEach(a => {
+		        const punteggio = data.punteggi && data.punteggi[a] ? data.punteggi[a] : 0;
+		        scoresHtml += `<span style="margin:0 5px;">🆚 ${a}: <strong>${punteggio}</strong></span>`;
+		    });
+		    const scoreEl = document.getElementById('live-opponent-score');
+		    if (scoreEl) {
+		        scoreEl.innerHTML = scoresHtml;
+		        scoreEl.style.display = 'block';
+		    }
+			if (!finito.includes(mioNome)) {
                 overlay.style.display = 'none';
                 if (!isGameActive && !isAnalysisPhase && !isPaused) {
                     gridSize = parseInt(data.opzioni.griglia);
@@ -2523,8 +2563,8 @@ if (!matchId) {
             
 			// TASTO RIVINCITA: apre modal per scegliere modalità
 			actionDiv.innerHTML = `
-			    <button onclick="apriModalRivincita()" class="btn-fancy" style="width:100%; margin-bottom:15px;">🔄 RIVINCITA</button>
-			    <button onclick="tornaHome()" class="btn-fancy" style="width:100%; background:linear-gradient(135deg, #3498db 0%, #2c3e50 100%); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);">🏠 HOME</button>`;
+			    <button onclick="apriModalRivincita()" class="btn-fancy">🔄 RIVINCITA</button>
+			    <button onclick="tornaHome()" class="btn-fancy" style="background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%); padding:10px 20px; font-size:0.9rem;">🏠 HOME</button>`;
             if(classifica[0][0] === mioNome) { fireConfetti(); startEndGameCelebration(); }
         }
     });
@@ -2825,6 +2865,18 @@ function setupHomeButtonCleanup() {
     }, true); // Capture phase per intercettare prima
 }
 
+	async function annullaPartita() {
+    if (!confirm("Sicuro di voler CANCELLARE la partita per tutti?")) return;
+    
+    try {
+        await db.collection("partite").doc(matchId).delete();
+        alert("Partita cancellata per tutti!");
+        window.location.href = "index.html";
+    } catch (e) {
+        console.error("Errore cancellazione:", e);
+        alert("Errore durante la cancellazione");
+    }
+}
 // Chiamalo dopo che il DOM esiste (puoi metterlo DOPO loadDictionary)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupHomeButtonCleanup);
@@ -2834,6 +2886,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
-
-
