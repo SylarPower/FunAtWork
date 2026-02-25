@@ -69,6 +69,21 @@
             100% { background-color: #3498db; }
         }
 
+		@keyframes pulse-ready {
+			 0%, 100% { 
+				  transform: scale(1); 
+				  box-shadow: 0 8px 25px rgba(3, 218, 198, 0.4);
+			 }
+			 50% { 
+				  transform: scale(1.05); 
+				  box-shadow: 0 12px 35px rgba(3, 218, 198, 0.6);
+			 }
+		}
+
+		.btn-ready:hover {
+			 transform: scale(1.1) !important;
+			 box-shadow: 0 15px 40px rgba(3, 218, 198, 0.7) !important;
+		}
         body.mega-win-effect {
             animation: earthquake 0.5s infinite, disco-flash 0.5s infinite;
         }
@@ -443,7 +458,35 @@
 			  transform: scale(1.05);
 			  background: #ecf0f1;
 		 }
-		  
+		 .btn-fancy {
+    background: linear-gradient(135deg, #03dac6 0%, #018786 100%);
+    color: #000;
+    padding: 20px 50px;
+    font-size: 1.3rem;
+    font-weight: 900;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(3, 218, 198, 0.4);
+    animation: pulse-ready 1.5s infinite;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+}
+
+.btn-fancy:hover {
+    transform: scale(1.08);
+    box-shadow: 0 15px 40px rgba(3, 218, 198, 0.7);
+}
+
+.btn-fancy.gold {
+    background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%);
+    box-shadow: 0 8px 25px rgba(241, 196, 15, 0.4);
+}
+
+.btn-fancy.gold:hover {
+    box-shadow: 0 15px 40px rgba(241, 196, 15, 0.7);
+} 
         /* Aggiungi un sottotitolo all'achievement nel JS se vuoi, o usa quello esistente */
         #ach-text { text-shadow: 2px 2px 0px rgba(0,0,0,0.2); }
 
@@ -1246,15 +1289,24 @@ buildTrie();
                 tile.appendChild(badge);
             }
             
-            const startHandler = (e) => {
-					if(errorTimeout){
-					clearTimeout(errorTimeout);
-					errorTimeout=null;
-					wordDisplay.style.background="#dfe6e9";
-					document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-invalid'));
-					clearSelection();
-					}
-                if(!isGameActive) return;
+				const startHandler = (e) => {
+					 // Reset forzato di tutti i blocchi
+					 if(errorTimeout){
+						  clearTimeout(errorTimeout);
+						  errorTimeout = null;
+					 }
+					 if(isRotating) return; // Blocca durante rotazione
+					 
+					 wordDisplay.style.background = "#dfe6e9";
+					 document.querySelectorAll('.tile').forEach(t => {
+						  t.classList.remove('anim-invalid');
+						  t.classList.remove('anim-valid');
+					 });
+					 
+					 // Sblocca wordDisplay se era bloccato da troppo tempo
+					 wordDisplayLocked = false;
+					 
+					 if(!isGameActive) return;
                 if (inputMode === 'drag') { e.preventDefault(); isDragging = true; selectTile(i); }
                 else handleClickMode(i);
             };
@@ -1559,7 +1611,18 @@ buildTrie();
     document.addEventListener('mousemove', (e) => { if (inputMode==='drag' && isDragging) moveListener(e.clientX, e.clientY); });
     document.addEventListener('touchmove', (e) => { if (inputMode==='drag' && isDragging) { e.preventDefault(); moveListener(e.touches[0].clientX, e.touches[0].clientY); } }, {passive:false});
     document.addEventListener('mouseup', () => endDrag()); document.addEventListener('touchend', () => endDrag());
-    const endDrag = () => { if(isDragging) { isDragging = false; try { validateWord(); } catch(e){} if(!isSandboxMode) clearSelection(); } };
+    const endDrag = () => { 
+    if(isDragging) { 
+        isDragging = false; 
+        try { 
+            validateWord(); 
+        } catch(e) {
+            console.error("Errore validateWord:", e);
+            forceResetInputState();
+        }
+        if(!isSandboxMode && !wordDisplayLocked) clearSelection(); 
+    } 
+};
 
     function selectTile(i) { selectedCells = [i]; updateVisuals(); }
     function attemptSelection(i) {
@@ -2300,7 +2363,11 @@ if (!matchId) {
             overlay.style.display = 'flex';
             statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
             actionDiv.innerHTML = !pronti.includes(mioNome) ? 
-                `<button onclick="setProntoOnline()" class="btn-ready">AVVIA SFIDA! 🚀</button>` : `<p>In attesa dei colleghi...</p>`;
+    `<button onclick="setProntoOnline()" class="btn-fancy">🚀 AVVIA SFIDA!</button>` 
+    : `<div style="background:rgba(3,218,198,0.1); padding:20px 40px; border-radius:15px; border:2px dashed #03dac6;">
+        <div style="font-size:1.5rem; margin-bottom:10px;">⏳</div>
+        <p style="margin:0; font-weight:bold;">In attesa dei colleghi...</p>
+    </div>`;
             actionDiv.innerHTML += `<br><button onclick="window.location.href='index.html'" style="background:none; color:#777; border:none; margin-top:20px; cursor:pointer; text-decoration:underline;">Annulla ed esci</button>`;
             
             if (pronti.length >= data.partecipanti.length) {
@@ -2340,15 +2407,55 @@ if (!matchId) {
 						  document.getElementById('possible-count').parentElement.style.visibility = 'visible';
 						  calculatePossibleWordsCount();
                 }
-            } else {
-                overlay.style.display = 'flex';
-                if (finito.length < data.partecipanti.length) {
-                    document.getElementById('lobby-title').textContent = "ATTESA COLLEGHI...";
-                    statusDiv.innerHTML = `<div style="font-size:3rem; margin:20px;">${finito.length} / ${data.partecipanti.length}</div><p>Hanno terminato. Aspettiamo gli altri...</p>`;
-                } else {
-                    db.collection("partite").doc(matchId).update({ stato: "verifica" });
-                }
-            }
+					} else {
+						 // 🔧 FIX: Non coprire tutto, mostra un banner in alto
+						 if (finito.length < data.partecipanti.length) {
+							  // Nascondi overlay grande
+							  overlay.style.display = 'none';
+							  
+							  // Mostra/aggiorna banner di attesa
+							  let waitBanner = document.getElementById('wait-banner');
+							  if (!waitBanner) {
+									waitBanner = document.createElement('div');
+									waitBanner.id = 'wait-banner';
+									waitBanner.style = `
+										 position: fixed;
+										 top: 0;
+										 left: 0;
+										 right: 0;
+										 background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+										 color: #000;
+										 padding: 15px;
+										 text-align: center;
+										 font-weight: bold;
+										 z-index: 9999;
+										 box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+									`;
+									document.body.appendChild(waitBanner);
+							  }
+							  waitBanner.innerHTML = `
+									⏳ ATTESA COLLEGHI... (${finito.length}/${data.partecipanti.length}) 
+									<span style="opacity:0.7; margin-left:10px;">Esplora la griglia nel frattempo!</span>
+							  `;
+							  
+							  // Attiva modalità esplorazione
+							  if (!isAnalysisPhase) {
+									isAnalysisPhase = true;
+									isGameActive = true;
+									isSandboxMode = true;
+									document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+									sortControls.style.display = "flex";
+									btnMissed.style.display = "block";
+									analysisMsg.style.display = "block";
+							  }
+						 } else {
+							  // Tutti hanno finito, rimuovi banner e vai alla verifica
+							  const waitBanner = document.getElementById('wait-banner');
+							  if (waitBanner) waitBanner.remove();
+							  
+							  db.collection("partite").doc(matchId).update({ stato: "verifica" });
+						 }
+					}
             const altri = data.partecipanti.filter(n => n !== mioNome);
             let scoresHtml = "";
             altri.forEach(a => scoresHtml += ` 🆚 ${a}: ${data.punteggi[a] || 0} `);
@@ -2362,7 +2469,8 @@ if (!matchId) {
             const conf = data.confermaVerifica || [];
             statusDiv.innerHTML = `<div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>`;
             actionDiv.innerHTML = !conf.includes(mioNome) ? 
-                `<button onclick="confermaVerificaOnline()" class="btn-ready" style="background:#f1c40f;">VEDI CHI HA VINTO 🏁</button>` : `<p>Attendo gli altri...</p>`;
+    `<button onclick="confermaVerificaOnline()" class="btn-fancy gold">🏁 VEDI CHI HA VINTO</button>` 
+    : `<p style="opacity:0.7;">⏳ Attendo gli altri...</p>`;
         }
 
         // 4. CONCLUSIONE (CON RIVINCITA)
@@ -2629,6 +2737,16 @@ function setupHomeButtonCleanup() {
             window.location.href = 'index.html';
         }
     }, true); // Capture phase per intercettare prima
+}
+
+function forceResetInputState() {
+    isDragging = false;
+    isRotating = false;
+    wordDisplayLocked = false;
+    if (errorTimeout) {
+        clearTimeout(errorTimeout);
+        errorTimeout = null;
+    }
 }
 
 // Chiamalo dopo che il DOM esiste (puoi metterlo DOPO loadDictionary)
