@@ -621,7 +621,10 @@ input:focus, select:focus {
 	let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
     let amiciSelezionati = new Set();
     let giocoSelezionato = "ruzzle";
-
+	// Debug helper
+	function debugLog(msg) {
+	    console.log(msg);
+	}
 if(mioNome && passwordHashSalvato) {
     window.onload = async () => {
         try {
@@ -667,7 +670,6 @@ async function entra(isAuto = false) {
         return;
     }
 
-    // ✅ LOADING STATE
     const btn = document.querySelector('#login-div button');
     const originalText = btn.textContent;
     btn.textContent = '⏳ Caricamento...';
@@ -679,17 +681,15 @@ async function entra(isAuto = false) {
         const passwordHash = await hashPassword(p);
         const userRef = db.collection("utenti").doc(n);
         const doc = await userRef.get();
-        debugLog('✅ Connessione Firestore OK');
+        
         if(doc.exists) {
             if(doc.data().passwordHash !== passwordHash) { 
-                if(!isAuto) alert("Password Errata!"); 
+                if(!isAuto) alert("❌ Password Errata!"); 
                 return; 
             }
-			debugLog('✅ Login riuscito');
         } else {
-            if(confirm("Nuovo utente? Registrati con questa password.")) {
+            if(confirm("👋 Nuovo utente? Registrati con questa password.")) {
                 await userRef.set({ nome: n, passwordHash: passwordHash });
-				debugLog('✅ Registrazione completata');
             } else return;
         }
 
@@ -707,12 +707,14 @@ async function entra(isAuto = false) {
         caricaStorico();
         
     } catch (e) {
-        console.error("Errore login:", e);
-        debugLog('❌ ERRORE: ' + e.message);
-        
-        if(e.message.includes('Missing or insufficient permissions')) {
-            debugLog('⚠️ App Check non funziona correttamente');
-        }
+        console.error("❌ Errore login:", e);
+        alert("❌ Errore di connessione. Verifica le regole Firestore:\n" + e.message);
+    } finally {
+        // ✅ RIPRISTINA IL PULSANTE (anche in caso di errore)
+        btn.textContent = originalText;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
     }
 }
 
@@ -1242,6 +1244,7 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
 
 
 
