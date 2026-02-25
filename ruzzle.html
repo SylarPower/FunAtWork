@@ -282,36 +282,78 @@
         .game-controls { display: flex; gap:10px; margin-top: 10px; }
         .game-controls .btn-action { margin-top: 0; }
         
-		/* PULSANTI SEMPLICI E LEGGERI */
-		.btn-action {
-		    width: 100%; 
-		    padding: 10px; 
-		    font-size: 0.85rem; 
-		    border: 1px solid #ccc; 
-		    border-radius: 4px;
-		    background: var(--bg);
-		    color: var(--text-main); 
-		    cursor: pointer; 
-		    font-weight: 500; 
-		    transition: background 0.2s ease;
-		    margin-top: 8px;
-		}
-		
-		.btn-action:hover {
-		    background: var(--item-bg);
-		}
-		
-		.btn-action:active {
-		    transform: scale(0.98);
-		}
-		
-		.btn-new { display: block; }
-		.btn-reset { display: none; }
-		.btn-end-now { display: none; }
-		.btn-pause { display: block; }
-		.btn-sandbox { display: none; }
-		.btn-history { display: block; }
-		.btn-missed { display: none; margin-top: 0; margin-bottom: 5px; }
+/* PULSANTI SEMPLICI E LEGGERI */
+.btn-action {
+    width: 100%; 
+    padding: 10px; 
+    font-size: 0.85rem; 
+    border: 1px solid #555; 
+    border-radius: 4px;
+    background: var(--panel-bg);
+    color: var(--text-main); 
+    cursor: pointer; 
+    font-weight: 500; 
+    transition: background 0.15s ease, transform 0.1s ease;
+    margin-top: 8px;
+}
+
+.btn-action:hover {
+    background: var(--item-bg);
+}
+
+.btn-action:active {
+    transform: scale(0.97);
+}
+
+/* Pulsanti con colori fissi */
+.btn-pause { 
+    background: #f39c12 !important; 
+    color: white !important;
+    border-color: #d68910 !important;
+}
+
+.btn-pause.paused {
+    background: #27ae60 !important;
+    border-color: #1e8449 !important;
+}
+
+.btn-end-now {
+    background: var(--accent) !important;
+    color: white !important;
+    border-color: #c0392b !important;
+}
+
+.btn-new { display: block; }
+.btn-reset { display: none; }
+.btn-sandbox { display: none; }
+.btn-history { display: block; }
+.btn-missed { display: none; margin-top: 0; margin-bottom: 5px; }
+
+/* 🎮 PULSANTE RIVINCITA - Semplice ma fremente */
+.btn-rivincita {
+    width: auto;
+    padding: 12px 30px;
+    font-size: 0.9rem;
+    border: 2px solid #e74c3c;
+    border-radius: 4px;
+    background: var(--panel-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    font-weight: 700;
+    animation: fremito 0.15s infinite;
+}
+
+.btn-rivincita:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+@keyframes fremito {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, 1px); }
+    50% { transform: translate(1px, -1px); }
+    75% { transform: translate(-1px, -1px); }
+}
         /* SWITCH */
         .switch-container { display: flex; align-items: center; font-size: 0.9rem; }
         .switch { position: relative; display: inline-block; width: 40px; height: 22px; margin-left: 10px; }
@@ -481,60 +523,7 @@
              background: rgba(0, 0, 0, 0.8); color: white; padding: 20px 40px; border-radius: 10px;
              font-size: 1.5rem; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-		/* 🎉 PULSANTE RIVINCITA ACCATTIVANTE */
-		.btn-rivincita {
-		    background: linear-gradient(135deg, #ff6b6b 0%, #f06595 50%, #cc5de8 100%);
-		    color: white;
-		    border: none;
-		    padding: 15px 35px;
-		    border-radius: 50px;
-		    font-weight: 900;
-		    font-size: 1.2rem;
-		    cursor: pointer;
-		    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
-		    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-		    text-transform: uppercase;
-		    letter-spacing: 1px;
-		    position: relative;
-		    overflow: hidden;
-		}
-		
-		.btn-rivincita::before {
-		    content: '';
-		    position: absolute;
-		    top: 50%;
-		    left: 50%;
-		    width: 0;
-		    height: 0;
-		    border-radius: 50%;
-		    background: rgba(255,255,255,0.3);
-		    transform: translate(-50%, -50%);
-		    transition: width 0.6s, height 0.6s;
-		}
-		
-		.btn-rivincita:hover::before {
-		    width: 300px;
-		    height: 300px;
-		}
-		
-		.btn-rivincita:hover {
-		    transform: translateY(-5px) scale(1.05);
-		    box-shadow: 0 15px 40px rgba(255, 107, 107, 0.6);
-		}
-		
-		.btn-rivincita:active {
-		    transform: translateY(-2px) scale(1.02);
-		}
-		
-		/* Animazione pulsante */
-		@keyframes rivincita-pulse {
-		    0%, 100% { transform: scale(1); }
-		    50% { transform: scale(1.08); }
-		}
-		
-		.btn-rivincita {
-		    animation: rivincita-pulse 2s infinite ease-in-out;
-		}
+
     </style>
 </head>
 <body class="dark-mode">
@@ -611,7 +600,7 @@
             <!-- CONTROLLI PARTITA -->
             <div id="in-game-controls" class="game-controls" style="display:none;">
                 <button id="btn-pause" class="btn-action btn-pause" onclick="togglePause()">PAUSA</button>
-                <button id="btn-terminate" class="btn-action btn-end-now" onclick="endGameManually()">TERMINA ORA</button>
+                <button id="btn-terminate" class="btn-action btn-end-now" onclick="endGameManually()" style="display:none;">TERMINA ORA</button>
             </div>
             
             <button id="btn-sandbox" class="btn-action btn-sandbox" onclick="startSandbox()">SBLOCCA GRIGLIA (LIBERA)</button>
@@ -1081,7 +1070,11 @@ async function loadDictionary() {
         btnMissed.style.display = "none";
         btnSandbox.style.display = 'none';
         setSortMode('chrono');
-        
+        // Nascondi pulsante NUOVA in multiplayer (fino a fine partita)
+		const btnNewEl = document.querySelector('.btn-new');
+		if (btnNewEl) {
+		    btnNewEl.style.display = matchId ? 'none' : 'block';
+		}
         wordDisplay.textContent = ""; lineLayer.innerHTML = '';
         document.getElementById('possible-count').textContent = '...';
         document.getElementById('possible-count').style.opacity = '0.6';
@@ -1327,7 +1320,12 @@ async function loadDictionary() {
 					 
 					 // Sblocca wordDisplay se era bloccato da troppo tempo
 					 wordDisplayLocked = false;
-					 
+					 // 🔧 FIX: Reset completo stato selezione
+					if (inputMode === 'drag' && !isDragging) {
+						selectedCells = [];
+						lineLayer.innerHTML = '';
+						wordDisplay.textContent = '';
+					}
 					 if(!isGameActive) return;
                 if (inputMode === 'drag') { e.preventDefault(); isDragging = true; selectTile(i); }
                 else handleClickMode(i);
@@ -1456,21 +1454,24 @@ async function loadDictionary() {
     }, 1000);
 }
 
-    function togglePause() {
-        if(!isGameActive && !isPaused) return;
-        const listEl = document.getElementById('found-words');
-        if(!isPaused) {
-            isPaused = true; isGameActive = false; clearInterval(timerInterval);
-				runAchievementCheck();
-            pauseOverlay.style.display = 'flex'; listEl.classList.add('blurred-list');
-            btnPause.textContent = "RIPRENDI"; btnPause.style.backgroundColor = "#27ae60"; 
-            clearSelection();
-        } else {
-            isPaused = false; isGameActive = true; pauseOverlay.style.display = 'none';
-            listEl.classList.remove('blurred-list'); btnPause.textContent = "PAUSA"; btnPause.style.backgroundColor = "#f39c12"; 
-            timerInterval = setInterval(() => { timeRemaining--; updateTimerDisplay(); if (timeRemaining <= 0) endGame(); }, 1000);
-        }
+function togglePause() {
+    if(!isGameActive && !isPaused) return;
+    const listEl = document.getElementById('found-words');
+    if(!isPaused) {
+        isPaused = true; isGameActive = false; clearInterval(timerInterval);
+        runAchievementCheck();
+        pauseOverlay.style.display = 'flex'; listEl.classList.add('blurred-list');
+        btnPause.textContent = "RIPRENDI"; 
+        btnPause.classList.add('paused');
+        clearSelection();
+    } else {
+        isPaused = false; isGameActive = true; pauseOverlay.style.display = 'none';
+        listEl.classList.remove('blurred-list'); 
+        btnPause.textContent = "PAUSA"; 
+        btnPause.classList.remove('paused');
+        timerInterval = setInterval(() => { timeRemaining--; updateTimerDisplay(); if (timeRemaining <= 0) endGame(); }, 1000);
     }
+}
 
     function endGameManually() { if(confirm("Terminare ora?")) endGame(); }
    
@@ -1646,22 +1647,23 @@ async function loadDictionary() {
 	}
 	 
 	const endDrag = () => { 
-	    if (!isDragging) return; // ✅ Evita doppie chiamate
+	    if (!isDragging) return;
 	    
 	    isDragging = false;
 	    
-	    // ✅ Salva selectedCells PRIMA di qualsiasi operazione asincrona
-	    const cellsSnapshot = [...selectedCells];
 	    const wordSnapshot = wordDisplay.textContent;
 	    
 	    if (wordSnapshot.length >= MIN_WORD_LENGTH) {
 	        validateWord();
 	    }
 	    
+	    // NON pulire subito - lascia che validateWord gestisca tutto
 	    if (!isSandboxMode && !wordDisplayLocked) {
 	        setTimeout(() => {
-	            if (!wordDisplayLocked) clearSelection();
-	        }, 300);
+	            if (!wordDisplayLocked && !isDragging) {
+	                clearSelection();
+	            }
+	        }, 400); // Aumentato da 300 a 400
 	    }
 	};
 
@@ -1768,88 +1770,118 @@ async function loadDictionary() {
             stopFireworks();
         }, 5000);
     }
-    function validateWord() {
-		const word = wordDisplay.textContent;
-		if (!word || word.length === 0) {
-			return;
-		}
-		if (errorTimeout) {
-			clearTimeout(errorTimeout);
-			errorTimeout = null;
-		}
-        if (isSandboxMode) {
-            if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
-                // Calcola punti (solo per visualizzazione)
-                const pts = calculateScoreWithBonuses(word, selectedCells);                
-                wordDisplayLocked = true;
-                wordDisplay.textContent = `${word} (${pts} pt)`; // <--- MODIFICA QUI
-					 wordDisplay.style.background = "#2ecc71";
-                selectedCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
-                setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
-            } else { wordDisplay.style.background = "#e74c3c"; shakeInvalid(); }
-				if(errorTimeout) clearTimeout(errorTimeout);
-            errorTimeout = setTimeout(() => { wordDisplay.style.background = "#dfe6e9"; wordDisplayLocked = false; clearSelection(); errorTimeout=null;}, 2000);
-            return;
+function validateWord() {
+    // 🔧 FIX CRITICO: Salva SUBITO lo stato prima di qualsiasi operazione
+    const word = wordDisplay.textContent;
+    const currentCells = [...selectedCells]; // Snapshot prima che venga modificato
+    
+    if (!word || word.length === 0) {
+        return;
+    }
+    
+    if (errorTimeout) {
+        clearTimeout(errorTimeout);
+        errorTimeout = null;
+    }
+    
+    if (isSandboxMode) {
+        if (word.length >= MIN_WORD_LENGTH && dictionary.has(word)) {
+            const pts = calculateScoreWithBonuses(word, currentCells);                
+            wordDisplayLocked = true;
+            wordDisplay.textContent = `${word} (+${pts} pt)`;
+            wordDisplay.style.background = "#2ecc71";
+            currentCells.forEach(i => gridEl.children[i].classList.add('anim-valid'));
+            setTimeout(()=>document.querySelectorAll('.tile').forEach(t=>t.classList.remove('anim-valid')),500);
+        } else { 
+            wordDisplay.style.background = "#e74c3c"; 
+            shakeInvalid(); 
+        }
+        if(errorTimeout) clearTimeout(errorTimeout);
+        errorTimeout = setTimeout(() => { 
+            wordDisplay.style.background = "#dfe6e9"; 
+            wordDisplayLocked = false; 
+            clearSelection(); 
+            errorTimeout=null;
+        }, 2000);
+        return;
+    }
+
+    if (word.length < MIN_WORD_LENGTH) { 
+        shakeInvalid(); 
+        return; 
+    }
+    
+    if (foundWords.has(word)) { 
+        wordDisplay.style.background = "#f1c40f"; 
+        setTimeout(()=>wordDisplay.style.background="#dfe6e9",400); 
+        return; 
+    }
+    
+    if (currentCells.length === 0) {
+        console.warn("currentCells vuoto durante validateWord");
+        return;
+    }
+    
+    if (dictionary.has(word)) {
+        const pts = calculateScoreWithBonuses(word, currentCells);
+        const originalPath = currentCells.map(vIdx => getOriginalIndexFromVisual(vIdx, rotationIndex));
+        foundWords.set(word, { points: pts, active: true, index: ++wordCounter, path: originalPath });
+
+        if (pts >= 10) fireConfetti();
+        if (word === "BUSET") {
+            triggerBusetExplosion();
+        }
+        
+        // --- TRIGGER BIATCH MODE: RUOTA QUANDO TROVI UNA PAROLA ---
+        if (isBiatchMode) {
+            rotateGrid();
+            showBiatchOverlay();
         }
 
-        if (word.length < MIN_WORD_LENGTH) { shakeInvalid(); return; }
-        if (foundWords.has(word)) { wordDisplay.style.background = "#f1c40f"; setTimeout(()=>wordDisplay.style.background="#dfe6e9",400); return; }
-	    if (selectedCells.length === 0) {
-	        console.warn("selectedCells vuoto durante validateWord");
-	        return;
-	    }
-        if (dictionary.has(word)) {
-            const pts = calculateScoreWithBonuses(word, selectedCells);
-            const originalPath = selectedCells.map(vIdx => getOriginalIndexFromVisual(vIdx, rotationIndex));
-            foundWords.set(word, { points: pts, active: true, index: ++wordCounter, path: originalPath });
-
-            if (pts >= 10) fireConfetti();
-				if (word === "BUSET") {
-                triggerBusetExplosion();
-            }
-            
-            // --- TRIGGER BIATCH MODE: RUOTA QUANDO TROVI UNA PAROLA ---
-            if (isBiatchMode) {
-				  rotateGrid();
-				  showBiatchOverlay();
-            }
-
-            runAchievementCheck(word, pts);
-            updateTotalScore();
-		    selectedCells.forEach(i => {
-		        gridEl.children[i].classList.remove('selected'); // Rimuovi arancione
-		        gridEl.children[i].classList.add('anim-valid');   // Aggiungi verde
-		    });
-		    
-		    setTimeout(() => {
-		        document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
-		        lineLayer.innerHTML = ''; // ✅ PULISCI LA LINEA
-		        selectedCells = []; // ✅ RESET ARRAY
-		    }, 500);
-            wordCountDisplay.textContent = foundWords.size;
-            
-            const li = document.createElement('li'); li.dataset.word = word;
-            li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${word}')" title="Mostra">👁️</button><span>${word}</span></div><span class="pts">+${pts}</span>`;
-            li.addEventListener('click', (e) => { if(isAnalysisPhase && !e.target.classList.contains('btn-eye')) toggleWord(word, li); });
-            wordsListEl.insertBefore(li, wordsListEl.firstChild);
-				li.addEventListener('dblclick', () => {
-            window.open(`https://www.treccani.it/vocabolario/${word.toLowerCase()}`, '_blank');
-            });
-				wordDisplayLocked = true;
-            wordDisplay.textContent = `${word} (+${pts})`;
-				wordDisplay.style.background = "#2ecc71";
-				// Reset dopo 2 secondi
-			  setTimeout(() => {
-					wordDisplay.style.background = "#dfe6e9";
-			  }, 400);
-			  
-			  setTimeout(() => {
-					wordDisplayLocked = false;
-					wordDisplay.textContent = "";
-			  }, 2000);
-        } else { shakeInvalid(); wordDisplay.style.background = "#e74c3c"; }
-        setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
+        runAchievementCheck(word, pts);
+        updateTotalScore();
+        
+        currentCells.forEach(i => {
+            gridEl.children[i].classList.remove('selected');
+            gridEl.children[i].classList.add('anim-valid');
+        });
+        
+        // 🔧 FIX: Reset IMMEDIATO per permettere nuova selezione
+        selectedCells = [];
+        lineLayer.innerHTML = '';
+        
+        setTimeout(() => {
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
+        }, 500);
+        
+        wordCountDisplay.textContent = foundWords.size;
+        
+        const li = document.createElement('li'); 
+        li.dataset.word = word;
+        li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${word}')" title="Mostra">👁️</button><span>${word}</span></div><span class="pts">+${pts}</span>`;
+        li.addEventListener('click', (e) => { 
+            if(isAnalysisPhase && !e.target.classList.contains('btn-eye')) toggleWord(word, li); 
+        });
+        wordsListEl.insertBefore(li, wordsListEl.firstChild);
+        
+        wordDisplayLocked = true;
+        wordDisplay.textContent = `${word} (+${pts})`;
+        wordDisplay.style.background = "#2ecc71";
+        
+        setTimeout(() => {
+            wordDisplay.style.background = "#dfe6e9";
+        }, 400);
+        
+        setTimeout(() => {
+            wordDisplayLocked = false;
+            wordDisplay.textContent = "";
+        }, 2000);
+    } else { 
+        shakeInvalid(); 
+        wordDisplay.style.background = "#e74c3c"; 
     }
+    setTimeout(()=>wordDisplay.style.background="#dfe6e9",400);
+}
 
     function calculateScoreWithBonuses(word, cells) {
         let pts = 0;
@@ -2552,20 +2584,74 @@ if (!matchId) {
 }
         }
 
-        // 3. VERIFICA
-        if (data.stato === "verifica") {
-            overlay.style.display = 'flex';
-            document.getElementById('lobby-title').textContent = "VERIFICA PAROLE";
-            const conf = data.confermaVerifica || [];
-            statusDiv.innerHTML = `<div style="font-size:2rem; margin:10px;">Conferme: ${conf.length} / ${data.partecipanti.length}</div>`;
-            actionDiv.innerHTML = !conf.includes(mioNome) ? 
-    `<button onclick="confermaVerificaOnline()" class="btn-action" style="width:auto; padding:12px 30px;">🏁 VEDI CHI HA VINTO</button>` 
-    : `<p style="opacity:0.7;">⏳ Attendo gli altri...</p>`;
+// 3. VERIFICA - Usa la barra in alto, NON l'overlay
+if (data.stato === "verifica") {
+    overlay.style.display = 'none'; // Nascondi overlay grande
+    
+    const conf = data.confermaVerifica || [];
+    
+    // Aggiorna/crea il banner in alto
+    let waitBanner = document.getElementById('wait-banner');
+    if (!waitBanner) {
+        waitBanner = document.createElement('div');
+        waitBanner.id = 'wait-banner';
+        waitBanner.style = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(waitBanner);
+    } else {
+        waitBanner.style.background = 'linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%)';
+    }
+    
+    waitBanner.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.5rem;">🏁</span>
+            <div>
+                <div style="font-weight:bold;">VERIFICA PAROLE (${conf.length}/${data.partecipanti.length})</div>
+                <div style="font-size:0.8rem; opacity:0.8;">Conferma per vedere chi ha vinto</div>
+            </div>
+        </div>
+        ${!conf.includes(mioNome) ? 
+            `<button onclick="confermaVerificaOnline()" class="btn-action" style="width:auto; padding:10px 20px; margin:0; background:white; color:#8e44ad; border:none; font-weight:bold;">
+                🏁 CONFERMA
+            </button>` 
+            : `<span style="opacity:0.8;">⏳ Attendo altri...</span>`
         }
+    `;
+    
+    // Mantieni attiva l'esplorazione griglia
+    if (!isAnalysisPhase) {
+        isAnalysisPhase = true;
+        isGameActive = true;
+        isSandboxMode = true;
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+        sortControls.style.display = "flex";
+        btnMissed.style.display = "block";
+    }
+}
 
-        // 4. CONCLUSIONE (CON RIVINCITA)
-        if (data.stato === "conclusa") {
-            overlay.style.display = 'flex';
+		// 4. CONCLUSIONE (CON RIVINCITA)
+		if (data.stato === "conclusa") {
+		    // Mostra pulsante NUOVA ora che la partita è finita
+		    const btnNewEl = document.querySelector('.btn-new');
+		    if (btnNewEl) btnNewEl.style.display = 'block';
+		    
+		    // Rimuovi il banner superiore
+		    const waitBanner = document.getElementById('wait-banner');
+		    if (waitBanner) waitBanner.remove();
+		    
+		    overlay.style.display = 'flex';
             if (data.prossimaPartita) {
                 document.getElementById('lobby-title').textContent = "RIVINCITA!";
                 setTimeout(() => { window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; }, 1000);
@@ -2896,6 +2982,7 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
 
 
 
