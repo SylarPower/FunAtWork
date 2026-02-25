@@ -94,7 +94,12 @@ button:active {
     background: #444 !important;
     color: #eee !important;
 }
-
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}
 /* ========================================
    📝 INPUT E SELECT
    ======================================== */
@@ -833,6 +838,9 @@ function aggiornaListaAmici(amicizieSnap, presenzeData) {
         const inPartita = presenza.inPartita || false;
         const disponibile = presenza.disponibile !== false;
         
+        // ✅ NUOVO: Determina se è selezionabile
+        const isSelezionabile = isOnline && disponibile && !inPartita;
+        
         let statoIcon, statoColor, statoText;
         if (!isOnline) {
             statoIcon = '⚫'; statoColor = '#555'; statoText = 'Offline';
@@ -845,11 +853,17 @@ function aggiornaListaAmici(amicizieSnap, presenzeData) {
         }
 
         const isSel = amiciSelezionati.has(nomeAmico);
+        
+        // ✅ NUOVO: Se non selezionabile e era selezionato, rimuovilo
+        if (!isSelezionabile && amiciSelezionati.has(nomeAmico)) {
+            amiciSelezionati.delete(nomeAmico);
+            aggiornaBottoneSfida();
+        }
 
         div.innerHTML += `
             <div class="user-item ${isSel ? 'selected' : ''}" 
-                 onclick="toggleAmico('${nomeAmico}', this)" 
-                 style="opacity: ${disponibile && isOnline ? 1 : 0.6};">
+                 onclick="${isSelezionabile ? `toggleAmico('${nomeAmico}', this)` : 'mostraMessaggioNonDisponibile()'}" 
+                 style="opacity: ${isSelezionabile ? 1 : 0.5}; cursor: ${isSelezionabile ? 'pointer' : 'not-allowed'};">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span style="font-size:1.2rem;">${statoIcon}</span>
                     <div>
@@ -881,13 +895,49 @@ function aggiornaListaGlobale(presenzeData) {
     });
 }
 
-    function toggleAmico(nome, el) {
-        if(amiciSelezionati.has(nome)) amiciSelezionati.delete(nome); else amiciSelezionati.add(nome);
-        const btn = document.getElementById('btn-sfida-multipla');
-        btn.style.display = amiciSelezionati.size > 0 ? 'block' : 'none';
-        btn.textContent = `SFIDA ${amiciSelezionati.size} AMICI ⚔️`;
-        el.classList.toggle('selected');
+function toggleAmico(nome, el) {
+    if(amiciSelezionati.has(nome)) {
+        amiciSelezionati.delete(nome);
+        el.classList.remove('selected');
+    } else {
+        amiciSelezionati.add(nome);
+        el.classList.add('selected');
     }
+    aggiornaBottoneSfida();
+}
+
+// ✅ NUOVA FUNZIONE: Aggiorna il bottone sfida
+function aggiornaBottoneSfida() {
+    const btn = document.getElementById('btn-sfida-multipla');
+    if (amiciSelezionati.size > 0) {
+        btn.style.display = 'block';
+        btn.textContent = `SFIDA ${amiciSelezionati.size} AMICI ⚔️`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+// ✅ NUOVA FUNZIONE: Messaggio quando clicchi su giocatore non disponibile
+function mostraMessaggioNonDisponibile() {
+    // Toast leggero invece di alert fastidioso
+    const toast = document.createElement('div');
+    toast.textContent = '❌ Giocatore non disponibile';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #cf6679;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-weight: bold;
+        z-index: 99999;
+        animation: fadeInOut 2s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+}
 
     function selezionaGioco(g, el) { 
         giocoSelezionato = g; 
@@ -1244,6 +1294,7 @@ function aggiornaUIDisponibilita() {
 </script>
 </body>
 </html>
+
 
 
 
