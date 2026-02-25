@@ -7,7 +7,7 @@
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
         :root {
             /* LIGHT THEME */
@@ -46,7 +46,6 @@
             --overlay-bg: rgba(0, 0, 0, 0.95);
         }
 
-        /* --- EFFETTO TERREMOTO PER BUSET --- */
         @keyframes earthquake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -79,10 +78,18 @@
 				  box-shadow: 0 12px 35px rgba(3, 218, 198, 0.6);
 			 }
 		}
-
-		.btn-ready:hover {
-			 transform: scale(1.1) !important;
-			 box-shadow: 0 15px 40px rgba(3, 218, 198, 0.7) !important;
+		
+		@keyframes urgentPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); color: red; } }
+		@keyframes pulseGreen { 0% { background: var(--tile-valid); } 100% { background: var(--tile-bg); } }
+      @keyframes shakeRed { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); background: var(--accent); } 75% { transform: translateX(5px); } }
+		@keyframes pulseBtn {
+			0%, 100% { transform: scale(1); }
+			50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(231, 76, 60, 0.8); }
+		}
+		@keyframes popIn {
+			0% { transform: scale(0); opacity: 0; }
+			60% { transform: scale(1.1); opacity: 1; }
+			100% { transform: scale(1); }
 		}
         body.mega-win-effect {
             animation: earthquake 0.5s infinite, disco-flash 0.5s infinite;
@@ -161,7 +168,6 @@
         }
         #timer { color: var(--accent); font-feature-settings: "tnum"; }
         .timer-alert { animation: urgentPulse 0.8s infinite; font-weight: 900; }
-        @keyframes urgentPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); color: red; } }
 
         #current-word {
             height: 45px; display: flex; align-items: center; justify-content: center;
@@ -180,8 +186,6 @@
             gap: 6px;
             background: #95a5a6; padding: 6px; border-radius: 10px;
             width: 100%; height: 100%; box-sizing: border-box; user-select: none;
-            /*transition: transform 0.4s ease-in-out; */
-            /*transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); */
         }
 
         /* TILES */
@@ -191,7 +195,7 @@
             font-size: 1.8rem; font-weight: bold; color: var(--tile-text);
             cursor: pointer; box-shadow: 0 3px 0 var(--tile-shadow);
             position: relative; z-index: 2; user-select: none;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s; /* ROTAZIONE VELOCE QUI */
+            transition: transform 0.2s ease, background-color 0.2s;
         }
         /* Stili specifici per griglie dense */
         .tile.small-font { font-size: 0.9rem; border-radius: 3px; box-shadow: 0 1px 0 var(--tile-shadow); }
@@ -231,9 +235,6 @@
         }
         .rotate-btn:hover { transform: rotate(90deg); }
 
-        @keyframes pulseGreen { 0% { background: var(--tile-valid); } 100% { background: var(--tile-bg); } }
-        @keyframes shakeRed { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); background: var(--accent); } 75% { transform: translateX(5px); } }
-
         /* SIDEBAR */
         .sidebar {
             width: 100%; max-width: 400px; background: var(--panel-bg);
@@ -241,7 +242,7 @@
             display: flex; flex-direction: column; position: relative;
             min-height: 600px; 
         }
-        @media (max-width: 800px) { .sidebar { height: 100%; min-height: 500px; flex: 1; } }
+        @media (max-width: 800px) { .sidebar { flex: 1; min-height: 500px; } }
 
         .score-box-container { 
             position: relative; text-align: center; 
@@ -274,29 +275,39 @@
         .btn-eye:hover { opacity: 1; transform: scale(1.2); }
 
         /* COMMON UI BUTTONS */
-        .btn-action {
-            width: 100%; padding: 12px; font-size: 0.9rem; border: none; border-radius: 6px;
-            color: white; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px;
-        }
-        .btn-new { background-color: #34495e; }
-        .btn-reset { background-color: #e67e22; display: none; }
-        
-        .btn-end-now { background-color: var(--accent); display: none; } 
+.btn-action {
+    width: 100%; 
+    padding: 12px; 
+    font-size: 0.9rem; 
+    border: none; 
+    border-radius: 6px;
+    color: white; 
+    cursor: pointer; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    margin-top: 10px;
+}
 
-        .btn-history { 
-            background-color: #8e44ad; width: 100%; margin-top: 10px; 
-            padding: 12px; font-size: 0.9rem; border-radius: 6px; 
-            flex: 0 0 auto; height: auto; 
-        }
-        .btn-missed { background-color: #16a085; width: 100%; margin-bottom: 5px; padding: 12px; font-size: 0.9rem; border-radius: 6px; display:none; flex: 0 0 auto; color: white; font-weight: bold; border: none; text-transform: uppercase; cursor: pointer;}
+.btn-new { background-color: #34495e; }
+.btn-reset { background-color: #e67e22; display: none; }
+.btn-end-now { background-color: var(--accent); display: none; }
+.btn-pause { background-color: #f39c12; }
+.btn-sandbox { background-color: #95a5a6; display: none; }
+
+.btn-history { background-color: #8e44ad; }
+
+.btn-missed { 
+    background-color: #16a085; 
+    margin-bottom: 5px; 
+    margin-top: 0;
+    display: none; 
+}
 
         .btn-group { display: flex; gap: 10px; width: 100%; margin-top: 10px; flex-shrink: 0;}
         .game-controls { display: flex; gap:10px; margin-top: 10px; }
         .game-controls .btn-action { margin-top: 0; }
-        .btn-pause { background-color: #f39c12; }
-        .btn-sandbox { background-color: #95a5a6; display: none; }
         
-        .btn-action:hover, .btn-missed:hover { filter: brightness(1.1); }
+        .btn-action:hover { filter: brightness(1.1); }
 
         /* SWITCH */
         .switch-container { display: flex; align-items: center; font-size: 0.9rem; }
@@ -331,27 +342,7 @@
         .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .history-table th, .history-table td { border-bottom: 1px solid #ccc; padding: 8px; text-align: left; font-size: 0.9rem;}
         
-        .history-total-box { margin-top: 20px; background: #2c3e50; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 1.2rem; font-weight: bold; }
-        
-        /* SORT & COMPARE TOOLS */
-        .compare-tools, .sort-controls { display: none; } 
-        .compare-tools { 
-            background: #f39c1222; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #f39c12; flex-shrink: 0; 
-            flex-direction: column; gap: 5px; 
-        }
-        
-        .compare-title { 
-            font-size: 0.8rem; text-align: center; font-weight: bold; 
-            text-transform: uppercase; color: #d35400; margin-bottom: 5px;
-        }
-        .compare-btns { display: flex; gap: 10px; width: 100%; }
-        .btn-compare { 
-            flex: 1; padding: 8px; border:none; border-radius:4px; 
-            color:white; font-weight:bold; cursor:pointer; font-size: 0.85rem;
-        }
-        .btn-copy { background: #3498db; } .btn-verify { background: #27ae60; }
-        
-        .sort-controls { justify-content: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; flex-shrink: 0; }
+        .sort-controls { display: none; justify-content: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; flex-shrink: 0; }
         .sort-btn { background: var(--item-bg); border: 1px solid #ccc; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: var(--text-main); }
         .sort-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -406,12 +397,6 @@
 			#ach-notification.show { 
 				 transform: translate(-50%, -50%) scale(1); 
 			}
-
-			 @keyframes popIn {
-				  0% { transform: scale(0); opacity: 0; }
-				  60% { transform: scale(1.1); opacity: 1; }
-				  100% { transform: scale(1); }
-			 }
         
 		 /* MODAL FINE PARTITA - STILE EPICO */
 		 #game-end-modal .modal-content {
@@ -570,7 +555,6 @@
 				<div class="grid-container">
 					 <svg id="line-layer" width="100%" height="100%"></svg>
 					 
-					 <!-- --- NUOVO: SCHERMATA INIZIALE --- -->
 					 <div id="start-screen">
 						  <div style="font-size:3rem; margin-bottom:10px;">🎲</div>
 						  <h2>BENVENUTO</h2>
@@ -636,7 +620,7 @@
             <div id="ach-notification">🏆 <span id="ach-text">Obiettivo Sbloccato!</span></div>
             <ul class="words-list" id="found-words"></ul>
             
-            <button id="btn-missed" class="btn-missed" onclick="showMissedWords()">🔍 COSA MI SONO PERSO?</button>
+            <button id="btn-missed" class="btn-action btn-missed" onclick="showMissedWords()">🔍 COSA MI SONO PERSO?</button>
             <button class="btn-action btn-history" onclick="openStats()">STORICO & STATS</button>
         </div>
 
@@ -769,6 +753,8 @@
     };
 	firebase.initializeApp(firebaseConfig);
 	const db = firebase.firestore();
+	
+	const DEBUG_MODE = false;
 	
 	// Variabili per il match live
 	const urlParams = new URLSearchParams(window.location.search);
@@ -968,7 +954,7 @@
                 }
             });
         }
-        console.log("Dizionario permanente caricato.");
+		  if (DEBUG_MODE) console.log("Dizionario permanente caricato.");
     }
 } catch (e) { 
     console.error("Errore caricamento dizionario globale:", e); 
@@ -977,8 +963,7 @@ buildTrie();
             
             // Aggiorna la UI
             loadingMsg.style.display = 'none';
-            console.log(`Dizionario caricato: ${dictionary.size} parole totali.`);
-            
+            if (DEBUG_MODE) console.log(`Dizionario caricato: ${dictionary.size} parole totali.`);
             // Gestione URL param code
             const urlParams = new URLSearchParams(window.location.search);
             const codeParam = urlParams.get('code');
@@ -1051,6 +1036,7 @@ buildTrie();
         stopFireworks();
         
         score = 0; foundWords.clear(); selectedCells = []; wordCounter = 0; rotationIndex = 0; rotationCount = 0; errorCount = 0;
+		  wordDisplayLocked = false;
         currentGameTimestamp = null;
         
         scoreDisplay.textContent = "0"; wordCountDisplay.textContent = "0";
@@ -1611,7 +1597,19 @@ buildTrie();
     document.addEventListener('mousemove', (e) => { if (inputMode==='drag' && isDragging) moveListener(e.clientX, e.clientY); });
     document.addEventListener('touchmove', (e) => { if (inputMode==='drag' && isDragging) { e.preventDefault(); moveListener(e.touches[0].clientX, e.touches[0].clientY); } }, {passive:false});
     document.addEventListener('mouseup', () => endDrag()); document.addEventListener('touchend', () => endDrag());
-    const endDrag = () => { 
+    
+	 
+	function forceResetInputState() {
+		 isDragging = false;
+		 isRotating = false;
+		 wordDisplayLocked = false;
+		 if (errorTimeout) {
+			  clearTimeout(errorTimeout);
+			  errorTimeout = null;
+		 }
+	}
+	 
+	 const endDrag = () => { 
     if(isDragging) { 
         isDragging = false; 
         try { 
@@ -2275,10 +2273,8 @@ function fireConfetti(originElement = null) {
 			 }
 		});
 		document.addEventListener('visibilitychange', () => {
-		    // Metti in pausa SOLO in modalità solitario, NON in multiplayer
-		    if (document.hidden && isGameActive && !isPaused && !isSandboxMode && !matchId) {
-		        togglePause();
-		    }
+			 if (!document.hidden || !isGameActive || isPaused || isSandboxMode || matchId) return;
+			 togglePause();
 		});
 
 // --- LOGICA DI GESTIONE FINALE (PULITA E CORRETTA) ---
@@ -2287,18 +2283,6 @@ function fireConfetti(originElement = null) {
 if (!mioNome && matchId) {
     alert("Effettua il login per giocare in multiplayer.");
     window.location.href = "index.html";
-}
-async function caricaDizionarioPermanente() {
-    try {
-        const globalDoc = await db.collection("config").doc("dizionario").get();
-        if (globalDoc.exists) {
-            const data = globalDoc.data();
-            if (data.extra) data.extra.forEach(w => { dictionary.add(w); if(!EXTRA_WORDS.includes(w)) EXTRA_WORDS.push(w); });
-            if (data.excluded) data.excluded.forEach(w => { dictionary.delete(w); if(!EXCLUDED_WORDS.includes(w)) EXCLUDED_WORDS.push(w); });
-            buildTrie(); // Ricostruisce l'indice per i suggerimenti
-            console.log("Dizionario permanente caricato.");
-        }
-    } catch (e) { console.error("Errore dizionario globale:", e); }
 }
 if (!matchId) {
     // MODALITÀ SOLO
@@ -2321,9 +2305,6 @@ if (!matchId) {
         
         // AGGIORNA DATI GLOBALI
         currentGameData = data;
-        if(!data) { window.location.href = "index.html"; return; }
-            // AGGIORNA DATI GLOBALI
-    currentGameData = data;
     
 	// FIX 3: APPLICA DIZIONARIO CUSTOM (con versioning)
 	if(data.dizionarioCustom) {
@@ -2349,7 +2330,7 @@ if (!matchId) {
 			  buildTrie();
 			  dizionarioCustomApplicato = true;
 			  window.lastDictVersion = currentVersion;
-			  console.log("Dizionario custom aggiornato:", currentVersion);
+			  if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
 		 }
 	}
         const overlay = document.getElementById('multiplayer-lobby');
@@ -2737,16 +2718,6 @@ function setupHomeButtonCleanup() {
             window.location.href = 'index.html';
         }
     }, true); // Capture phase per intercettare prima
-}
-
-function forceResetInputState() {
-    isDragging = false;
-    isRotating = false;
-    wordDisplayLocked = false;
-    if (errorTimeout) {
-        clearTimeout(errorTimeout);
-        errorTimeout = null;
-    }
 }
 
 // Chiamalo dopo che il DOM esiste (puoi metterlo DOPO loadDictionary)
