@@ -854,7 +854,6 @@
     const lineLayer = document.getElementById('line-layer');
     const analysisMsg = document.getElementById('analysis-msg');
     const sortControls = document.getElementById('sort-controls');
-    const compareTools = document.getElementById('compare-tools');
     const btnMissed = document.getElementById('btn-missed');
     const sortDirBtn = document.getElementById('sort-dir-btn');
     const statsModal = document.getElementById('stats-modal');
@@ -987,7 +986,7 @@
         scoreDisplay.textContent = "0"; wordCountDisplay.textContent = "0";
         wordsListEl.innerHTML = ""; wordsListEl.classList.remove('interactive');
         analysisMsg.style.display = "none"; sortControls.style.display = "none";
-        compareTools.style.display = "none"; btnMissed.style.display = "none";
+        btnMissed.style.display = "none";
         btnSandbox.style.display = 'none';
         setSortMode('chrono');
         
@@ -1485,7 +1484,6 @@
         wordsListEl.classList.add('interactive');
         analysisMsg.style.display = "block"; 
         sortControls.style.display = "flex";
-        compareTools.style.display = "flex"; 
         btnMissed.style.display = "block";
 
 		// Mostra Modale
@@ -1947,17 +1945,6 @@ function updateTotalScore() {
     
     function copySeed() { navigator.clipboard.writeText(currentSeed).then(() => alert("Codice copiato!")); }
 	 function copySeedNewGame() { navigator.clipboard.writeText(currentSeed); }
-    function pasteAndVerify() {
-        const input = prompt("Incolla lista avversaria:"); if(!input) return;
-        let c = 0; input.toUpperCase().split(',').forEach(w => {
-            w = w.trim();
-            if(foundWords.has(w) && foundWords.get(w).active) {
-                const lis = document.querySelectorAll('#found-words li');
-                lis.forEach(li => { if(li.dataset.word === w) { toggleWord(w, li); c++; } });
-            }
-        });
-        alert(`Eliminate ${c} parole.`);
-    }
 	  function copyWords() { 
 	  // 1. Selezioniamo gli elementi HTML della lista. 
 	  // Questo garantisce che l'ordine sia esattamente quello che vedi a schermo (Alfabetico, Punti, ecc.)
@@ -2579,4 +2566,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
