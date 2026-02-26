@@ -523,6 +523,9 @@
 							<span style="font-size:2rem;">🔠</span>
 							<br>Ruzzle
 						</div>
+						<div class="game-card" onclick="selezionaGioco('neonwar', this)" id="game-neonwar">
+							<span style="font-size:2rem;">🚀</span><br>Neon War
+						</div>
 						<div class="game-card" style="opacity:0.3; cursor:not-allowed; pointer-events:none;">
 							<span style="font-size:2rem;">❌</span>
 							<br>Prossimamente
@@ -700,6 +703,29 @@
 			    minGiocatori: 1,
 			    maxGiocatori: 10
 			  }
+				 neonwar: {
+			     nome: "Neon War",
+			     icona: "🚀",
+			     opzioni: [
+			         {
+			             id: "durata",
+			             label: "Durata",
+			             default: "120",
+			             valori: [
+			                 { value: "60", label: "60s (Sprint)" },
+			                 { value: "120", label: "120s (Standard)" },
+			                 { value: "180", label: "180s (Marathon)" },
+			                 { value: "300", label: "300s (Endurance)" }
+			             ]
+			         }
+			     ],
+			     modalita: [
+			         { id: "classic", label: "CLASSICA", colore: "#00ccff", testo: "#000" },
+			         { id: "hardcore", label: "HARDCORE", colore: "#ff0055", testo: "white" }
+			     ],
+			     minGiocatori: 1,
+			     maxGiocatori: 8
+			 }
 			  // Aggiungerai qui altri giochi in futuro
 			};
 			// Debug helper
