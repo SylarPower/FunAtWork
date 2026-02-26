@@ -89,7 +89,24 @@
             pointer-events: none; z-index: 20; text-transform: uppercase;
             box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
         }
+/* Badge GuessIt con categoria */
+#guessit-word-badge {
+    text-align: center;
+    line-height: 1.3;
+    padding: 12px 25px;
+}
 
+#guessit-word-badge > div:first-child {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+
+#guessit-word-badge > div:last-child {
+    font-size: 1.1rem;
+    font-weight: 900;
+}
         /* === MINIATURA RIFERIMENTO INGRANDIBILE === */
         .reference-thumbnail {
             position: absolute;
@@ -1336,63 +1353,386 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ========================================
-// TEMI
+// DATABASE TEMI PICTIONARY - 500+ PAROLE
 // ========================================
-const THEMES = [
-    // 🤪 ASSURDITÀ PURE
-    "Nonno che fa parkour", "Gatto con il monocolo", "Pizza che fa yoga",
-    "Dinosauro in smart working", "Nonna rapper", "Cane che guida una Ferrari",
-    "Pinguino in discoteca", "Broccolo bodybuilder", "Unicorno depresso",
-    "Banana ninja", "Paperella gigante che attacca Tokyo", "Gesù che fa surf",
-    
-    // 😂 SITUAZIONI IMBARAZZANTI
-    "Collega che ruba il pranzo dal frigo", "Riunione Zoom in mutande",
-    "Caffè che non funziona il lunedì", "Excel che crasha prima di salvare",
-    "Stampante posseduta dal demonio", "Mail mandata al capo per sbaglio",
-    "Scorreggia silenziosa in ascensore", "Russare durante una call",
-    
-    // 🦄 CREATURE IMPOSSIBILI
-    "Drago che ha paura del fuoco", "Squalo vegano", "Zombie influencer",
-    "Fantasma con gli occhiali", "Sirena con le gambe", "Centauro in monopattino",
-    "Fenicottero punk", "Bradipo su Red Bull", "Polpo massaggiatore",
-    
-    // 🎭 PERSONAGGI ASSURDI
-    "Batman al supermercato", "Shrek al primo appuntamento", "Thanos che fa giardinaggio",
-    "Mario Bros in palestra", "Pikachu arrabbiato col capo", "Yoda che balla reggaeton",
-    "Gollum che vince alla lotteria", "Darth Vader in vacanza",
-    
-    // 🍕 CIBO CHE FA COSE
-    "Hamburger in terapia", "Sushi che fa karate", "Donut alla guida",
-    "Pasta che corre la maratona", "Gelato al sole in panico", "Caffè che medita",
-    "Pollo arrosto che scappa", "Uovo che si allena per Pasqua",
-    
-    // 🏢 VITA DA UFFICIO ASSURDA
-    "Meeting che poteva essere una mail", "Stapler posseduto",
-    "Collega che scalda il pesce in microonde", "Capo trasformato in rospo",
-    "Deadline che insegue", "Ferie cancellate personificate",
-    "Bonus di fine anno (molto piccolo)", "Lunedì mattina",
-    
-    // 🌍 SCENE EPICHE
-    "Mondiale di nascondino", "Gara di rutti spaziale", "Olimpiadi del divano",
-    "Apocalisse dei post-it", "Invasione di piccioni giganti",
-    "T-Rex che fa il DJ", "Vulcano di nutella", "Tornado di coriandoli",
-    
-    // 😱 PAURE MODERNE
-    "Notifica di lavoro alle 23", "Batteria al 1%", "WiFi che non va",
-    "Aggiornamento Windows forzato", "Messaggio vocale di 5 minuti",
-    "Suocera a sorpresa", "Dentista sadico", "Sveglia del lunedì",
-    
-    // 🎪 COMBO IMPOSSIBILI
-    "Papa Francesco che skatea", "Regina Elisabetta al rave",
-    "Einstein che fa TikTok", "Leonardo da Vinci su OnlyFans",
-    "Napoleone che ordina da Glovo", "Cleopatra al centro commerciale",
-    
-    // 🐾 ANIMALI IN SITUAZIONI UMANE
-    "Gatto che paga le tasse", "Cane commercialista", "Piccione avvocato",
-    "Mucca in palestra", "Gallina in smart working", "Pesce che guida Uber",
-    "Ape influencer", "Lumaca corriere espresso", "Ragno architetto"
-];
 
+const THEMES_DATABASE = {
+    
+    // ========================================
+    // 🎭 ALL PLAY (AP) - Parole/Frasi generiche
+    // ========================================
+    allPlay: [
+        // Concetti astratti
+        "Libertà", "Amore", "Felicità", "Paura", "Rabbia", "Gelosia", "Nostalgia",
+        "Sogno", "Incubo", "Speranza", "Destino", "Fortuna", "Sfortuna", "Caos",
+        "Pace", "Guerra", "Silenzio", "Rumore", "Infinito", "Eternità",
+        
+        // Espressioni idiomatiche
+        "Avere le mani in pasta", "Essere al settimo cielo", "Avere la testa fra le nuvole",
+        "Prendere due piccioni con una fava", "Non avere peli sulla lingua",
+        "Avere un diavolo per capello", "Essere in alto mare", "Fare il passo più lungo della gamba",
+        "Mettere il carro davanti ai buoi", "Piangere sul latte versato",
+        "Cercare un ago in un pagliaio", "Avere le farfalle nello stomaco",
+        "Essere come cane e gatto", "Avere la coda di paglia", "Fare orecchie da mercante",
+        "Scoprire l'acqua calda", "Vendere fumo", "Avere il pollice verde",
+        "Essere al verde", "Vedere tutto rosa", "Essere nero dalla rabbia",
+        
+        // Proverbi famosi
+        "Chi dorme non piglia pesci", "Chi va piano va sano e va lontano",
+        "Meglio un uovo oggi che una gallina domani", "Il lupo perde il pelo ma non il vizio",
+        "Tra il dire e il fare c'è di mezzo il mare", "L'erba del vicino è sempre più verde",
+        "Non è tutto oro quel che luccica", "Chi trova un amico trova un tesoro",
+        
+        // Situazioni di vita
+        "Primo appuntamento", "Colloquio di lavoro", "Esame universitario",
+        "Matrimonio", "Divorzio", "Trasloco", "Vacanza rovinata",
+        "Cena di Natale", "Capodanno", "Compleanno a sorpresa",
+        "Riunione di famiglia", "Laurea", "Pensionamento",
+        
+        // Momenti della giornata
+        "Sveglia del lunedì", "Pausa caffè", "Ora di punta", "Cena romantica",
+        "Notte insonne", "Domenica pigra", "Venerdì sera", "Lunedì mattina",
+        
+        // Emozioni complesse
+        "Imbarazzo", "Vergogna", "Orgoglio", "Gratitudine", "Compassione",
+        "Invidia", "Stupore", "Meraviglia", "Disgusto", "Terrore",
+        "Euforia", "Malinconia", "Serenità", "Ansia", "Paranoia"
+    ],
+    
+    // ========================================
+    // 💀 DIFFICULT (D) - Parole difficili
+    // ========================================
+    difficult: [
+        // Concetti filosofici
+        "Esistenzialismo", "Nichilismo", "Karma", "Déjà vu", "Paradosso",
+        "Utopia", "Distopia", "Metamorfosi", "Reincarnazione", "Trascendenza",
+        "Relativismo", "Determinismo", "Libero arbitrio", "Coscienza",
+        
+        // Termini tecnici/scientifici
+        "Fotosintesi", "Gravità", "Magnetismo", "Evoluzione", "Big Bang",
+        "Buco nero", "Galassia", "Atomo", "Molecola", "DNA",
+        "Ecosistema", "Biodiversità", "Cambiamento climatico",
+        
+        // Parole straniere usate in italiano
+        "Serendipità", "Zeitgeist", "Wanderlust", "Hygge", "Saudade",
+        "Mamihlapinatapai", "Schadenfreude", "Ubuntu", "Ikigai",
+        
+        // Concetti astratti difficili
+        "Ironia della sorte", "Effetto farfalla", "Profezia autoavverante",
+        "Dissonanza cognitiva", "Sindrome dell'impostore", "Zona di comfort",
+        "Punto di non ritorno", "Momento eureka", "Epifania",
+        
+        // Espressioni complesse
+        "Silenzio assordante", "Dolce far niente", "Amor proprio",
+        "Male di vivere", "Flusso di coscienza", "Crisi di mezza età",
+        "Sindrome di Peter Pan", "Complesso di inferiorità",
+        
+        // Fenomeni naturali complessi
+        "Aurora boreale", "Eclissi solare", "Tsunami", "Terremoto",
+        "Eruzione vulcanica", "Tornado", "Miraggio", "Arcobaleno doppio",
+        
+        // Termini artistici/culturali
+        "Chiaroscuro", "Prospettiva", "Surrealismo", "Impressionismo",
+        "Minimalismo", "Barocco", "Rinascimento", "Art Nouveau"
+    ],
+    
+    // ========================================
+    // 🏃 ACTIONS (A) - Verbi e azioni
+    // ========================================
+    actions: [
+        // Azioni quotidiane
+        "Svegliarsi", "Dormire", "Mangiare", "Bere", "Camminare", "Correre",
+        "Saltare", "Nuotare", "Volare", "Guidare", "Cucinare", "Pulire",
+        "Lavare", "Stirare", "Studiare", "Lavorare", "Leggere", "Scrivere",
+        
+        // Azioni sportive
+        "Sciare", "Pattinare", "Arrampicarsi", "Tuffarsi", "Remare",
+        "Pedalare", "Boxare", "Sollevare pesi", "Fare yoga", "Fare stretching",
+        "Palleggiare", "Tirare in porta", "Schiacciare", "Servire",
+        
+        // Azioni espressive
+        "Ridere", "Piangere", "Urlare", "Sussurrare", "Cantare", "Ballare",
+        "Applaudire", "Fischiare", "Sbadigliare", "Starnutire", "Tossire",
+        "Russare", "Singhiozzare", "Sospirare", "Gemere",
+        
+        // Azioni comunicative
+        "Parlare", "Ascoltare", "Spiegare", "Discutere", "Litigare",
+        "Fare pace", "Confessare", "Mentire", "Promettere", "Giurare",
+        "Pregare", "Supplicare", "Ordinare", "Chiedere", "Rispondere",
+        
+        // Azioni manuali
+        "Tagliare", "Incollare", "Cucire", "Dipingere", "Disegnare",
+        "Scolpire", "Costruire", "Demolire", "Riparare", "Rompere",
+        "Piegare", "Stendere", "Avvolgere", "Svolgere", "Annodare",
+        
+        // Azioni di movimento
+        "Strisciare", "Gattonare", "Rotolare", "Scivolare", "Inciampare",
+        "Cadere", "Alzarsi", "Sedersi", "Sdraiarsi", "Inginocchiarsi",
+        "Accovacciarsi", "Chinarsi", "Allungarsi", "Stiracchiarsi",
+        
+        // Azioni sociali
+        "Abbracciare", "Baciare", "Stringere la mano", "Salutare",
+        "Fare l'occhiolino", "Fare le corna", "Fare il dito medio",
+        "Fare la linguaccia", "Fare la faccia arrabbiata",
+        
+        // Azioni lavorative
+        "Digitare", "Fotocopiare", "Stampare", "Telefonare", "Videochiamare",
+        "Presentare", "Negoziare", "Firmare", "Timbrare", "Archiviare",
+        
+        // Azioni domestiche
+        "Spolverare", "Aspirare", "Lavare i piatti", "Fare il bucato",
+        "Stendere i panni", "Fare il letto", "Apparecchiare", "Sparecchiare",
+        "Innaffiare", "Potare", "Falciare", "Rastrellare"
+    ],
+    
+    // ========================================
+    // 👤 PERSON/PLACE/ANIMAL (P) - Nomi propri e creature
+    // ========================================
+    personPlaceAnimal: [
+        // Professioni
+        "Medico", "Infermiere", "Pompiere", "Poliziotto", "Avvocato",
+        "Giudice", "Insegnante", "Professore", "Chef", "Cameriere",
+        "Barista", "Meccanico", "Elettricista", "Idraulico", "Muratore",
+        "Architetto", "Ingegnere", "Pilota", "Astronauta", "Scienziato",
+        "Archeologo", "Psicologo", "Dentista", "Veterinario", "Farmacista",
+        "Giornalista", "Fotografo", "Regista", "Attore", "Cantante",
+        "Ballerino", "Pittore", "Scultore", "Scrittore", "Poeta",
+        "Contadino", "Pescatore", "Cacciatore", "Giardiniere", "Fiorista",
+        "Parrucchiere", "Estetista", "Sarto", "Calzolaio", "Orologiaio",
+        "Postino", "Corriere", "Tassista", "Autista", "Capitano",
+        "Sommelier", "Pasticcere", "Panettiere", "Macellaio", "Pescivendolo",
+        
+        // Personaggi storici/famosi
+        "Leonardo da Vinci", "Michelangelo", "Galileo Galilei", "Dante Alighieri",
+        "Giuseppe Garibaldi", "Giulio Cesare", "Marco Polo", "Cristoforo Colombo",
+        "Napoleone", "Cleopatra", "Einstein", "Mozart", "Beethoven",
+        "Shakespeare", "Van Gogh", "Picasso", "Frida Kahlo",
+        
+        // Personaggi di fantasia italiani
+        "Pinocchio", "Geppetto", "La Fata Turchina", "Il Grillo Parlante",
+        "Pulcinella", "Arlecchino", "Colombina", "Pantalone",
+        "La Befana", "Babbo Natale",
+        
+        // Personaggi di fantasia internazionali
+        "Superman", "Batman", "Spider-Man", "Wonder Woman", "Hulk",
+        "Topolino", "Paperino", "Pippo", "Pluto", "Minnie",
+        "Bugs Bunny", "Tom e Jerry", "Scooby-Doo", "I Puffi",
+        "Harry Potter", "Gandalf", "Frodo", "Darth Vader", "Yoda",
+        "Shrek", "Fiona", "Ciuchino", "Elsa", "Anna",
+        
+        // Animali comuni
+        "Cane", "Gatto", "Cavallo", "Mucca", "Maiale", "Pecora", "Capra",
+        "Gallina", "Gallo", "Anatra", "Oca", "Tacchino", "Coniglio",
+        "Topo", "Ratto", "Criceto", "Porcellino d'India", "Furetto",
+        
+        // Animali selvatici
+        "Leone", "Tigre", "Elefante", "Giraffa", "Zebra", "Ippopotamo",
+        "Rinoceronte", "Coccodrillo", "Alligatore", "Serpente", "Lucertola",
+        "Tartaruga", "Rana", "Rospo", "Salamandra", "Camaleonte",
+        "Orso", "Lupo", "Volpe", "Cervo", "Cinghiale", "Lepre",
+        "Scoiattolo", "Castoro", "Lontra", "Foca", "Delfino", "Balena",
+        "Squalo", "Polpo", "Medusa", "Granchio", "Aragosta", "Gambero",
+        
+        // Uccelli
+        "Aquila", "Falco", "Gufo", "Civetta", "Corvo", "Gazza",
+        "Piccione", "Colomba", "Rondine", "Passero", "Pettirosso",
+        "Pappagallo", "Tucano", "Fenicottero", "Cigno", "Pellicano",
+        "Pinguino", "Struzzo", "Pavone", "Fagiano", "Quaglia",
+        
+        // Insetti
+        "Farfalla", "Ape", "Vespa", "Formica", "Mosca", "Zanzara",
+        "Ragno", "Scorpione", "Scarafaggio", "Coccinella", "Libellula",
+        "Cavalletta", "Grillo", "Cicala", "Bruco", "Lombrico",
+        
+        // Luoghi italiani
+        "Roma", "Milano", "Napoli", "Firenze", "Venezia", "Torino",
+        "Bologna", "Genova", "Palermo", "Verona", "Pisa", "Siena",
+        "Colosseo", "Torre di Pisa", "Duomo di Milano", "Ponte Vecchio",
+        "Fontana di Trevi", "Piazza San Marco", "Vaticano", "Pompei",
+        "Costiera Amalfitana", "Cinque Terre", "Lago di Como", "Dolomiti",
+        
+        // Luoghi del mondo
+        "Parigi", "Londra", "New York", "Tokyo", "Pechino", "Sydney",
+        "Rio de Janeiro", "Dubai", "Las Vegas", "Los Angeles",
+        "Torre Eiffel", "Big Ben", "Statua della Libertà", "Grande Muraglia",
+        "Piramidi", "Machu Picchu", "Taj Mahal", "Cristo Redentore",
+        
+        // Ambienti
+        "Spiaggia", "Montagna", "Foresta", "Deserto", "Giungla",
+        "Isola", "Vulcano", "Cascata", "Fiume", "Lago", "Mare", "Oceano",
+        "Grotta", "Canyon", "Ghiacciaio", "Oasi", "Palude", "Savana"
+    ],
+    
+    // ========================================
+    // 📦 OBJECTS (O) - Oggetti inanimati
+    // ========================================
+    objects: [
+        // Oggetti domestici
+        "Televisione", "Telecomando", "Computer", "Telefono", "Tablet",
+        "Frigorifero", "Forno", "Microonde", "Lavastoviglie", "Lavatrice",
+        "Asciugatrice", "Aspirapolvere", "Ferro da stiro", "Ventilatore",
+        "Condizionatore", "Termosifone", "Stufa", "Camino",
+        "Divano", "Poltrona", "Sedia", "Tavolo", "Scrivania", "Letto",
+        "Armadio", "Cassettiera", "Libreria", "Specchio", "Lampada",
+        "Tende", "Tappeto", "Cuscino", "Coperta", "Materasso",
+        
+        // Utensili da cucina
+        "Pentola", "Padella", "Casseruola", "Teglia", "Pirofila",
+        "Coltello", "Forchetta", "Cucchiaio", "Mestolo", "Spatola",
+        "Frusta", "Mattarello", "Tagliere", "Grattugia", "Spremiagrumi",
+        "Cavatappi", "Apriscatole", "Scolapasta", "Colino", "Imbuto",
+        "Piatto", "Tazza", "Bicchiere", "Brocca", "Bottiglia",
+        
+        // Abbigliamento
+        "Camicia", "Maglietta", "Maglione", "Felpa", "Giacca", "Cappotto",
+        "Pantaloni", "Jeans", "Gonna", "Vestito", "Abito", "Smoking",
+        "Pigiama", "Accappatoio", "Costume da bagno", "Bikini",
+        "Calzini", "Scarpe", "Stivali", "Sandali", "Ciabatte", "Tacchi",
+        "Cappello", "Berretto", "Sciarpa", "Guanti", "Cintura", "Cravatta",
+        "Occhiali", "Occhiali da sole", "Orologio", "Anello", "Collana",
+        "Orecchini", "Braccialetto", "Borsa", "Zaino", "Valigia",
+        
+        // Strumenti musicali
+        "Pianoforte", "Chitarra", "Violino", "Violoncello", "Contrabbasso",
+        "Flauto", "Clarinetto", "Sassofono", "Tromba", "Trombone",
+        "Batteria", "Tamburo", "Xilofono", "Arpa", "Fisarmonica",
+        "Armonica", "Ukulele", "Banjo", "Mandolino", "Organo",
+        
+        // Mezzi di trasporto
+        "Automobile", "Moto", "Bicicletta", "Monopattino", "Skateboard",
+        "Autobus", "Tram", "Metropolitana", "Treno", "Alta velocità",
+        "Aereo", "Elicottero", "Mongolfiera", "Dirigibile", "Razzo",
+        "Nave", "Barca", "Canoa", "Kayak", "Yacht", "Sottomarino",
+        "Ambulanza", "Camion dei pompieri", "Volante della polizia",
+        "Taxi", "Camion", "Furgone", "Camper", "Roulotte",
+        
+        // Attrezzi e utensili
+        "Martello", "Cacciavite", "Pinza", "Chiave inglese", "Sega",
+        "Trapano", "Scala", "Secchio", "Scopa", "Paletta", "Rastrello",
+        "Vanga", "Zappa", "Forcone", "Carriola", "Innaffiatoio",
+        
+        // Oggetti scolastici/ufficio
+        "Libro", "Quaderno", "Penna", "Matita", "Gomma", "Temperino",
+        "Righello", "Compasso", "Calcolatrice", "Dizionario", "Atlante",
+        "Globo", "Lavagna", "Gesso", "Pennarello", "Evidenziatore",
+        "Graffetta", "Spillatrice", "Forbici", "Colla", "Scotch",
+        
+        // Cibo e bevande
+        "Pizza", "Pasta", "Spaghetti", "Lasagna", "Risotto", "Gnocchi",
+        "Pane", "Focaccia", "Grissini", "Brioche", "Croissant",
+        "Torta", "Biscotti", "Cioccolato", "Gelato", "Tiramisù",
+        "Mela", "Pera", "Banana", "Arancia", "Limone", "Fragola",
+        "Anguria", "Melone", "Uva", "Pesca", "Albicocca", "Ciliegia",
+        "Pomodoro", "Patata", "Carota", "Cipolla", "Aglio", "Peperone",
+        "Melanzana", "Zucchina", "Broccoli", "Cavolfiore", "Insalata",
+        "Formaggio", "Mozzarella", "Parmigiano", "Prosciutto", "Salame",
+        "Uovo", "Latte", "Burro", "Yogurt", "Caffè", "Tè",
+        "Vino", "Birra", "Acqua", "Succo", "Coca-Cola",
+        
+        // Oggetti vari
+        "Ombrello", "Portafoglio", "Chiavi", "Accendino", "Sigaretta",
+        "Candela", "Fiammifero", "Torcia", "Bussola", "Mappa",
+        "Binocolo", "Telescopio", "Microscopio", "Lente d'ingrandimento",
+        "Fotocamera", "Videocamera", "Drone", "Stampante", "Scanner",
+        "Cuffie", "Altoparlante", "Microfono", "Proiettore", "Schermo",
+        
+        // Giocattoli
+        "Bambola", "Peluche", "Pallone", "Bicicletta", "Triciclo",
+        "Monopattino", "Pattini", "Aquilone", "Frisbee", "Hula hoop",
+        "Puzzle", "Lego", "Cubo di Rubik", "Yo-yo", "Trottola",
+        "Carte da gioco", "Dadi", "Scacchi", "Dama", "Monopoly"
+    ],
+    
+    // ========================================
+    // 🤪 BONUS - Temi divertenti/assurdi
+    // ========================================
+    funny: [
+        // Situazioni assurde
+        "Nonno che fa parkour", "Gatto con il monocolo", "Pizza che fa yoga",
+        "Dinosauro in smart working", "Nonna rapper", "Cane che guida una Ferrari",
+        "Pinguino in discoteca", "Broccolo bodybuilder", "Unicorno depresso",
+        "Banana ninja", "Paperella gigante che attacca Tokyo", "Gesù che fa surf",
+        
+        // Situazioni imbarazzanti
+        "Collega che ruba il pranzo dal frigo", "Riunione Zoom in mutande",
+        "Caffè che non funziona il lunedì", "Excel che crasha prima di salvare",
+        "Stampante posseduta dal demonio", "Mail mandata al capo per sbaglio",
+        "Scorreggia silenziosa in ascensore", "Russare durante una call",
+        
+        // Creature impossibili
+        "Drago che ha paura del fuoco", "Squalo vegano", "Zombie influencer",
+        "Fantasma con gli occhiali", "Sirena con le gambe", "Centauro in monopattino",
+        "Fenicottero punk", "Bradipo su Red Bull", "Polpo massaggiatore",
+        
+        // Personaggi famosi in situazioni strane
+        "Batman al supermercato", "Shrek al primo appuntamento", "Thanos che fa giardinaggio",
+        "Mario Bros in palestra", "Pikachu arrabbiato col capo", "Yoda che balla reggaeton",
+        "Gollum che vince alla lotteria", "Darth Vader in vacanza",
+        
+        // Cibo animato
+        "Hamburger in terapia", "Sushi che fa karate", "Donut alla guida",
+        "Pasta che corre la maratona", "Gelato al sole in panico", "Caffè che medita",
+        "Pollo arrosto che scappa", "Uovo che si allena per Pasqua",
+        
+        // Vita da ufficio assurda
+        "Meeting che poteva essere una mail", "Stapler posseduto",
+        "Collega che scalda il pesce in microonde", "Capo trasformato in rospo",
+        "Deadline che insegue", "Ferie cancellate personificate",
+        "Bonus di fine anno (molto piccolo)", "Lunedì mattina come mostro",
+        
+        // Scene epiche
+        "Mondiale di nascondino", "Gara di rutti spaziale", "Olimpiadi del divano",
+        "Apocalisse dei post-it", "Invasione di piccioni giganti",
+        "T-Rex che fa il DJ", "Vulcano di nutella", "Tornado di coriandoli",
+        
+        // Paure moderne
+        "Notifica di lavoro alle 23", "Batteria al 1%", "WiFi che non va",
+        "Aggiornamento Windows forzato", "Messaggio vocale di 5 minuti",
+        "Suocera a sorpresa", "Dentista sadico", "Sveglia del lunedì",
+        
+        // Combo impossibili
+        "Papa Francesco che skatea", "Regina Elisabetta al rave",
+        "Einstein che fa TikTok", "Leonardo da Vinci su OnlyFans",
+        "Napoleone che ordina da Glovo", "Cleopatra al centro commerciale",
+        
+        // Animali in situazioni umane
+        "Gatto che paga le tasse", "Cane commercialista", "Piccione avvocato",
+        "Mucca in palestra", "Gallina in smart working", "Pesce che guida Uber",
+        "Ape influencer", "Lumaca corriere espresso", "Ragno architetto",
+        
+        // Assurdità varie
+        "Capelli ribelli che prendono vita", "Calzino che scappa dalla lavatrice",
+        "Frigorifero che giudica le tue scelte", "Sveglia sadica",
+        "Ascensore claustrofobico", "Porta girevole infinita",
+        "Coda alle poste eterna", "Parcheggio introvabile",
+        "Telefonata con il call center", "IKEA senza uscita"
+    ]
+};
+// ========================================
+// FUNZIONE PER OTTENERE TEMA + CATEGORIA
+// ========================================
+
+function getRandomTheme() {
+    // Ottieni tutte le categorie
+    const categories = Object.keys(THEMES_DATABASE);
+    
+    // Scegli categoria casuale
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    
+    // Scegli parola casuale dalla categoria
+    const words = THEMES_DATABASE[category];
+    const word = words[Math.floor(Math.random() * words.length)];
+    
+    return {
+        word: word,
+        category: category
+    };
+}
+
+// ✅ Array THEMES per compatibilità (flatten di tutto)
+const THEMES = Object.values(THEMES_DATABASE).flat();
+
+console.log(`📚 Caricati ${THEMES.length} temi in ${Object.keys(THEMES_DATABASE).length} categorie!`);
 const COLORS = [
     '#000000', '#ffffff', '#808080', '#c0c0c0',
     '#ff0000', '#ff6b6b', '#ffa500', '#ffff00', 
@@ -1651,6 +1991,7 @@ function renderLobby(data) {
                 <option value="45" ${currentTime == 45 ? 'selected' : ''}>45s</option>
                 <option value="60" ${currentTime == 60 ? 'selected' : ''}>60s</option>
                 <option value="90" ${currentTime == 90 ? 'selected' : ''}>90s</option>
+                <option value="120" ${currentTime == 120 ? 'selected' : ''}>120s</option>
             </select>
         `;
     }
@@ -1739,7 +2080,7 @@ async function startGame() {
     
 if (gameMode === 'guessit') {
     const firstDrawer = players[Math.floor(Math.random() * players.length)];
-    const firstWord = THEMES[Math.floor(Math.random() * THEMES.length)];
+    const theme = getRandomTheme(); // ✅ Usa la nuova funzione
     
     const initialScores = {};
     players.forEach(p => initialScores[p] = 0);
@@ -1748,9 +2089,10 @@ if (gameMode === 'guessit') {
         stato: 'guessit',
         guessIt: {
             round: 0,
-            totalRounds: players.length * 2, // Ogni giocatore disegna 2 volte
+            totalRounds: players.length * 2,
             currentDrawer: firstDrawer,
-            currentWord: firstWord,
+            currentWord: theme.word,       // ✅ Parola
+            currentCategory: theme.category, // ✅ Categoria
             canvasData: null,
             guesses: {},
             scores: initialScores,
@@ -1766,19 +2108,22 @@ if (gameMode === 'guessit') {
     
     const seed = cyrb128(state.roomId + Date.now());
     const rng = sfc32(seed);
-    const shuffledThemes = shuffleArray(THEMES, rng);
-    
-    // ✅ Crea una catena per ogni tema (= numero giocatori)
-    const chains = {};
-    for (let i = 0; i < numPlayers; i++) {
-        chains[i] = {
-            themeIndex: i,
-            originalTheme: shuffledThemes[i % shuffledThemes.length],
-            steps: [],
-            drawnBy: [] // Chi ha già disegnato questo tema
-        };
-    }
-    
+// Genera temi con categoria
+const themesWithCategory = [];
+for (let i = 0; i < numPlayers; i++) {
+    themesWithCategory.push(getRandomTheme());
+}
+
+const chains = {};
+for (let i = 0; i < numPlayers; i++) {
+    chains[i] = {
+        themeIndex: i,
+        originalTheme: themesWithCategory[i].word,
+        originalCategory: themesWithCategory[i].category, // ✅ Aggiungi categoria
+        steps: [],
+        drawnBy: []
+    };
+}
     const scores = {};
     players.forEach(p => scores[p] = 0);
     
@@ -1888,10 +2233,16 @@ function launchCanvas(data) {
         }
     } else {
         if (refThumbnail) refThumbnail.style.display = 'none';
-        if (themeBadge) {
-            themeBadge.textContent = state.myCurrentTheme;
-            themeBadge.style.background = 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
-        }
+if (themeBadge) {
+    const category = state.roomData?.chains?.[state.myChainId]?.originalCategory || '🎨 Tema';
+    themeBadge.innerHTML = `
+        <div style="font-size: 0.65rem; opacity: 0.8; margin-bottom: 2px;">
+            ${category}
+        </div>
+        <div>
+            ${state.myCurrentTheme}
+        </div>
+    `;
     }
     
     document.getElementById('ui-round-info').textContent = 
@@ -3016,7 +3367,15 @@ function setupGuessItDrawer(gi) {
     document.getElementById('guessit-answers-sidebar').style.display = 'flex';
     
     // Parola da disegnare
-    document.getElementById('guessit-word-badge').textContent = `DISEGNA: ${gi.currentWord}`;
+    const badge = document.getElementById('guessit-word-badge');
+badge.innerHTML = `
+    <div style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 3px;">
+        ${gi.currentCategory || '🎨 Tema'}
+    </div>
+    <div style="font-size: 1.1rem;">
+        ${gi.currentWord}
+    </div>
+`;
     
     // Nascondi input, mostra "Sei il disegnatore"
     const inputArea = document.getElementById('guessit-input-area');
@@ -3588,16 +3947,17 @@ async function advanceGuessItRound() {
         // Prossimo round
         const nextDrawerIdx = nextRound % data.players.length;
         const nextDrawer = data.players[nextDrawerIdx];
-        const nextWord = THEMES[Math.floor(Math.random() * THEMES.length)];
-        
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            'guessIt.round': nextRound,
-            'guessIt.currentDrawer': nextDrawer,
-            'guessIt.currentWord': nextWord,
-            'guessIt.canvasData': null,
-            'guessIt.guesses': {},
-            'guessIt.roundWinner': null
-        });
+const theme = getRandomTheme(); // ✅ Usa la nuova funzione
+
+await db.collection("pictionary_rooms").doc(state.roomId).update({
+    'guessIt.round': nextRound,
+    'guessIt.currentDrawer': nextDrawer,
+    'guessIt.currentWord': theme.word,       // ✅ Parola
+    'guessIt.currentCategory': theme.category, // ✅ Categoria
+    'guessIt.canvasData': null,
+    'guessIt.guesses': {},
+    'guessIt.roundWinner': null
+});
     }
 }
 
