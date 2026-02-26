@@ -403,6 +403,49 @@
             z-index: 50; color: var(--text-main); font-size: 2rem; font-weight: bold; letter-spacing: 2px;
             flex-direction: column; gap: 10px;
         }
+		/* ✅ PERFORMANCE BOOST */
+.grid {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+.tile {
+    will-change: transform, background-color;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* ✅ DISABILITA ANIMAZIONI DURANTE PROCESSING */
+body.processing * {
+    animation-play-state: paused !important;
+    transition: none !important;
+}
+
+/* ✅ OTTIMIZZA TAP SU MOBILE */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+/* ✅ RIDUCI BLUR (costoso su mobile) */
+.processing-blur {
+    filter: blur(4px); /* Ridotto da 8px */
+    transition: filter 0.2s; /* Ridotto da 0.3s */
+}
+
+/* ✅ ANIMAZIONI PIÙ VELOCI */
+@keyframes pulseGreen { 
+    0% { background: var(--tile-valid); transform: scale(1.05); } 
+    100% { background: var(--tile-bg); transform: scale(1); } 
+}
+
+@keyframes shakeRed { 
+    0%, 100% { transform: translateX(0); } 
+    25% { transform: translateX(-3px); background: var(--accent); } /* Ridotto movimento */
+    75% { transform: translateX(3px); } 
+}
 #wait-banner {
     animation: slideDown 0.3s ease;
 }
@@ -1090,8 +1133,9 @@ function avviaVerifica() {
     });
 }
 	
-	async function loadDictionary() {
+async function loadDictionary() {
     console.log("🔄 Inizio caricamento dizionario...");
+    loadingMsg.style.display = 'flex'; // Assicurati che sia visibile
     
     try {
         const urls = [
@@ -1100,8 +1144,19 @@ function avviaVerifica() {
         ];
 
         console.log("📡 Download file dizionari...");
+        
+        // ✅ TIMEOUT per evitare blocchi infiniti
+        const fetchWithTimeout = (url, timeout = 10000) => {
+            return Promise.race([
+                fetch(url),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), timeout)
+                )
+            ]);
+        };
+
         const responses = await Promise.all(
-            urls.filter(u => u).map(u => fetch(u))
+            urls.map(url => fetchWithTimeout(url))
         );
 
         console.log("📄 Conversione testi...");
@@ -1123,8 +1178,17 @@ function avviaVerifica() {
         EXTRA_WORDS.forEach(w => dictionary.add(w));
         
         console.log("🔥 Caricamento dizionario Firebase...");
+        
+        // ✅ TIMEOUT anche per Firebase
         try {
-            const globalDoc = await db.collection("config").doc("dizionario").get();
+            const globalDocPromise = db.collection("config").doc("dizionario").get();
+            const globalDoc = await Promise.race([
+                globalDocPromise,
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Firebase timeout')), 5000)
+                )
+            ]);
+            
             if (globalDoc.exists) {
                 const data = globalDoc.data();
                 if (data.extra) {
@@ -1145,14 +1209,15 @@ function avviaVerifica() {
                 }
                 console.log("✅ Dizionario Firebase caricato");
             }
-        } catch (e) { 
-            console.error("⚠️ Errore Firebase (non bloccante):", e); 
+        } catch (fbError) { 
+            console.warn("⚠️ Firebase non disponibile (continuo comunque):", fbError); 
         }
         
         console.log("🌳 Costruzione Trie...");
         buildTrie();
         dictionaryReady = true;
         
+        // ✅ NASCONDI IL LOADING
         loadingMsg.style.display = 'none';
         console.log(`✅ DIZIONARIO PRONTO: ${dictionary.size} parole`);
         
@@ -1170,7 +1235,18 @@ function avviaVerifica() {
         
     } catch (error) { 
         console.error("❌ ERRORE FATALE:", error);
-        loadingMsg.innerHTML = "Errore caricamento dizionari.<br>Controlla i link o la connessione."; 
+        
+        // ✅ MOSTRA ERRORE LEGGIBILE
+        loadingMsg.innerHTML = `
+            <div style="color:#e74c3c; text-align:center;">
+                ❌ Errore caricamento dizionari<br>
+                <small style="opacity:0.8;">${error.message}</small><br><br>
+                <button onclick="location.reload()" class="btn-action" style="width:auto; padding:10px 20px;">
+                    🔄 RIPROVA
+                </button>
+            </div>
+        `; 
+        loadingMsg.style.display = 'flex'; // ✅ Assicurati che sia visibile
     }
 }
 
@@ -1852,6 +1928,15 @@ function togglePause() {
 	    }
 	    drawLine();
 	}
+	function clearSelectionImmediate() {
+	    document.querySelectorAll('.tile').forEach(t => {
+	        t.classList.remove('anim-invalid', 'selected', 'anim-valid');
+	    });
+	    selectedCells = [];
+	    lineLayer.innerHTML = '';
+	    wordDisplay.textContent = "";
+	    currentHighlightedWord = null;
+	}
     function clearSelection() { 
     // ✅ FIX: Rimuovi tutte le classi di selezione
     document.querySelectorAll('.tile').forEach(t => {
@@ -1927,21 +2012,40 @@ function togglePause() {
 // ========================================
 // 🔧 FIX DEFINITIVO INPUT SYSTEM
 // ========================================
+// ✅ STATO CENTRALIZZATO
+const inputState = {
+    isDragging: false,
+    isRotating: false,
+    isProcessing: false,
+    lockUntil: 0
+};
 
-const endDrag = () => { 
-    if (!isDragging) return;
+function canInteract() {
+    return !inputState.isProcessing && 
+           !inputState.isRotating && 
+           Date.now() > inputState.lockUntil;
+}
+
+function lockInput(duration = 300) {
+    inputState.isProcessing = true;
+    inputState.lockUntil = Date.now() + duration;
     
-    // Salva stato PRIMA di resettare isDragging
+    setTimeout(() => {
+        inputState.isProcessing = false;
+    }, duration);
+}
+const endDrag = () => { 
+    if (!inputState.isDragging) return;
+    
     const wordSnapshot = wordDisplay.textContent;
     const cellsSnapshot = [...selectedCells];
     
-    isDragging = false;
+    inputState.isDragging = false;
     
     if (wordSnapshot.length >= MIN_WORD_LENGTH && cellsSnapshot.length >= MIN_WORD_LENGTH) {
         validateWord(wordSnapshot, cellsSnapshot);
-    } else if (cellsSnapshot.length > 0) {
-        // Parola troppo corta - pulisci silenziosamente
-        clearSelectionSilent();
+    } else {
+        clearSelectionImmediate();
     }
 };
 
@@ -1961,12 +2065,14 @@ function clearSelectionSilent() {
 }
 
 function validateWord(wordParam = null, cellsParam = null) {
+    if (!canInteract()) return; // ✅ Blocca interazioni sovrapposte
+    
     const word = wordParam || wordDisplay.textContent;
     const currentCells = cellsParam || [...selectedCells];
     
-    if (!word || word.length === 0 || currentCells.length === 0) {
-        return;
-    }
+    if (!word || word.length === 0) return;
+    
+    lockInput(isSandboxMode ? 800 : 400); // ✅ Lock più breve in gioco
     
     if (errorTimeout) {
         clearTimeout(errorTimeout);
@@ -2019,59 +2125,31 @@ function validateWord(wordParam = null, cellsParam = null) {
     }
     
     if (dictionary.has(word)) {
-        // PAROLA VALIDA!
+        // PAROLA VALIDA
         const pts = calculateScoreWithBonuses(word, currentCells);
-        const originalPath = currentCells.map(vIdx => getOriginalIndexFromVisual(vIdx, rotationIndex));
-        foundWords.set(word, { points: pts, active: true, index: ++wordCounter, path: originalPath });
-
-        if (pts >= 10) fireConfettiLight(); // Usa versione leggera
-        if (word === "BUSET") triggerBusetExplosion();
         
-        if (isBiatchMode) {
-            rotateGrid();
-            showBiatchOverlay();
-        }
-
-        runAchievementCheck(word, pts);
-        updateTotalScore();
-        
-        // Pulisci SUBITO
-        selectedCells = [];
-        lineLayer.innerHTML = '';
-        document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
-        
-        // Feedback visivo verde
+        // ✅ Animazione RAPIDA
         currentCells.forEach(i => {
             if(gridEl.children[i]) {
                 gridEl.children[i].classList.add('anim-valid');
             }
         });
         
+        // ✅ Rimuovi animazione dopo 250ms invece di 400ms
         setTimeout(() => {
             document.querySelectorAll('.tile').forEach(t => t.classList.remove('anim-valid'));
-        }, 400);
+        }, 250);
         
-        wordCountDisplay.textContent = foundWords.size;
-        
-        // Aggiungi alla lista
-        const li = document.createElement('li'); 
-        li.dataset.word = word;
-        li.innerHTML = `<div class="word-item-left"><button class="btn-eye" onclick="showWordOnGrid('${word}')" title="Mostra">👁️</button><span>${word}</span></div><span class="pts">+${pts}</span>`;
-        li.addEventListener('click', (e) => { 
-            if(isAnalysisPhase && !e.target.classList.contains('btn-eye')) toggleWord(word, li); 
-        });
-        wordsListEl.insertBefore(li, wordsListEl.firstChild);
-        
-        // Mostra conferma BREVE
-        wordDisplayLocked = true;
+        // ✅ Feedback brevissimo
         wordDisplay.textContent = `${word} (+${pts})`;
         wordDisplay.style.background = "#2ecc71";
         
         setTimeout(() => {
-            wordDisplay.style.background = "#dfe6e9";
-            wordDisplayLocked = false;
-            wordDisplay.textContent = "";
-        }, 800); // Ridotto a 800ms per reattività
+            if (!inputState.isDragging) { // ✅ Controlla se non ha già iniziato nuova parola
+                wordDisplay.style.background = "#dfe6e9";
+                wordDisplay.textContent = "";
+            }
+        }, 600); // ✅ Ridotto da 800ms
         
     } else { 
         shakeAndClear(currentCells);
@@ -2080,25 +2158,18 @@ function validateWord(wordParam = null, cellsParam = null) {
 
 function shakeAndClear(cells) {
     errorCount++;
+    lockInput(250); // ✅ Lock breve per errori
     
     wordDisplay.style.background = "#e74c3c";
-    
     cells.forEach(i => {
         if(gridEl.children[i]) gridEl.children[i].classList.add('anim-invalid');
     });
     
-    // Dopo 300ms: pulisci TUTTO (ridotto per reattività)
+    // ✅ Cleanup RAPIDO (200ms invece di 300ms)
     setTimeout(() => {
-        document.querySelectorAll('.tile').forEach(t => {
-            t.classList.remove('anim-invalid');
-            t.classList.remove('selected');
-        });
-        selectedCells = [];
-        lineLayer.innerHTML = '';
+        clearSelectionImmediate();
         wordDisplay.style.background = "#dfe6e9";
-        wordDisplay.textContent = "";
-        wordDisplayLocked = false;
-    }, 300);
+    }, 200);
 }
     function calculateScoreWithBonuses(word, cells) {
         let pts = 0;
@@ -3370,5 +3441,3 @@ if (document.readyState === 'loading') {
 </div>
 </body>
 </html>
-
-
