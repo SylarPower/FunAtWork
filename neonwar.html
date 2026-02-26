@@ -504,7 +504,10 @@
 			    document.getElementById('start-screen').style.display = 'none';
 			    document.getElementById('game-over-screen').style.display = 'none';
 			    document.getElementById('shop-screen').style.display = 'none';
-			    
+			    // ✅ MOSTRA PULSANTE HOME
+			    if (!isMultiplayer) {
+			        document.getElementById('fixed-home-btn').style.display = 'block';
+			    }
 			    score = 0; frameCount = 0;
 			    player.x = canvas.width/2; player.y = canvas.height/2;
 			    
