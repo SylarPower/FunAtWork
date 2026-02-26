@@ -1332,47 +1332,56 @@ function renderPartitaPictionary(p, div) {
 			        return;
 			    }
 			    
-			    // ✅ GESTIONE SPECIFICA PER PICTIONARY
-			    if (giocoSelezionato === 'pictionary') {
-			        showLoadingBanner('Creazione sfida Pictionary...');
-			        
-			        try {
-			            const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-			            
-			            await db.collection("pictionary_rooms").doc(roomCode).set({
-			                host: mioNome,
-			                players: partecipanti,
-			                ready: [],
-			                settings: { 
-			                    rounds: parseInt(opzioni.rounds), 
-			                    timePerRound: parseInt(opzioni.timePerRound) 
-			                },
-			                stato: 'lobby',
-			                currentPhase: 0,
-			                chains: {},
-			                votes: {},
-			                scores: {},
-			                completedPhase: {},
-			                timestamp: Date.now(),
-			                dataOra: new Date().toLocaleString('it-IT'),
-			                sfidaDiretta: true
-			            });
-			            
-			            // Deseleziona amici
-			            amiciSelezionati.clear();
-			            document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-			            aggiornaBottoneSfida();
-			            
-			            // Redirect diretto (non serve attendere accettazione)
-			            window.location.href = `pictionary.html?room=${roomCode}`;
-			            
-			        } catch (e) {
-			            console.error("Errore creazione Pictionary:", e);
-			            removeGameBanner();
-			            mostraToast('❌ Errore creazione sfida');
-			        }
-			        return; // ← ESCI SUBITO
-			    }
+// ✅ GESTIONE SPECIFICA PER PICTIONARY
+if (giocoSelezionato === 'pictionary') {
+    showLoadingBanner('Creazione sfida Pictionary...');
+    
+    try {
+        const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+        
+        // ✅ Determina il numero di round in base alla modalità
+        const numRounds = modalitaId === 'guessit' 
+            ? partecipanti.length * 2  // GuessIt: ogni giocatore disegna 2 volte
+            : partecipanti.length;      // Classic: 1 volta a testa
+        
+        await db.collection("pictionary_rooms").doc(roomCode).set({
+            host: mioNome,
+            players: partecipanti,
+            ready: [],
+            settings: { 
+                mode: modalitaId,  // ✅ AGGIUNTO: classic o guessit
+                timePerRound: parseInt(opzioni.timePerRound || 60)
+            },
+            stato: 'lobby',
+            currentRound: 0,
+            totalRounds: numRounds,
+            chains: {},
+            votes: {},
+            scores: {},
+            completedRound: {},  // ✅ CORRETTO: era completedPhase
+            timestamp: Date.now(),
+            dataOra: new Date().toLocaleString('it-IT'),
+            sfidaDiretta: true
+        });
+        
+        // Salva ultima modalità usata
+        localStorage.setItem('ultimo_pictionary_mode', modalitaId);
+        
+        // Deseleziona amici
+        amiciSelezionati.clear();
+        document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+        aggiornaBottoneSfida();
+        
+        // Redirect diretto
+        window.location.href = `pictionary.html?room=${roomCode}`;
+        
+    } catch (e) {
+        console.error("Errore creazione Pictionary:", e);
+        removeGameBanner();
+        mostraToast('❌ Errore creazione sfida');
+    }
+    return; // ← ESCI SUBITO
+}
 			    
 			    // ✅ CONTINUA CON LA LOGICA NORMALE PER GLI ALTRI GIOCHI
 			    let pIniziali = {};
@@ -1821,6 +1830,7 @@ function renderPartitaPictionary(p, div) {
 		</script>
 	</body>
 </html>
+
 
 
 
