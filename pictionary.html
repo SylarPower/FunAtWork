@@ -25,7 +25,10 @@
         /* === ANIMAZIONI === */
         @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
@@ -1062,7 +1065,6 @@ function showThemeScreen(data, theme) {
 }
 
 function launchCanvas() {
-    removeBanner();
     showScreen('game-ui');
     showHomeButton();
     
@@ -1077,7 +1079,6 @@ function launchCanvas() {
     const themeBadge = document.getElementById('canvas-theme-badge');
     
     if (state.isInterpretPhase && state.receivedDrawing) {
-        // Mostra miniatura con disegno da copiare
         refThumbnail.style.display = 'block';
         
         const miniCanvas = document.getElementById('reference-mini-canvas');
@@ -1093,8 +1094,7 @@ function launchCanvas() {
         themeBadge.textContent = "RIDISEGNALO!";
         themeBadge.style.background = 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)';
     } else {
-        // Fase disegno normale
-        refThumbnail.style.display = 'none';
+        if (refThumbnail) refThumbnail.style.display = 'none';
         themeBadge.textContent = state.myCurrentTheme;
         themeBadge.style.background = 'linear-gradient(135deg, var(--primary) 0%, #ff6b9d 100%)';
     }
@@ -1108,36 +1108,94 @@ function launchCanvas() {
     setSize(8);
     history = [];
     
+    // ✅ TIMER
     timer = data.settings.timePerRound;
     document.getElementById('timer').textContent = timer;
     document.getElementById('timer').classList.remove('warning');
-    startTimer();
+    
+    // ✅ AVVIA TIMER E MOSTRA BANNER CON COUNTDOWN
+    startTimerWithBanner();
     
     attachCanvasListeners();
-    
-    // ✅ Banner appropriato
-    if (state.isInterpretPhase) {
-        showBanner({
-            icon: '🎨',
-            title: 'RIDISEGNA!',
-            subtitle: 'Guarda il riferimento in alto a destra e ridisegnalo',
-            color: '#4ecdc4',
-            buttons: []
-        });
-    } else {
-        showBanner({
-            icon: '✏️',
-            title: `DISEGNA: ${state.myCurrentTheme}`,
-            subtitle: `Tempo: ${timer}s`,
-            color: '#e94560',
-            buttons: []
-        });
-    }
 }
-
+function startTimerWithBanner() {
+    clearInterval(timerInterval);
+    
+    const data = state.roomData;
+    const fase = state.isInterpretPhase ? 'RIDISEGNA' : 'DISEGNA';
+    const tema = state.myCurrentTheme;
+    const roundInfo = `Round ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
+    
+    // ✅ Funzione per aggiornare il banner con il timer
+    const updateBanner = () => {
+        const timerColor = timer <= 10 ? '#ff6b6b' : '#4ecdc4';
+        const timerClass = timer <= 10 ? 'pulse' : '';
+        
+        removeBanner();
+        
+        const banner = document.createElement('div');
+        banner.id = 'game-banner';
+        banner.className = 'game-banner';
+        banner.style.background = state.isInterpretPhase 
+            ? 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)'
+            : 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
+        
+        banner.innerHTML = `
+            <div class="banner-left">
+                <span class="banner-icon">${state.isInterpretPhase ? '🎨' : '✏️'}</span>
+                <div>
+                    <div class="banner-title">${fase}: ${tema}</div>
+                    <div class="banner-subtitle">${roundInfo}</div>
+                </div>
+            </div>
+            <div class="banner-right">
+                <div style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 2rem;
+                    font-weight: 900;
+                    color: ${timerColor};
+                    min-width: 70px;
+                    text-align: center;
+                    text-shadow: 0 0 10px ${timerColor};
+                    ${timer <= 10 ? 'animation: pulse 0.5s infinite;' : ''}
+                ">${timer}s</div>
+            </div>
+        `;
+        
+        document.body.appendChild(banner);
+    };
+    
+    // ✅ Mostra banner iniziale
+    updateBanner();
+    
+    // ✅ Aggiorna header del canvas
+    const timerEl = document.getElementById('timer');
+    timerEl.textContent = timer;
+    
+    // ✅ Avvia countdown
+    timerInterval = setInterval(() => {
+        timer--;
+        
+        // Aggiorna header
+        timerEl.textContent = timer;
+        if (timer <= 10) {
+            timerEl.classList.add('warning');
+        }
+        
+        // Aggiorna banner
+        updateBanner();
+        
+        // ✅ TEMPO SCADUTO
+        if (timer <= 0) {
+            clearInterval(timerInterval);
+            finishCurrentPhase();
+        }
+    }, 1000);
+}
 // ✅ FUNZIONE UNIFICATA per finire fase corrente
 async function finishCurrentPhase() {
     clearInterval(timerInterval);
+    removeBanner();
     
     const data = state.roomData;
     const phase = data.currentPhase;
@@ -1145,16 +1203,20 @@ async function finishCurrentPhase() {
     
     const drawingData = compressDrawing(history);
     
-    // ✅ Step semplificato - niente più "guess"
-    const step = {
-        player: state.playerName,
-        type: state.isInterpretPhase ? 'interpret' : 'draw',
-        drawing: drawingData
-    };
-    
-    // Solo per il primo disegno, salva il tema originale
-    if (!state.isInterpretPhase) {
-        step.theme = state.myCurrentTheme;
+    let step;
+    if (state.isInterpretPhase) {
+        step = {
+            player: state.playerName,
+            type: 'interpret',
+            drawing: drawingData
+        };
+    } else {
+        step = {
+            player: state.playerName,
+            type: 'draw',
+            theme: state.myCurrentTheme,
+            drawing: drawingData
+        };
     }
     
     const chainPath = `chains.${myChainId}.steps`;
@@ -1173,7 +1235,9 @@ async function finishCurrentPhase() {
         checkPhaseComplete();
     }
     
-    showWaitingScreen(data, 'drawing');
+    // ✅ Rileggi dati aggiornati per mostrare waiting corretta
+    const freshDoc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+    showWaitingScreen(freshDoc.data(), 'drawing');
 }
 
 // ========================================
@@ -1210,6 +1274,7 @@ function handleInterpretPhase(data) {
 // WAITING
 // ========================================
 function showWaitingScreen(data, type) {
+    clearInterval(timerInterval); // ✅ Ferma il timer
     removeBanner();
     showScreen('waiting-screen');
     showHomeButton();
@@ -1218,17 +1283,23 @@ function showWaitingScreen(data, type) {
     const completed = data.completedPhase?.[phase] || [];
     const total = data.players.length;
     
+    // ✅ Mostra chi ha finito
+    const completedNames = completed.join(', ') || 'Nessuno ancora';
+    const remaining = data.players.filter(p => !completed.includes(p));
+    const remainingNames = remaining.join(', ') || 'Tutti hanno finito!';
+    
     document.getElementById('waiting-title').textContent = 
-        type === 'drawing' ? '✏️ DISEGNO INVIATO!' : '🎯 INTERPRETAZIONE INVIATA!';
-    document.getElementById('waiting-message').textContent = 'Aspettando gli altri giocatori...';
+        type === 'drawing' ? '✏️ DISEGNO INVIATO!' : '🎯 RIDISEGNO INVIATO!';
+    document.getElementById('waiting-message').textContent = 
+        `In attesa di: ${remainingNames}`;
     document.getElementById('done-count').textContent = completed.length;
     document.getElementById('total-players').textContent = total;
     
-    // ✅ Banner attesa
+    // ✅ Banner attesa con dettagli
     showBanner({
         icon: '⏳',
-        title: 'ATTESA GIOCATORI',
-        subtitle: `${completed.length}/${total} hanno completato`,
+        title: `ATTESA (${completed.length}/${total})`,
+        subtitle: `Completato: ${completedNames}`,
         color: '#9b59b6',
         spinner: true
     });
@@ -1675,21 +1746,6 @@ function renderPalette() {
         dot.onclick = () => { currentColor = c; renderPalette(); };
         p.appendChild(dot);
     });
-}
-
-function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        timer--;
-        const timerEl = document.getElementById('timer');
-        timerEl.textContent = timer;
-        
-        if (timer <= 10) timerEl.classList.add('warning');
-        
-        if (timer <= 0) {
-            finishCurrentPhase();
-        }
-    }, 1000);
 }
 
 // ========================================
