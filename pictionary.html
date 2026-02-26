@@ -88,7 +88,45 @@
             pointer-events: none; z-index: 20; text-transform: uppercase;
             box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
         }
+/* === MINIATURA RIFERIMENTO === */
+.reference-thumbnail {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 80px;
+    height: 80px;
+    background: white;
+    border: 3px solid var(--success);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    z-index: 25;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
 
+.reference-thumbnail:hover {
+    transform: scale(2);
+    z-index: 100;
+}
+
+.reference-thumbnail canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.reference-thumbnail .label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--success);
+    color: white;
+    font-size: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px;
+}
         canvas { width: 100%; height: 100%; display: block; border-radius: 10px; }
 
         /* === TOOLBAR === */
@@ -527,29 +565,6 @@
     </div>
 </div>
 
-<!-- INTERPRETAZIONE -->
-<div id="interpret-screen" class="overlay hidden">
-    <div class="card" style="max-width: 450px;">
-        <div style="font-size: 3rem;">🤔</div>
-        <p style="font-weight: 700;">COSA RAPPRESENTA?</p>
-        
-        <div class="received-drawing">
-            <canvas id="received-canvas"></canvas>
-        </div>
-        
-        <div class="guess-input-container">
-            <label class="guess-label">Scrivi cosa pensi sia:</label>
-            <input type="text" id="guess-input" placeholder="Es: PIZZA" 
-                   oninput="this.value = this.value.toUpperCase()" maxlength="30">
-        </div>
-        
-        <button class="btn btn-success" style="width: 100%; padding: 18px;" 
-                onclick="submitGuessAndDraw()">
-            ✏️ ORA DISEGNALO!
-        </button>
-    </div>
-</div>
-
 <!-- CANVAS -->
 <div id="game-ui" class="app-container hidden">
     <header>
@@ -564,6 +579,10 @@
         <div class="canvas-wrapper">
             <div class="canvas-container">
                 <div class="canvas-badge" id="canvas-theme-badge">TEMA</div>
+                    <div class="reference-thumbnail" id="reference-thumbnail" style="display: none;">
+                        <canvas id="reference-mini-canvas"></canvas>
+                        <div class="label">RIFERIMENTO</div>
+                    </div>
                 <canvas id="mainCanvas"></canvas>
             </div>
         </div>
@@ -708,8 +727,8 @@ let state = {
     myVotes: {},
     localHistory: [],
     myCurrentTheme: null,
-    myCurrentGuess: null,
-    isInterpretPhase: false // ✅ FLAG per distinguere fase disegno/interpret
+    isInterpretPhase: false,
+    receivedDrawing: null  // ✅ AGGIUNGI QUESTO
 };
 
 let canvas, ctx;
@@ -1053,7 +1072,33 @@ function launchCanvas() {
     
     const data = state.roomData;
     
-    document.getElementById('canvas-theme-badge').textContent = state.myCurrentTheme;
+    // ✅ Se è fase interpretazione, mostra miniatura riferimento
+    const refThumbnail = document.getElementById('reference-thumbnail');
+    const themeBadge = document.getElementById('canvas-theme-badge');
+    
+    if (state.isInterpretPhase && state.receivedDrawing) {
+        // Mostra miniatura con disegno da copiare
+        refThumbnail.style.display = 'block';
+        
+        const miniCanvas = document.getElementById('reference-mini-canvas');
+        miniCanvas.width = LOGICAL_SIZE;
+        miniCanvas.height = LOGICAL_SIZE;
+        const miniCtx = miniCanvas.getContext('2d');
+        miniCtx.fillStyle = '#ffffff';
+        miniCtx.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+        
+        const actions = decompressDrawing(state.receivedDrawing);
+        actions.forEach(act => applyAction(act, miniCtx));
+        
+        themeBadge.textContent = "RIDISEGNALO!";
+        themeBadge.style.background = 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)';
+    } else {
+        // Fase disegno normale
+        refThumbnail.style.display = 'none';
+        themeBadge.textContent = state.myCurrentTheme;
+        themeBadge.style.background = 'linear-gradient(135deg, var(--primary) 0%, #ff6b9d 100%)';
+    }
+    
     document.getElementById('ui-round-info').textContent = 
         `ROUND ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
     document.getElementById('ui-player').textContent = state.playerName;
@@ -1070,15 +1115,24 @@ function launchCanvas() {
     
     attachCanvasListeners();
     
-    // ✅ Banner fase canvas
-    const fase = state.isInterpretPhase ? 'INTERPRETAZIONE' : 'DISEGNO';
-    showBanner({
-        icon: state.isInterpretPhase ? '🤔' : '✏️',
-        title: `${fase} IN CORSO`,
-        subtitle: `Tempo rimanente: ${timer}s`,
-        color: state.isInterpretPhase ? '#4ecdc4' : '#e94560',
-        buttons: []
-    });
+    // ✅ Banner appropriato
+    if (state.isInterpretPhase) {
+        showBanner({
+            icon: '🎨',
+            title: 'RIDISEGNA!',
+            subtitle: 'Guarda il riferimento in alto a destra e ridisegnalo',
+            color: '#4ecdc4',
+            buttons: []
+        });
+    } else {
+        showBanner({
+            icon: '✏️',
+            title: `DISEGNA: ${state.myCurrentTheme}`,
+            subtitle: `Tempo: ${timer}s`,
+            color: '#e94560',
+            buttons: []
+        });
+    }
 }
 
 // ✅ FUNZIONE UNIFICATA per finire fase corrente
@@ -1091,23 +1145,16 @@ async function finishCurrentPhase() {
     
     const drawingData = compressDrawing(history);
     
-    let step;
-    if (state.isInterpretPhase) {
-        // Fase interpretazione
-        step = {
-            player: state.playerName,
-            type: 'interpret',
-            guess: state.myCurrentGuess,
-            drawing: drawingData
-        };
-    } else {
-        // Fase disegno puro
-        step = {
-            player: state.playerName,
-            type: 'draw',
-            theme: state.myCurrentTheme,
-            drawing: drawingData
-        };
+    // ✅ Step semplificato - niente più "guess"
+    const step = {
+        player: state.playerName,
+        type: state.isInterpretPhase ? 'interpret' : 'draw',
+        drawing: drawingData
+    };
+    
+    // Solo per il primo disegno, salva il tema originale
+    if (!state.isInterpretPhase) {
+        step.theme = state.myCurrentTheme;
     }
     
     const chainPath = `chains.${myChainId}.steps`;
@@ -1118,11 +1165,15 @@ async function finishCurrentPhase() {
         [completedPath]: firebase.firestore.FieldValue.arrayUnion(state.playerName)
     });
     
+    // Reset stato
+    state.isInterpretPhase = false;
+    state.receivedDrawing = null;
+    
     if (state.isHost) {
         checkPhaseComplete();
     }
     
-    showWaitingScreen(data, state.isInterpretPhase ? 'interpreting' : 'drawing');
+    showWaitingScreen(data, 'drawing');
 }
 
 // ========================================
@@ -1146,45 +1197,12 @@ function handleInterpretPhase(data) {
         return;
     }
     
-    showInterpretScreen(data, lastDrawing.drawing);
-}
-
-function showInterpretScreen(data, drawingData) {
-    removeBanner();
-    showScreen('interpret-screen');
-    showHomeButton();
+    // ✅ Salva il disegno ricevuto come riferimento
+    state.receivedDrawing = lastDrawing.drawing;
+    state.myCurrentTheme = "COPIA IL DISEGNO";
+    state.isInterpretPhase = true;
     
-    const cvs = document.getElementById('received-canvas');
-    cvs.width = LOGICAL_SIZE;
-    cvs.height = LOGICAL_SIZE;
-    const ctx = cvs.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
-    
-    const actions = decompressDrawing(drawingData);
-    actions.forEach(act => applyAction(act, ctx));
-    
-    document.getElementById('guess-input').value = '';
-    
-    // ✅ Banner interpretazione
-    const currentRound = Math.floor(data.currentPhase / 2) + 1;
-    showBanner({
-        icon: '🤔',
-        title: `ROUND ${currentRound}/${data.settings.rounds} - INTERPRETAZIONE`,
-        subtitle: 'Guarda il disegno e indovina cosa rappresenta',
-        color: '#4ecdc4',
-        buttons: []
-    });
-}
-
-function submitGuessAndDraw() {
-    const guess = document.getElementById('guess-input').value.trim().toUpperCase();
-    if (!guess) return alert("Scrivi cosa pensi che sia!");
-    
-    state.myCurrentGuess = guess;
-    state.myCurrentTheme = guess;
-    state.isInterpretPhase = true; // ✅ Ora sono in fase interpretazione
-    
+    // ✅ Vai direttamente al canvas con riferimento
     launchCanvas();
 }
 
@@ -1303,17 +1321,19 @@ function renderGallery(data) {
                 stepCard.classList.add('voted');
             }
             
-            stepCard.innerHTML = `
-                <div class="step-canvas"><canvas id="step-canvas-${chainId}-${stepIdx}"></canvas></div>
-                <div class="step-info">
-                    <div class="step-player">${step.player}</div>
-                    ${step.type === 'interpret' ? `<div class="step-guess">"${step.guess}"</div>` : ''}
-                </div>
-                <button class="vote-btn ${myVotes[chainId] === step.player ? 'voted' : ''}" 
-                        onclick="voteFor('${chainId}', '${step.player}')">
-                    ${myVotes[chainId] === step.player ? '⭐ VOTATO' : '👍 VOTA'}
-                </button>
-            `;
+stepCard.innerHTML = `
+    <div class="step-canvas"><canvas id="step-canvas-${chainId}-${stepIdx}"></canvas></div>
+    <div class="step-info">
+        <div class="step-player">${step.player}</div>
+        <div class="step-type" style="font-size: 0.65rem; opacity: 0.6;">
+            ${step.type === 'draw' ? '🎯 Originale' : '🔄 Copia'}
+        </div>
+    </div>
+    <button class="vote-btn ${myVotes[chainId] === step.player ? 'voted' : ''}" 
+            onclick="voteFor('${chainId}', '${step.player}')">
+        ${myVotes[chainId] === step.player ? '⭐ VOTATO' : '👍 VOTA'}
+    </button>
+`;
             
             flowContainer.appendChild(stepCard);
             
