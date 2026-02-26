@@ -928,35 +928,26 @@ function renderLobby(data) {
         list.appendChild(card);
     });
     
-    const roundsSelect = document.getElementById('lobby-rounds-select');
+    // ✅ Aggiorna display round automatici
+    const autoRoundsDisplay = document.getElementById('auto-rounds-display');
+    if (autoRoundsDisplay) {
+        autoRoundsDisplay.textContent = data.players.length;
+    }
+    
+    // ✅ Aggiorna selettore tempo
     const timeSelect = document.getElementById('lobby-time-select');
-    const canEditSettings = state.isHost && !data.sfidaDiretta;
-
-    roundsSelect.disabled = !canEditSettings;
-    timeSelect.disabled = !canEditSettings;
-
-    if (canEditSettings) {
-        roundsSelect.onchange = () => updateSettings();
-        timeSelect.onchange = () => updateSettings();
+    if (timeSelect) {
+        timeSelect.value = data.settings?.timePerRound || 60;
+        
+        const canEdit = state.isHost && !data.sfidaDiretta;
+        timeSelect.disabled = !canEdit;
+        
+        if (canEdit) {
+            timeSelect.onchange = () => updateSettings();
+        } else {
+            timeSelect.onchange = null;
+        }
     }
-    
-// ✅ Aggiorna display round automatici
-const autoRoundsDisplay = document.getElementById('auto-rounds-display');
-if (autoRoundsDisplay) {
-    autoRoundsDisplay.textContent = data.players.length;
-}
-
-const timeSelect = document.getElementById('lobby-time-select');
-if (timeSelect) {
-    timeSelect.value = data.settings?.timePerRound || 60;
-    
-    if (state.isHost && !data.sfidaDiretta) {
-        timeSelect.disabled = false;
-        timeSelect.onchange = () => updateSettings();
-    } else {
-        timeSelect.disabled = true;
-    }
-}
     
     const readyBtn = document.getElementById('lobby-ready-btn');
     const statusDiv = document.getElementById('lobby-status');
