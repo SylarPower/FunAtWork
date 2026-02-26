@@ -1916,16 +1916,18 @@
           dictionaryReady = true;
           loadingMsg.style.display = 'none';
           console.log(`✅ DIZIONARIO PRONTO: ${dictionary.size} parole`);
-          const urlParams = new URLSearchParams(window.location.search);
-          const codeParam = urlParams.get('code');
-          if (codeParam) {
-            console.log("🎮 Avvio partita con codice:", codeParam);
-            initGame(codeParam);
-          } else {
-            console.log("🏠 Nessun codice - Schermata home");
-            gridEl.innerHTML = '';
-            displaySeed.textContent = "----";
-          }
+		const codeParam = urlParams.get('code');
+		
+		if(codeParam) {
+		    console.log("🎮 Avvio partita con codice:", codeParam);
+		    initGame(codeParam);
+		} else if (!matchId) {
+		    // ✅ Solo se NON siamo in multiplayer
+		    console.log("🏠 Nessun codice - Schermata home");
+		    gridEl.innerHTML = '';
+		    displaySeed.textContent = "----";
+		}
+		// ✅ Se matchId esiste, il listener Firebase gestirà la griglia
         } catch (error) {
           console.error("❌ ERRORE FATALE:", error);
           loadingMsg.innerHTML = `
@@ -3693,75 +3695,105 @@
             document.getElementById('fixed-home-btn').style.display = 'block';
             const btnNewEl = document.querySelector('.btn-new');
             if (btnNewEl) btnNewEl.style.display = 'block';
-            // Rivincita proposta?
-            if (data.prossimaPartita) {
-              // ✅ Controlla se qualcuno ha rifiutato
-              const rifiutanti = data.rivincitaRifiutataDa || [];
-              if (rifiutanti.length > 0 && !rifiutanti.includes(mioNome)) {
-                // Mostra chi ha rifiutato
-                showGameBanner({
-                  icon: '😔',
-                  title: 'RIVINCITA RIFIUTATA',
-                  subtitle: `${rifiutanti.join(', ')} ha rifiutato la rivincita`,
-                  color: '#e74c3c',
-                  buttons: [{
-                    text: '🏠 TORNA HOME',
-                    onclick: 'tornaHome()'
-                  }, {
-                    text: '🔄 ALTRA RIVINCITA',
-                    onclick: 'apriRivincitaBanner()'
-                  }]
-                });
-                return;
-              }
-              // Se io ho rifiutato, mostra opzioni
-              if (rifiutanti.includes(mioNome)) {
-                showGameBanner({
-                  icon: '👋',
-                  title: 'HAI RIFIUTATO',
-                  subtitle: 'Puoi tornare alla home o proporre un\'altra rivincita',
-                  color: '#7f8c8d',
-                  buttons: [{
-                    text: '🏠 TORNA HOME',
-                    onclick: 'tornaHome()'
-                  }, {
-                    text: '🔄 ALTRA RIVINCITA',
-                    onclick: 'apriRivincitaBanner()'
-                  }]
-                });
-                return;
-              }
-              // Chi ha creato la rivincita viene rediretto automaticamente
-              if (data.prossimaPartitaCreataDa === mioNome) {
-                showGameBanner({
-                  icon: '⏳',
-                  title: 'RIVINCITA CREATA!',
-                  subtitle: 'Reindirizzamento...',
-                  color: '#27ae60',
-                  buttons: [],
-                  spinner: true
-                });
-                setTimeout(() => {
-                  window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`;
-                }, 1000);
-                return;
-              }
-              // Gli altri vedono il banner per accettare/rifiutare
-              showGameBanner({
-                icon: '🔄',
-                title: 'RIVINCITA PROPOSTA!',
-                subtitle: `${data.prossimaPartitaCreataDa} vuole la rivincita`,
+// Rivincita proposta?
+if (data.prossimaPartita) {
+    const rifiutanti = data.rivincitaRifiutataDa || [];
+    const accettanti = data.rivincitaAccettataDa || [];
+    const altriGiocatori = data.partecipanti.filter(p => p !== data.prossimaPartitaCreataDa);
+    
+    // ✅ PRIORITÀ 1: Mostra chi ha rifiutato (a TUTTI)
+    if (rifiutanti.length > 0) {
+        const ioHoRifiutato = rifiutanti.includes(mioNome);
+        const altriRifiutanti = rifiutanti.filter(r => r !== mioNome);
+        
+        if (ioHoRifiutato) {
+            showGameBanner({
+                icon: '👋',
+                title: 'HAI RIFIUTATO LA RIVINCITA',
+                subtitle: altriRifiutanti.length > 0 ? `Anche ${altriRifiutanti.join(', ')} ha rifiutato` : 'Puoi tornare alla home o proporre un\'altra rivincita',
+                color: '#7f8c8d',
+                buttons: [
+                    { text: '🏠 TORNA HOME', onclick: 'tornaHome()' },
+                    { text: '🔄 ALTRA RIVINCITA', onclick: 'apriRivincitaBanner()' }
+                ]
+            });
+        } else {
+            showGameBanner({
+                icon: '😔',
+                title: 'RIVINCITA RIFIUTATA',
+                subtitle: `${rifiutanti.join(', ')} ha rifiutato la rivincita`,
                 color: '#e74c3c',
-                buttons: [{
-                  text: '✅ ACCETTA',
-                  onclick: `accettaRivincita('${data.prossimaPartita}')`
-                }, {
-                  text: '❌ RIFIUTA',
-                  onclick: 'rifiutaRivincita()'
-                }]
-              });
-              return;
-            }
+                buttons: [
+                    { text: '🏠 TORNA HOME', onclick: 'tornaHome()' },
+                    { text: '🔄 ALTRA RIVINCITA', onclick: 'apriRivincitaBanner()' }
+                ]
+            });
+        }
+        return;
+    }
+    
+    // ✅ PRIORITÀ 2: Chi ha creato la rivincita
+    if (data.prossimaPartitaCreataDa === mioNome) {
+        if (accettanti.length > 0) {
+            // Qualcuno ha accettato! Redirect
+            showGameBanner({
+                icon: '✅',
+                title: 'RIVINCITA ACCETTATA!',
+                subtitle: `${accettanti.join(', ')} ha accettato. Reindirizzamento...`,
+                color: '#27ae60',
+                buttons: [],
+                spinner: true
+            });
+            
+            setTimeout(() => { 
+                window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
+            }, 1500);
+        } else {
+            // Nessuno ha ancora accettato, aspetta
+            showGameBanner({
+                icon: '⏳',
+                title: 'RIVINCITA CREATA',
+                subtitle: `In attesa che ${altriGiocatori.join(', ')} accetti...`,
+                color: '#9b59b6',
+                buttons: [
+                    { text: '🚫 ANNULLA RIVINCITA', onclick: 'annullaRivincita()' }
+                ],
+                spinner: true
+            });
+        }
+        return;
+    }
+    
+    // ✅ PRIORITÀ 3: Gli altri vedono il banner per accettare/rifiutare
+    // (solo se non ho già accettato)
+    if (accettanti.includes(mioNome)) {
+        showGameBanner({
+            icon: '✅',
+            title: 'HAI ACCETTATO!',
+            subtitle: 'Reindirizzamento alla nuova partita...',
+            color: '#27ae60',
+            buttons: [],
+            spinner: true
+        });
+        
+        setTimeout(() => { 
+            window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
+        }, 1000);
+        return;
+    }
+    
+    showGameBanner({
+        icon: '🔄',
+        title: 'RIVINCITA PROPOSTA!',
+        subtitle: `${data.prossimaPartitaCreataDa} vuole la rivincita`,
+        color: '#e74c3c',
+        buttons: [
+            { text: '✅ ACCETTA', onclick: `accettaRivincita('${data.prossimaPartita}')` },
+            { text: '❌ RIFIUTA', onclick: 'rifiutaRivincita()' }
+        ]
+    });
+    return;
+}
             // Nessuna rivincita - mostra classifica
             let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
             const haVinto = classifica[0][0] === mioNome;
@@ -3975,19 +4007,47 @@
         window.location.href = 'index.html';
       }
 
-      function accettaRivincita(nuovoMatchId) {
-        showGameBanner({
-          icon: '🎮',
-          title: 'RIVINCITA ACCETTATA!',
-          subtitle: 'Caricamento...',
-          color: '#27ae60',
-          buttons: [],
-          spinner: true
+async function accettaRivincita(nuovoMatchId) {
+    showGameBanner({
+        icon: '🎮',
+        title: 'RIVINCITA ACCETTATA!',
+        subtitle: 'Caricamento...',
+        color: '#27ae60',
+        buttons: [],
+        spinner: true
+    });
+    
+    // ✅ Scrivi che ho accettato nella partita vecchia
+    await db.collection("partite").doc(matchId).update({
+        rivincitaAccettataDa: firebase.firestore.FieldValue.arrayUnion(mioNome)
+    });
+    
+    setTimeout(() => {
+        window.location.href = `ruzzle.html?matchId=${nuovoMatchId}`;
+    }, 500);
+}
+async function annullaRivincita() {
+    if (!confirm("Sicuro di voler annullare la rivincita?")) return;
+    
+    try {
+        // Elimina la partita creata
+        if (currentGameData?.prossimaPartita) {
+            await db.collection("partite").doc(currentGameData.prossimaPartita).delete();
+        }
+        
+        // Rimuovi il riferimento dalla partita corrente
+        await db.collection("partite").doc(matchId).update({
+            prossimaPartita: firebase.firestore.FieldValue.delete(),
+            prossimaPartitaCreataDa: firebase.firestore.FieldValue.delete(),
+            rivincitaAccettataDa: firebase.firestore.FieldValue.delete(),
+            rivincitaRifiutataDa: firebase.firestore.FieldValue.delete()
         });
-        setTimeout(() => {
-          window.location.href = `ruzzle.html?matchId=${nuovoMatchId}`;
-        }, 500);
-      }
+        
+    } catch(e) {
+        console.error("Errore annullamento:", e);
+    }
+}
+		
       async function rifiutaRivincita() {
         // ✅ Scrivi su Firebase chi ha rifiutato
         await db.collection("partite").doc(matchId).update({
@@ -4056,66 +4116,71 @@
     `;
         document.body.appendChild(banner);
       }
-      async function creaRivincitaConSelettori(bonus, crazy, biatch) {
-        const tempo = document.getElementById('rivincita-tempo').value;
-        const griglia = document.getElementById('rivincita-griglia').value;
-        showGameBanner({
-          icon: '⏳',
-          title: 'CREAZIONE RIVINCITA...',
-          subtitle: 'Attendi un momento',
-          color: '#3498db',
-          buttons: [],
-          spinner: true
-        });
-        try {
-          const snap = await db.collection("partite").doc(matchId).get();
-          const v = snap.data();
-          let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
-          let pts = {};
-          let words = {};
-          v.partecipanti.forEach(p => {
-            pts[p] = 0;
-            words[p] = [];
-          });
-          const doc = await db.collection("partite").add({
+async function creaRivincitaConSelettori(bonus, crazy, biatch) {
+    const tempo = document.getElementById('rivincita-tempo').value;
+    const griglia = document.getElementById('rivincita-griglia').value;
+    
+    showGameBanner({
+        icon: '⏳',
+        title: 'CREAZIONE RIVINCITA...',
+        subtitle: 'Attendi un momento',
+        color: '#3498db',
+        buttons: [],
+        spinner: true
+    });
+    
+    try {
+        const snap = await db.collection("partite").doc(matchId).get();
+        const v = snap.data();
+        let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
+        
+        let pts = {}; 
+        let words = {}; 
+        v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
+        
+        const doc = await db.collection("partite").add({
             gioco: 'ruzzle',
             partecipanti: v.partecipanti,
             opzioni: {
-              tempo: tempo,
-              griglia: griglia,
-              mode: mode,
-              seed: Math.random().toString(36).substring(7).toUpperCase()
+                tempo: tempo,
+                griglia: griglia,
+                mode: mode,
+                seed: Math.random().toString(36).substring(7).toUpperCase()
             },
-            punteggi: pts,
-            parole: words,
-            pronti: [],
-            finito: [],
-            confermaVerifica: [],
-            stato: "attesa",
-            timestamp: Date.now(),
+            punteggi: pts, 
+            parole: words, 
+            pronti: [], 
+            finito: [], 
+            confermaVerifica: [], 
+            stato: "attesa", 
+            timestamp: Date.now(), 
             dataOra: new Date().toLocaleString('it-IT')
-          });
-          // ✅ Salva chi ha creato la rivincita
-          await db.collection("partite").doc(matchId).update({
+        });
+        
+        // ✅ Salva chi ha creato la rivincita MA NON redirigere subito
+        await db.collection("partite").doc(matchId).update({ 
             prossimaPartita: doc.id,
-            prossimaPartitaCreataDa: mioNome
-          });
-          // ✅ Chi crea la rivincita viene rediretto subito
-          window.location.href = `ruzzle.html?matchId=${doc.id}`;
-        } catch (e) {
-          console.error("Errore creazione rivincita:", e);
-          showGameBanner({
+            prossimaPartitaCreataDa: mioNome,
+            rivincitaAccettataDa: [],
+            rivincitaRifiutataDa: []
+        });
+        
+        // ✅ Il listener Firebase mostrerà "In attesa che gli altri accettino"
+        // Il redirect avverrà quando qualcuno accetta
+        
+    } catch(e) {
+        console.error("Errore creazione rivincita:", e);
+        showGameBanner({
             icon: '❌',
             title: 'ERRORE',
             subtitle: 'Impossibile creare rivincita',
             color: '#e74c3c',
-            buttons: [{
-              text: '🔄 RIPROVA',
-              onclick: 'apriRivincitaBanner()'
-            }]
-          });
-        }
-      }
+            buttons: [
+                { text: '🔄 RIPROVA', onclick: 'apriRivincitaBanner()' }
+            ]
+        });
+    }
+}
       async function attivaAnalisiMultiplayerSilent() {
         const snap = await db.collection("partite").doc(matchId).get();
         const data = snap.data();
@@ -4242,3 +4307,4 @@
     </div>
   </body>
 </html>
+
