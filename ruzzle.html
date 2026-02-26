@@ -272,7 +272,7 @@
             display: flex; flex-direction: column; position: relative;
             min-height: 600px; 
         }
-        @media (max-width: 800px) { .sidebar { flex: 1; min-height: 500px; } }
+        @media (max-width: 600px) { .sidebar { flex: 1; min-height: 500px; } }
 
         .score-box-container { 
             position: relative; text-align: center; 
@@ -557,32 +557,47 @@
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
         
-        .game-banner {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 9999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            animation: slideDown 0.3s ease;
-            color: white;
-        }
-        
-        .game-banner .banner-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .game-banner .banner-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+.game-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease;
+    color: white;
+    flex-wrap: wrap;
+}
+
+.game-banner .banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.game-banner .banner-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .game-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .game-banner .banner-left,
+    .game-banner .banner-right {
+        justify-content: center;
+    }
+}
     </style>
 </head>
 <body class="dark-mode">
@@ -602,13 +617,9 @@
 
     <div class="app-wrapper">
         <div class="header-bar">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <button onclick="tornaHome()" class="btn-action" style="width:auto; padding:8px 15px; margin:0;">🏠 HOME</button>
-                <h1>Ruzzle dei 🐷</h1>
-            </div>
+            <h1>Ruzzle dei 🐷</h1>
             <button class="theme-btn" onclick="toggleTheme()" title="Cambia Tema">🌗</button>
         </div>
-
         <div class="game-container">
             <div class="board-wrapper">
                 <div class="config-bar">
@@ -1080,29 +1091,16 @@
         return '#' + (0x1000000 + r*0x10000 + g*0x100 + b).toString(16).slice(1);
     }
 
-    function mostraRisultatiTemporanei() {
-        const lobby = document.getElementById('multiplayer-lobby');
-        lobby.style.display = 'flex';
-        document.getElementById('lobby-title').textContent = "RISULTATI PARZIALI";
+    function mostraRisultatiPopup() {
+        if (!currentGameData) return;
         
-        if (currentGameData) {
-            let html = "";
-            Object.entries(currentGameData.punteggi || {}).forEach(([p, s]) => {
-                const finito = (currentGameData.finito || []).includes(p);
-                html += `<div>${finito ? '✅' : '⏳'} ${p}: ${s} PT</div>`;
-            });
-            document.getElementById('lobby-status').innerHTML = html;
-        }
+        let msg = "RISULTATI PARZIALI:\n\n";
+        Object.entries(currentGameData.punteggi || {}).forEach(([p, s]) => {
+            const finito = (currentGameData.finito || []).includes(p);
+            msg += `${finito ? '✅' : '⏳'} ${p}: ${s} PT\n`;
+        });
         
-        document.getElementById('lobby-action').innerHTML = `
-            <button onclick="document.getElementById('multiplayer-lobby').style.display='none';" class="btn-action" style="width:auto; padding:12px 25px;">
-                🎮 TORNA ALLA GRIGLIA
-            </button>
-        `;
-    }
-
-    function avviaVerifica() {
-        db.collection("partite").doc(matchId).update({ stato: "verifica" });
+        alert(msg);
     }
     
     // --- ✅ LOAD DICTIONARY CON TIMEOUT ---
@@ -2089,8 +2087,8 @@
 
         if (typeof matchId !== 'undefined' && matchId && db) {
             db.collection("partite").doc(matchId).update({
-                punteggi: { [mioNome]: score }
-            }, { merge: true }).catch(e => {});
+                [`punteggi.${mioNome}`]: score
+            }).catch(e => {});
         }
     }
     
@@ -2599,235 +2597,293 @@
         if(unsubscribePartita) unsubscribePartita();
         if(unsubscribeProposte) unsubscribeProposte();
         
-        // ✅ LISTENER PRINCIPALE PARTITA
-        unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
-            const data = doc.data();
-            if(!data) { window.location.href = "index.html"; return; }
+// ✅ LISTENER PRINCIPALE PARTITA
+unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
+    const data = doc.data();
+    if(!data) { window.location.href = "index.html"; return; }
+    
+    currentGameData = data;
+
+    // Nascondi SEMPRE la lobby (usiamo solo banner)
+    document.getElementById('multiplayer-lobby').style.display = 'none';
+
+    const btnNewEl = document.querySelector('.btn-new');
+    if (btnNewEl) {
+        btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
+    }
+
+    // APPLICA DIZIONARIO CUSTOM
+    if(data.dizionarioCustom) {
+        const extraLen = (data.dizionarioCustom.extra || []).length;
+        const excludedLen = (data.dizionarioCustom.excluded || []).length;
+        const currentVersion = `${extraLen}-${excludedLen}`;
+        
+        if(!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
+            (data.dizionarioCustom.extra || []).forEach(w => {
+                if(w && !EXTRA_WORDS.includes(w)) {
+                    EXTRA_WORDS.push(w);
+                    dictionary.add(w);
+                }
+            });
+            (data.dizionarioCustom.excluded || []).forEach(w => {
+                if(w && !EXCLUDED_WORDS.includes(w)) {
+                    EXCLUDED_WORDS.push(w);
+                    dictionary.delete(w);
+                }
+            });
             
-            currentGameData = data;
+            buildTrie();
+            dizionarioCustomApplicato = true;
+            window.lastDictVersion = currentVersion;
+            if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
+        }
+    }
+    
+    const pronti = data.pronti || [];
+    const finito = data.finito || [];
+    const conferma = data.confermaVerifica || [];
 
-            const btnNewEl = document.querySelector('.btn-new');
-            if (btnNewEl) {
-                btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
+    // ========================================
+    // 1. ATTESA (gestita con banner, NO lobby)
+    // ========================================
+    if (data.stato === "attesa") {
+        document.getElementById('fixed-home-btn').style.display = 'block';
+        
+        // Inizializza griglia in background (blurred)
+        if (!gridEl.children.length || gridEl.children.length === 0) {
+            gridSize = parseInt(data.opzioni.griglia);
+            timeRemaining = parseInt(data.opzioni.tempo);
+            initialTime = timeRemaining;
+            currentSeed = data.opzioni.seed;
+            isBiatchMode = (data.opzioni.mode === 'biatch');
+            isCrazyMode = (data.opzioni.mode === 'crazy');
+            useBonuses = (data.opzioni.mode !== 'classic');
+            generateGridData(currentSeed.split('-')[0]);
+            renderGrid();
+            document.getElementById('start-screen').style.display = 'none';
+            gridOverlay.style.display = 'none';
+            document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
+            timerDisplay.textContent = formatTime(timeRemaining);
+        }
+        
+        if (!pronti.includes(mioNome)) {
+            showGameBanner({
+                icon: '🎮',
+                title: `SFIDA PRONTA`,
+                subtitle: `Giocatori pronti: ${pronti.length}/${data.partecipanti.length}`,
+                color: '#27ae60',
+                buttons: [
+                    { text: '🚀 SONO PRONTO!', onclick: 'setProntoOnline()' },
+                    { text: '🚫 ANNULLA', onclick: 'annullaPartita()' }
+                ]
+            });
+        } else {
+            showGameBanner({
+                icon: '⏳',
+                title: `ATTESA GIOCATORI (${pronti.length}/${data.partecipanti.length})`,
+                subtitle: 'Sei pronto! Aspettiamo gli altri...',
+                color: '#2c3e50',
+                buttons: [
+                    { text: '🚫 ANNULLA', onclick: 'annullaPartita()' }
+                ],
+                spinner: true
+            });
+        }
+        
+        // Tutti pronti? Avvia!
+        if (pronti.length >= data.partecipanti.length) {
+            db.collection("partite").doc(matchId).update({ stato: "in_corso" });
+        }
+    }
+
+    // ========================================
+    // 2. IN CORSO
+    // ========================================
+    if (data.stato === "in_corso") {
+        aggiornaInterfacciaMultiplayer(data);
+        const scoreEl = document.getElementById('live-opponent-score');
+        if (scoreEl) scoreEl.style.display = 'block';
+        
+        if (!finito.includes(mioNome)) {
+            // === NON HO ANCORA FINITO - GIOCA! ===
+            removeGameBanner();
+            
+            if (!isGameActive && !isAnalysisPhase && !isPaused) {
+                gridSize = parseInt(data.opzioni.griglia);
+                timeRemaining = parseInt(data.opzioni.tempo);
+                initialTime = timeRemaining;
+                currentSeed = data.opzioni.seed;
+                isBiatchMode = (data.opzioni.mode === 'biatch');
+                isCrazyMode = (data.opzioni.mode === 'crazy');
+                useBonuses = (data.opzioni.mode !== 'classic');
+                generateGridData(currentSeed.split('-')[0]);
+                renderGrid();
+                document.getElementById('start-screen').style.display = 'none';
+                gridOverlay.style.display = 'flex';
+                document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
+                overlaySeed.textContent = currentSeed;
+                timerDisplay.textContent = formatTime(timeRemaining);
+                document.getElementById('possible-count').parentElement.style.visibility = 'visible';
+                calculatePossibleWordsCount();
             }
-
-            // APPLICA DIZIONARIO CUSTOM
-            if(data.dizionarioCustom) {
-                const extraLen = (data.dizionarioCustom.extra || []).length;
-                const excludedLen = (data.dizionarioCustom.excluded || []).length;
-                const currentVersion = `${extraLen}-${excludedLen}`;
-                
-                if(!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
-                    (data.dizionarioCustom.extra || []).forEach(w => {
-                        if(w && !EXTRA_WORDS.includes(w)) {
-                            EXTRA_WORDS.push(w);
-                            dictionary.add(w);
-                        }
-                    });
-                    (data.dizionarioCustom.excluded || []).forEach(w => {
-                        if(w && !EXCLUDED_WORDS.includes(w)) {
-                            EXCLUDED_WORDS.push(w);
-                            dictionary.delete(w);
-                        }
-                    });
-                    
-                    buildTrie();
-                    dizionarioCustomApplicato = true;
-                    window.lastDictVersion = currentVersion;
-                    if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
-                }
+        } else {
+            // === HO FINITO IL MIO TEMPO ===
+            document.getElementById('fixed-home-btn').style.display = 'block';
+            
+            // Attiva modalità esplorazione
+            if (!isAnalysisPhase) {
+                isAnalysisPhase = true;
+                isGameActive = true;
+                isSandboxMode = true;
+                document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+                sortControls.style.display = "flex";
+                btnMissed.style.display = "block";
+                analysisMsg.style.display = "block";
+                const rotateBtn = document.getElementById('manual-rotate-btn');
+                if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
             }
             
-            const overlay = document.getElementById('multiplayer-lobby');
-            const statusDiv = document.getElementById('lobby-status');
-            const actionDiv = document.getElementById('lobby-action');
-            const pronti = data.pronti || [];
-            const finito = data.finito || [];
-
-            // 1. ATTESA
-            if (data.stato === "attesa") {
-                overlay.style.display = 'flex';
-                removeGameBanner();
-                document.getElementById('lobby-title').textContent = "SALA D'ATTESA 🐷";
-                document.getElementById('lobby-info').textContent = "Sincronizzazione sfida in corso...";
-                statusDiv.textContent = `Pronti: ${pronti.length} / ${data.partecipanti.length}`;
-                
-                actionDiv.innerHTML = !pronti.includes(mioNome) ? 
-                    `<button onclick="setProntoOnline()" class="btn-action" style="width:auto; padding:12px 30px;">🚀 AVVIA SFIDA</button>` 
-                    : `<div style="background:rgba(3,218,198,0.1); padding:20px 40px; border-radius:15px; border:2px dashed #03dac6;">
-                        <div style="font-size:1.5rem; margin-bottom:10px;">⏳</div>
-                        <p style="margin:0; font-weight:bold;">In attesa dei colleghi...</p>
-                    </div>`;
-                actionDiv.innerHTML += `<br><button onclick="annullaPartita()" class="btn-action" style="width:auto; padding:10px 20px; margin-top:20px; background:#e74c3c; color:white; border-color:#c0392b;">🚫 ANNULLA PARTITA</button>`;
-                
-                if (pronti.length >= data.partecipanti.length) {
-                    db.collection("partite").doc(matchId).update({ stato: "in_corso" });
-                }
-            }
-
-            // 2. IN CORSO
-            if (data.stato === "in_corso") {
-                aggiornaInterfacciaMultiplayer(data);
-                const scoreEl = document.getElementById('live-opponent-score');
-                if (scoreEl) scoreEl.style.display = 'block';
-                
-                if (!finito.includes(mioNome)) {
-                    overlay.style.display = 'none';
-                    removeGameBanner();
-                    
-                    if (!isGameActive && !isAnalysisPhase && !isPaused) {
-                        gridSize = parseInt(data.opzioni.griglia);
-                        timeRemaining = parseInt(data.opzioni.tempo);
-                        initialTime = timeRemaining;
-                        currentSeed = data.opzioni.seed;
-                        isBiatchMode = (data.opzioni.mode === 'biatch');
-                        isCrazyMode = (data.opzioni.mode === 'crazy');
-                        useBonuses = (data.opzioni.mode !== 'classic');
-                        generateGridData(currentSeed.split('-')[0]);
-                        renderGrid();
-                        document.getElementById('start-screen').style.display = 'none';
-                        gridOverlay.style.display = 'flex';
-                        document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
-                        overlaySeed.textContent = currentSeed;
-                        timerDisplay.textContent = formatTime(timeRemaining);
-                        document.getElementById('possible-count').parentElement.style.visibility = 'visible';
-                        calculatePossibleWordsCount();
-                    }
-                } else {
-                    overlay.style.display = 'none';
-                    document.getElementById('fixed-home-btn').style.display = 'block';
-                    
-                    if (!isAnalysisPhase) {
-                        isAnalysisPhase = true;
-                        isGameActive = true;
-                        isSandboxMode = true;
-                        document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-                        sortControls.style.display = "flex";
-                        btnMissed.style.display = "block";
-                        analysisMsg.style.display = "block";
-                        const rotateBtn = document.getElementById('manual-rotate-btn');
-                        if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
-                    }
-                    
-                    if (finito.length < data.partecipanti.length) {
-                        showGameBanner({
-                            icon: '⏳',
-                            title: `ATTESA COLLEGHI (${finito.length}/${data.partecipanti.length})`,
-                            subtitle: 'Esplora la griglia nel frattempo!',
-                            color: '#2c3e50',
-                            buttons: [
-                                { text: '👀 VEDI RISULTATI', onclick: 'mostraRisultatiTemporanei()' }
-                            ]
-                        });
-                    } else {
-                        showGameBanner({
-                            icon: '✅',
-                            title: 'TUTTI HANNO FINITO!',
-                            subtitle: 'Procedi alla verifica delle parole',
-                            color: '#27ae60',
-                            buttons: [
-                                { text: '🏁 VERIFICA PAROLE', onclick: 'avviaVerifica()' }
-                            ]
-                        });
-                    }
-                }
-            }
-
-            // 3. VERIFICA
-            if (data.stato === "verifica") {
-                overlay.style.display = 'none';
-                document.getElementById('fixed-home-btn').style.display = 'block';
-                
-                const conf = data.confermaVerifica || [];
-                
-                if (!isAnalysisPhase) {
-                    isAnalysisPhase = true;
-                    isGameActive = true;
-                    isSandboxMode = true;
-                    document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
-                    sortControls.style.display = "flex";
-                    btnMissed.style.display = "block";
-                    const rotateBtn = document.getElementById('manual-rotate-btn');
-                    if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
-                }
-                
-                if (!conf.includes(mioNome)) {
-                    showGameBanner({
-                        icon: '✅',
-                        title: 'PRONTI PER I RISULTATI?',
-                        subtitle: 'Clicca per confermare e calcolare il punteggio finale',
-                        color: '#27ae60',
-                        buttons: [
-                            { text: '✔️ CONFERMA RISULTATI', onclick: 'confermaVerificaOnline()' }
-                        ]
-                    });
-                } else {
-                    showGameBanner({
-                        icon: '⏳',
-                        title: `ATTESA CONFERME (${conf.length}/${data.partecipanti.length})`,
-                        subtitle: 'Hai già confermato. Aspettiamo i colleghi...',
-                        color: '#8e44ad',
-                        buttons: [],
-                        spinner: true
-                    });
-                }
-                
-                if (conf.length >= data.partecipanti.length) {
-                    await confermaVerificaOnline();
-                }
-            }
-
-            // 4. CONCLUSA
-            if (data.stato === "conclusa") {
-                overlay.style.display = 'none';
-                document.getElementById('fixed-home-btn').style.display = 'block';
-                
-                const btnNewEl = document.querySelector('.btn-new');
-                if (btnNewEl) btnNewEl.style.display = 'block';
-                
-                if (data.prossimaPartita) {
-                    showGameBanner({
-                        icon: '🔄',
-                        title: 'RIVINCITA IN ARRIVO!',
-                        subtitle: 'Reindirizzamento in corso...',
-                        color: '#e74c3c',
-                        buttons: [],
-                        spinner: true
-                    });
-                    
-                    setTimeout(() => { 
-                        window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
-                    }, 2000);
-                    return;
-                }
-                
-                let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
-                const haVinto = classifica[0][0] === mioNome;
-                
-                let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
-                
+            if (finito.length < data.partecipanti.length) {
+                // Attendo altri
                 showGameBanner({
-                    icon: haVinto ? '👑' : '🐷',
-                    title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
-                    subtitle: risultatiStr,
-                    color: haVinto ? '#f1c40f' : '#7f8c8d',
+                    icon: '⏳',
+                    title: `ATTESA COLLEGHI (${finito.length}/${data.partecipanti.length})`,
+                    subtitle: 'Esplora la griglia nel frattempo!',
+                    color: '#2c3e50',
                     buttons: [
-                        { text: '🔄 RIVINCITA', onclick: 'apriRivincitaBanner()', special: true }
+                        { text: '👀 RISULTATI PARZIALI', onclick: 'mostraRisultatiPopup()' }
+                    ],
+                    spinner: true
+                });
+            } else {
+                // Tutti hanno finito - mostra pulsante VERIFICA
+                showGameBanner({
+                    icon: '✅',
+                    title: 'TUTTI HANNO FINITO!',
+                    subtitle: 'Procedi alla verifica delle parole',
+                    color: '#27ae60',
+                    buttons: [
+                        { text: '🏁 VERIFICA PAROLE', onclick: 'avviaVerificaUnificata()' }
                     ]
                 });
-                
-                if(haVinto) { 
-                    fireConfettiLight();
-                }
-                
-                if (!window.analisiGiaAttivata) {
-                    window.analisiGiaAttivata = true;
-                    setTimeout(() => {
-                        attivaAnalisiMultiplayerSilent();
-                    }, 500);
-                }
             }
+        }
+    }
+
+    // ========================================
+    // 3. VERIFICA (semplificata - un solo step)
+    // ========================================
+    if (data.stato === "verifica") {
+        document.getElementById('fixed-home-btn').style.display = 'block';
+        
+        // Attiva analisi se non già attiva
+        if (!isAnalysisPhase) {
+            isAnalysisPhase = true;
+            isGameActive = true;
+            isSandboxMode = true;
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('blurred'));
+            sortControls.style.display = "flex";
+            btnMissed.style.display = "block";
+            const rotateBtn = document.getElementById('manual-rotate-btn');
+            if (rotateBtn && !isBiatchMode) rotateBtn.style.display = 'block';
+        }
+        
+        if (!conferma.includes(mioNome)) {
+            // Non ho ancora cliccato VERIFICA
+            showGameBanner({
+                icon: '🏁',
+                title: 'VERIFICA PAROLE',
+                subtitle: 'Clicca per confermare e calcolare i risultati',
+                color: '#27ae60',
+                buttons: [
+                    { text: '✔️ VERIFICA PAROLE', onclick: 'avviaVerificaUnificata()' }
+                ]
+            });
+        } else {
+            // Ho già confermato, attendo altri
+            showGameBanner({
+                icon: '⏳',
+                title: `ATTESA VERIFICA (${conferma.length}/${data.partecipanti.length})`,
+                subtitle: 'Hai confermato. Attendi gli altri giocatori...',
+                color: '#8e44ad',
+                buttons: [],
+                spinner: true
+            });
+        }
+        
+        // Tutti hanno confermato? Calcola e chiudi
+        if (conferma.length >= data.partecipanti.length) {
+            // Calcola punteggi finali
+            let nuoviPunteggi = {};
+            data.partecipanti.forEach(player => {
+                let pFinal = 0; 
+                const mieParole = data.parole[player] || [];
+                mieParole.forEach(par => {
+                    let comune = false;
+                    data.partecipanti.forEach(altro => { 
+                        if(player !== altro && (data.parole[altro] || []).some(x => x.w === par.w)) comune = true; 
+                    });
+                    if(!comune) pFinal += par.p;
+                });
+                nuoviPunteggi[player] = pFinal;
+            });
+            db.collection("partite").doc(matchId).update({ 
+                punteggi: nuoviPunteggi, 
+                stato: "conclusa" 
+            });
+        }
+    }
+
+    // ========================================
+    // 4. CONCLUSA
+    // ========================================
+    if (data.stato === "conclusa") {
+        document.getElementById('fixed-home-btn').style.display = 'block';
+        
+        const btnNewEl = document.querySelector('.btn-new');
+        if (btnNewEl) btnNewEl.style.display = 'block';
+        
+        // Rivincita in arrivo?
+        if (data.prossimaPartita) {
+            showGameBanner({
+                icon: '🔄',
+                title: 'RIVINCITA IN ARRIVO!',
+                subtitle: 'Reindirizzamento...',
+                color: '#e74c3c',
+                buttons: [],
+                spinner: true
+            });
+            
+            setTimeout(() => { 
+                window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
+            }, 2000);
+            return;
+        }
+        
+        // Classifica
+        let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
+        const haVinto = classifica[0][0] === mioNome;
+        let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+        
+        showGameBanner({
+            icon: haVinto ? '👑' : '🐷',
+            title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
+            subtitle: risultatiStr,
+            color: haVinto ? '#f1c40f' : '#7f8c8d',
+            buttons: [
+                { text: '🔄 RIVINCITA', onclick: 'apriRivincitaBanner()', special: true }
+            ]
         });
+        
+        if(haVinto) fireConfettiLight();
+        
+        // Attiva analisi
+        if (!window.analisiGiaAttivata) {
+            window.analisiGiaAttivata = true;
+            setTimeout(() => attivaAnalisiMultiplayerSilent(), 500);
+        }
+    }
+});
 
         // ✅ LISTENER PROPOSTE
         unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
@@ -2871,26 +2927,25 @@
             pronti: firebase.firestore.FieldValue.arrayUnion(mioNome),
         }); 
     }
-
-    async function confermaVerificaOnline() {
-        await db.collection("partite").doc(matchId).update({ confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome) });
-        const snap = await db.collection("partite").doc(matchId).get();
+    async function avviaVerificaUnificata() {
+        // Aggiungi il giocatore alla lista conferme E cambia stato se necessario
+        const docRef = db.collection("partite").doc(matchId);
+        
+        await docRef.update({ 
+            confermaVerifica: firebase.firestore.FieldValue.arrayUnion(mioNome)
+        });
+        
+        // Leggi i dati aggiornati
+        const snap = await docRef.get();
         const data = snap.data();
-        if (data.confermaVerifica.length >= data.partecipanti.length) {
-            let nuoviPunteggi = {};
-            data.partecipanti.forEach(player => {
-                let pFinal = 0; const mie = data.parole[player] || [];
-                mie.forEach(par => {
-                    let comune = false;
-                    data.partecipanti.forEach(altro => { if(player !== altro && (data.parole[altro] || []).some(x => x.w === par.w)) comune = true; });
-                    if(!comune) pFinal += par.p;
-                });
-                nuoviPunteggi[player] = pFinal;
-            });
-            db.collection("partite").doc(matchId).update({ punteggi: nuoviPunteggi, stato: "conclusa" });
+        
+        // Se lo stato è ancora "in_corso", cambialo a "verifica"
+        if (data.stato === "in_corso") {
+            await docRef.update({ stato: "verifica" });
         }
+        
+        // Il calcolo finale avviene automaticamente nel listener quando tutti hanno confermato
     }
-
     async function attivaAnalisiMultiplayer() {
         const loadingDiv = document.createElement('div');
         loadingDiv.innerHTML = '<div style="text-align:center; padding:20px;">⏳ Caricamento analisi...</div>';
@@ -3038,78 +3093,112 @@
         window.location.href = 'index.html';
     }
 
-    function apriRivincitaBanner() {
-        if (matchId) {
-            showGameBanner({
-                icon: '🎮',
-                title: 'SCEGLI MODALITÀ RIVINCITA',
-                subtitle: 'Seleziona come vuoi giocare',
-                color: '#9b59b6',
-                buttons: [
-                    { text: 'CLASSICA', onclick: 'creaRivincitaDaBanner(false, false, false)' },
-                    { text: 'BONUS ⭐', onclick: 'creaRivincitaDaBanner(true, false, false)' },
-                    { text: 'CRAZY 🤪', onclick: 'creaRivincitaDaBanner(true, true, false)' },
-                    { text: 'BIATCH 💅', onclick: 'creaRivincitaDaBanner(true, true, true)' }
-                ]
-            });
-        } else {
-            startNewGame();
-        }
+function apriRivincitaBanner() {
+    if (!matchId) {
+        startNewGame();
+        return;
     }
+    
+    // Crea banner con selettori
+    removeGameBanner();
+    
+    const banner = document.createElement('div');
+    banner.id = 'game-banner';
+    banner.className = 'game-banner';
+    banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+    banner.style.flexWrap = 'wrap';
+    banner.style.gap = '10px';
+    banner.style.padding = '15px 20px';
+    
+    banner.innerHTML = `
+        <div class="banner-left">
+            <span style="font-size:1.5rem;">🎮</span>
+            <div>
+                <div style="font-weight:bold;">RIVINCITA</div>
+                <div style="font-size:0.8rem; opacity:0.9;">Configura e scegli modalità</div>
+            </div>
+        </div>
+        <div class="banner-right" style="flex-wrap:wrap; gap:8px;">
+            <select id="rivincita-tempo" style="padding:6px; border-radius:4px; border:none; font-size:0.85rem;">
+                <option value="45">45s</option>
+                <option value="60">60s</option>
+                <option value="90">90s</option>
+                <option value="180" selected>180s</option>
+                <option value="300">300s</option>
+            </select>
+            <select id="rivincita-griglia" style="padding:6px; border-radius:4px; border:none; font-size:0.85rem;">
+                <option value="4">4x4</option>
+                <option value="5" selected>5x5</option>
+                <option value="6">6x6</option>
+                <option value="7">7x7</option>
+                <option value="10">10x10</option>
+            </select>
+            <button onclick="creaRivincitaConSelettori(false, false, false)" style="padding:6px 12px; border:none; border-radius:4px; background:white; color:#333; cursor:pointer; font-weight:bold;">CLASSICA</button>
+            <button onclick="creaRivincitaConSelettori(true, false, false)" style="padding:6px 12px; border:none; border-radius:4px; background:#f1c40f; color:#333; cursor:pointer; font-weight:bold;">BONUS ⭐</button>
+            <button onclick="creaRivincitaConSelettori(true, true, false)" style="padding:6px 12px; border:none; border-radius:4px; background:#e74c3c; color:white; cursor:pointer; font-weight:bold;">CRAZY 🤪</button>
+            <button onclick="creaRivincitaConSelettori(true, true, true)" style="padding:6px 12px; border:none; border-radius:4px; background:#ff00ff; color:white; cursor:pointer; font-weight:bold;">BIATCH 💅</button>
+        </div>
+    `;
+    
+    document.body.appendChild(banner);
+}
 
-    async function creaRivincitaDaBanner(bonus, crazy, biatch) {
-        showGameBanner({
-            icon: '⏳',
-            title: 'CREAZIONE RIVINCITA...',
-            subtitle: 'Attendi un momento',
-            color: '#3498db',
-            buttons: [],
-            spinner: true
+async function creaRivincitaConSelettori(bonus, crazy, biatch) {
+    const tempo = document.getElementById('rivincita-tempo').value;
+    const griglia = document.getElementById('rivincita-griglia').value;
+    
+    showGameBanner({
+        icon: '⏳',
+        title: 'CREAZIONE RIVINCITA...',
+        subtitle: 'Attendi un momento',
+        color: '#3498db',
+        buttons: [],
+        spinner: true
+    });
+    
+    try {
+        const snap = await db.collection("partite").doc(matchId).get();
+        const v = snap.data();
+        let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
+        
+        let pts = {}; 
+        let words = {}; 
+        v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
+        
+        const doc = await db.collection("partite").add({
+            gioco: 'ruzzle',
+            partecipanti: v.partecipanti,
+            opzioni: {
+                tempo: tempo,
+                griglia: griglia,
+                mode: mode,
+                seed: Math.random().toString(36).substring(7).toUpperCase()
+            },
+            punteggi: pts, 
+            parole: words, 
+            pronti: [], 
+            finito: [], 
+            confermaVerifica: [], 
+            stato: "attesa", 
+            timestamp: Date.now(), 
+            dataOra: new Date().toLocaleString('it-IT')
         });
         
-        try {
-            const snap = await db.collection("partite").doc(matchId).get();
-            const v = snap.data();
-            let mode = crazy ? 'crazy' : (biatch ? 'biatch' : (bonus ? 'bonus' : 'classic'));
-            
-            let pts = {}; 
-            let words = {}; 
-            v.partecipanti.forEach(p => { pts[p]=0; words[p]=[]; });
-            
-            const doc = await db.collection("partite").add({
-                gioco: 'ruzzle',
-                partecipanti: v.partecipanti,
-                opzioni: {
-                    tempo: v.opzioni.tempo || '180',
-                    griglia: v.opzioni.griglia || '5',
-                    mode: mode,
-                    seed: Math.random().toString(36).substring(7).toUpperCase()
-                },
-                punteggi: pts, 
-                parole: words, 
-                pronti: [], 
-                finito: [], 
-                confermaVerifica: [], 
-                stato: "attesa", 
-                timestamp: Date.now(), 
-                dataOra: new Date().toLocaleString('it-IT')
-            });
-            
-            await db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
-            
-        } catch(e) {
-            console.error("Errore creazione rivincita:", e);
-            showGameBanner({
-                icon: '❌',
-                title: 'ERRORE',
-                subtitle: 'Impossibile creare rivincita',
-                color: '#e74c3c',
-                buttons: [
-                    { text: '🔄 RIPROVA', onclick: 'apriRivincitaBanner()' }
-                ]
-            });
-        }
+        await db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
+        
+    } catch(e) {
+        console.error("Errore creazione rivincita:", e);
+        showGameBanner({
+            icon: '❌',
+            title: 'ERRORE',
+            subtitle: 'Impossibile creare rivincita',
+            color: '#e74c3c',
+            buttons: [
+                { text: '🔄 RIPROVA', onclick: 'apriRivincitaBanner()' }
+            ]
+        });
     }
+}
 
     async function attivaAnalisiMultiplayerSilent() {
         const snap = await db.collection("partite").doc(matchId).get();
@@ -3250,3 +3339,4 @@
 </div>
 </body>
 </html>
+
