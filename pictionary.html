@@ -399,6 +399,34 @@
     font-size: 1.1rem;
     opacity: 0.8;
 }        
+/* === PULSANTE HOME FISSO === */
+#fixed-home-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 99999;
+    display: none; /* Nascosto di default, mostrato quando serve */
+}
+
+#fixed-home-btn button {
+    background: var(--panel);
+    color: var(--text);
+    border: 2px solid var(--primary);
+    padding: 12px 20px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+#fixed-home-btn button:hover {
+    transform: scale(1.05);
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 6px 25px rgba(233, 69, 96, 0.4);
+}
         /* === RESPONSIVE === */
         @media (max-width: 600px) {
             .card { padding: 20px; }
@@ -418,56 +446,19 @@
     <div class="spinner-big"></div>
     <p>Caricamento partita...</p>
 </div>
-<!-- ========================================
-     SCHERMATA LOGIN
-     ======================================== -->
-<div id="login-screen" class="overlay">
-    <div class="card">
-        <div style="font-size: 4rem; margin-bottom: 10px;">🎨</div>
-        <h1>PICTIONARY</h1>
-        <p style="opacity: 0.7; margin-bottom: 20px;">Telefono Senza Fili... ma Disegnato!</p>
-        
-        <input type="text" id="player-name-input" placeholder="IL TUO NOME" 
-               oninput="this.value = this.value.toUpperCase()" maxlength="15">
-        
-        <button class="btn btn-primary" style="width: 100%; padding: 18px; margin-top: 15px;" 
-                onclick="createNewRoom()">
-            🆕 CREA STANZA
-        </button>
-        
-        <div style="display: flex; align-items: center; gap: 15px; margin: 20px 0;">
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
-            <span style="opacity: 0.5; font-size: 0.8rem;">OPPURE</span>
-            <div style="flex: 1; height: 1px; background: var(--border);"></div>
-        </div>
-        
-        <input type="text" id="join-room-code" placeholder="CODICE STANZA" 
-               oninput="this.value = this.value.toUpperCase()" maxlength="6">
-        <button class="btn btn-success" style="width: 100%; padding: 18px; margin-top: 10px;" 
-                onclick="joinExistingRoom()">
-            🚪 ENTRA IN STANZA
-        </button>
-    </div>
-</div>
 
 <!-- ========================================
      LOBBY
      ======================================== -->
 <div id="lobby-screen" class="overlay hidden">
     <div class="card" style="max-width: 550px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>🏠 LOBBY</h2>
-            <div id="lobby-room-code" style="background: var(--primary); color: white; 
-                 padding: 8px 15px; border-radius: 8px; font-family: 'JetBrains Mono'; 
-                 font-weight: bold; font-size: 1.1rem; cursor: pointer;"
-                 onclick="copyRoomCode()" title="Clicca per copiare">
-                ABC123
-            </div>
-        </div>
-        
-        <div style="font-size: 0.8rem; opacity: 0.7; text-align: center;">
-            Condividi il codice con i tuoi amici!
-        </div>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>🏠 LOBBY</h2>
+</div>
+
+<div style="font-size: 0.8rem; opacity: 0.7; text-align: center; margin-bottom: 15px;">
+    In attesa che tutti i giocatori entrino dalla homepage
+</div>
         
         <div class="players-grid" id="lobby-players-list"></div>
 
@@ -813,12 +804,29 @@ function showBanner(options) {
     
     document.body.appendChild(banner);
 }
-
+function renderLobby(data) {
+    removeBanner();
+    showScreen('lobby-screen');
+    
 function removeBanner() {
     const banner = document.getElementById('game-banner');
     if (banner) banner.remove();
 }
-
+function renderLobby(data) {
+    removeBanner();
+    
+    // ✅ Mostra banner se non tutti sono pronti
+    if (data.ready.length < data.players.length && data.players.length >= 2) {
+        showBanner({
+            icon: '🎨',
+            title: 'PICTIONARY - LOBBY',
+            subtitle: `${data.ready.length}/${data.players.length} giocatori pronti`,
+            color: '#9b59b6',
+            buttons: []
+        });
+    }
+    
+    showScreen('lobby-screen');
 function adjustColor(hex, amount) {
     let c = hex.replace('#', '');
     if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
@@ -869,90 +877,11 @@ function fireConfetti() {
 }
 
 // ========================================
-// CREAZIONE E JOIN STANZA
-// ========================================
-async function createNewRoom() {
-    const name = document.getElementById('player-name-input').value.trim().toUpperCase();
-    if (!name || name.length < 2) return alert("Inserisci un nome valido!");
-    
-    state.playerName = name;
-    localStorage.setItem('pictionaryPlayerName', name);
-    
-    // ✅ Salva anche in mioNome per compatibilità index
-    localStorage.setItem('mioNome', name);
-    
-    const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-    
-    try {
-        await db.collection("pictionary_rooms").doc(roomCode).set({
-            host: name,
-            players: [name],
-            ready: [],
-            settings: { rounds: 2, timePerRound: 60 },
-            stato: 'lobby',
-            currentPhase: 0,
-            chains: {},
-            votes: {},
-            scores: {},
-            completedPhase: {},
-            timestamp: Date.now()
-        });
-        
-        state.roomId = roomCode;
-        state.isHost = true;
-        enterLobby();
-    } catch (e) {
-        console.error(e);
-        alert("Errore creazione stanza!");
-    }
-}
-
-async function joinExistingRoom() {
-    const name = document.getElementById('player-name-input').value.trim().toUpperCase();
-    const code = document.getElementById('join-room-code').value.trim().toUpperCase();
-    
-    if (!name || name.length < 2) return alert("Inserisci un nome valido!");
-    if (!code) return alert("Inserisci il codice stanza!");
-    
-    state.playerName = name;
-    localStorage.setItem('pictionaryPlayerName', name);
-    localStorage.setItem('mioNome', name); // ✅ Compatibilità
-    
-    try {
-        const doc = await db.collection("pictionary_rooms").doc(code).get();
-        if (!doc.exists) return alert("Stanza non trovata!");
-        
-        const data = doc.data();
-        if (data.stato !== 'lobby') return alert("Partita già iniziata!");
-        if (data.players.includes(name)) return alert("Nome già in uso!");
-        
-        await db.collection("pictionary_rooms").doc(code).update({
-            players: firebase.firestore.FieldValue.arrayUnion(name)
-        });
-        
-        state.roomId = code;
-        state.isHost = false;
-        enterLobby();
-    } catch (e) {
-        console.error(e);
-        alert("Errore join stanza!");
-    }
-}
-
-function copyRoomCode() {
-    navigator.clipboard.writeText(state.roomId);
-    const el = document.getElementById('lobby-room-code');
-    const original = el.textContent;
-    el.textContent = '✓ COPIATO!';
-    setTimeout(() => el.textContent = original, 1500);
-}
-
-// ========================================
 // LOBBY
 // ========================================
 function enterLobby() {
-    hideLoading(); // ✅ Nascondi loading se visibile
     showScreen('lobby-screen');
+    showHomeButton(); // ✅ Mostra pulsante HOME
     document.getElementById('lobby-room-code').textContent = state.roomId;
     
     if (unsubscribeRoom) unsubscribeRoom();
@@ -1167,7 +1096,7 @@ function showThemeScreen(data, theme) {
 
 function launchCanvas() {
     showScreen('game-ui');
-    
+    showHomeButton(); // ✅ Mostra HOME durante il disegno    
     canvas = document.getElementById('mainCanvas');
     ctx = canvas.getContext('2d', { willReadFrequently: true });
     setupCanvas(canvas);
@@ -1257,7 +1186,7 @@ function handleInterpretPhase(data) {
 function showInterpretScreen(data, drawingData) {
     removeBanner();
     showScreen('interpret-screen');
-    
+    showHomeButton(); // ✅
     // Renderizza il disegno ricevuto
     const cvs = document.getElementById('received-canvas');
     cvs.width = LOGICAL_SIZE;
@@ -1367,6 +1296,7 @@ async function checkPhaseComplete() {
 function handleVotingPhase(data) {
     removeBanner();
     showScreen('gallery-screen');
+    showHomeButton(); // ✅
     renderGallery(data);
 }
 
@@ -1506,6 +1436,7 @@ async function confirmVotes() {
 function handleResultsPhase(data) {
     removeBanner();
     showScreen('results-screen');
+    showHomeButton(); // ✅
     fireConfetti();
     
     const sorted = Object.entries(data.scores).sort((a, b) => b[1] - a[1]);
@@ -1816,70 +1747,94 @@ function decompressDrawing(str) {
 }
 
 // ========================================
-// INIT - Auto-Join se arrivo da Index
+// INIT - Auto-Join (come Ruzzle)
 // ========================================
 window.onload = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('room');
-    const savedName = localStorage.getItem('mioNome') || localStorage.getItem('pictionaryPlayerName');
+    const mioNome = localStorage.getItem('mioNome');
     
-    // ✅ CASO 1: Ho codice + nome → AUTO-JOIN (arrivo da index)
-    if (roomCode && savedName) {
-        // Mostra loading (è già visibile di default)
-        state.playerName = savedName;
-        state.roomId = roomCode;
-        
-        try {
-            const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
-            
-            if (!doc.exists) {
-                hideLoading();
-                alert("Stanza non trovata!");
-                window.location.href = 'index.html';
-                return;
-            }
-            
-            const data = doc.data();
-            
-            if (data.players.includes(savedName)) {
-                // Già nella stanza
-                state.isHost = data.host === savedName;
-                enterLobby();
-            } else if (data.stato === 'lobby') {
-                // Aggiungi e entra
-                await db.collection("pictionary_rooms").doc(roomCode).update({
-                    players: firebase.firestore.FieldValue.arrayUnion(savedName)
-                });
-                state.isHost = false;
-                enterLobby();
-            } else {
-                hideLoading();
-                alert("Partita già iniziata!");
-                window.location.href = 'index.html';
-            }
-            
-        } catch (e) {
-            console.error("Errore auto-join:", e);
-            hideLoading();
-            alert("Errore di connessione!");
-            window.location.href = 'index.html';
-        }
-        
+    // ✅ Se manca room o nome → torna alla index
+    if (!roomCode || !mioNome) {
+        alert("Accedi dalla homepage per giocare!");
+        window.location.href = 'index.html';
         return;
     }
     
-    // ✅ CASO 2: Nessun auto-join → mostra login
-    hideLoading();
+    // Imposta stato
+    state.playerName = mioNome;
+    state.roomId = roomCode;
     
-    if (roomCode) {
-        document.getElementById('join-room-code').value = roomCode;
-    }
-    if (savedName) {
-        document.getElementById('player-name-input').value = savedName;
-    }
+    // Mostra loading
+    showScreen('loading-screen');
     
-    showScreen('login-screen');
+    try {
+        const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
+        
+        if (!doc.exists) {
+            alert("Stanza non trovata!");
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        const data = doc.data();
+        
+        // Sono già nella lista players?
+        if (data.players.includes(mioNome)) {
+            // ✅ Già dentro - entra direttamente
+            state.isHost = data.host === mioNome;
+            enterLobby();
+        } else if (data.stato === 'lobby') {
+            // ✅ Aggiungi giocatore e entra
+            await db.collection("pictionary_rooms").doc(roomCode).update({
+                players: firebase.firestore.FieldValue.arrayUnion(mioNome)
+            });
+            state.isHost = false;
+            enterLobby();
+        } else {
+            // Partita già iniziata
+            alert("La partita è già iniziata!");
+            window.location.href = 'index.html';
+        }
+        
+    } catch (e) {
+        console.error("Errore auto-join:", e);
+        alert("Errore di connessione!");
+        window.location.href = 'index.html';
+    }
 };
+// ========================================
+// NAVIGAZIONE HOME
+// ========================================
+function tornaHome() {
+    // Cleanup listener Firebase
+    if (unsubscribeRoom) {
+        unsubscribeRoom();
+        unsubscribeRoom = null;
+    }
+    
+    // Ferma timer se attivo
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    
+    window.location.href = 'index.html';
+}
+
+// Mostra/nascondi pulsante HOME
+function showHomeButton() {
+    const btn = document.getElementById('fixed-home-btn');
+    if (btn) btn.style.display = 'block';
+}
+
+function hideHomeButton() {
+    const btn = document.getElementById('fixed-home-btn');
+    if (btn) btn.style.display = 'none';
+}
 </script>
+<!-- PULSANTE HOME FISSO -->
+<div id="fixed-home-btn">
+    <button onclick="tornaHome()">🏠 HOME</button>
+</div>
 </body>
 </html>
