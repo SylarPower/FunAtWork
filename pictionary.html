@@ -515,29 +515,26 @@
         <div class="players-grid" id="lobby-players-list"></div>
 
         <div style="background: var(--bg); padding: 15px; border-radius: 12px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: bold; display: block; margin-bottom: 5px; opacity: 0.7;">
-                        ROUND
-                    </label>
-                    <select id="lobby-rounds-select">
-                        <option value="1">1 Passaggio</option>
-                        <option value="2" selected>2 Passaggi</option>
-                        <option value="3">3 Passaggi</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: bold; display: block; margin-bottom: 5px; opacity: 0.7;">
-                        TEMPO
-                    </label>
-                    <select id="lobby-time-select">
-                        <option value="30">30 sec</option>
-                        <option value="45">45 sec</option>
-                        <option value="60" selected>60 sec</option>
-                        <option value="90">90 sec</option>
-                    </select>
-                </div>
-            </div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="text-align: center; padding: 10px; background: rgba(78, 205, 196, 0.1); border-radius: 8px;">
+        <div style="font-size: 0.75rem; opacity: 0.7;">ROUND AUTOMATICI</div>
+        <div style="font-size: 1.2rem; font-weight: 900; color: var(--success);">
+            <span id="auto-rounds-display">2</span> round
+        </div>
+        <div style="font-size: 0.7rem; opacity: 0.5;">= numero giocatori</div>
+    </div>
+    <div>
+        <label style="font-size: 0.75rem; font-weight: bold; display: block; margin-bottom: 5px; opacity: 0.7;">
+            ⏱️ TEMPO PER DISEGNO
+        </label>
+        <select id="lobby-time-select">
+            <option value="30">30 secondi (Veloce)</option>
+            <option value="45">45 secondi</option>
+            <option value="60" selected>60 secondi (Standard)</option>
+            <option value="90">90 secondi (Relax)</option>
+        </select>
+    </div>
+</div>
         </div>
 
         <div id="lobby-status" style="padding: 15px; background: rgba(78, 205, 196, 0.1); 
@@ -682,21 +679,58 @@ const db = firebase.firestore();
 // TEMI
 // ========================================
 const THEMES = [
-    "Gatto", "Cane", "Elefante", "Giraffa", "Leone", "Tigre", "Panda", "Pinguino", 
-    "Delfino", "Squalo", "Polpo", "Ragno", "Farfalla", "Ape", "Coccinella", "Lumaca",
-    "Serpente", "Coccodrillo", "Tartaruga", "Rana", "Cavallo", "Mucca", "Maiale", "Gallina",
-    "Unicorno", "Drago", "Dinosauro", "Fenicottero", "Pappagallo", "Gufo",
-    "Pizza", "Hamburger", "Sushi", "Pasta", "Gelato", "Torta", "Ciambella", "Popcorn",
-    "Banana", "Mela", "Anguria", "Ananas", "Carota", "Broccolo", "Formaggio", "Uovo fritto",
-    "Hot dog", "Taco", "Patatine fritte", "Caffè", "Birra", "Vino", "Cappuccino",
-    "Telefono", "Computer", "Televisione", "Lampada", "Sedia", "Tavolo", "Letto",
-    "Occhiali", "Orologio", "Ombrello", "Chiave", "Libro", "Matita", "Forbici",
-    "Martello", "Chitarra", "Pianoforte", "Microfono", "Fotocamera",
-    "Spiaggia", "Montagna", "Isola", "Deserto", "Foresta", "Cascata", "Vulcano",
-    "Calcio", "Basket", "Tennis", "Nuoto", "Sci", "Surf", "Boxe", "Yoga", "Golf",
-    "Batman", "Superman", "Spiderman", "Mario", "Luigi", "Pikachu", "Yoda",
-    "Sole", "Luna", "Stella", "Nuvola", "Arcobaleno", "Fulmine", "Tornado", "Neve",
-    "Macchina", "Moto", "Bicicletta", "Autobus", "Treno", "Aereo", "Elicottero"
+    // 🤪 ASSURDITÀ PURE
+    "Nonno che fa parkour", "Gatto con il monocolo", "Pizza che fa yoga",
+    "Dinosauro in smart working", "Nonna rapper", "Cane che guida una Ferrari",
+    "Pinguino in discoteca", "Broccolo bodybuilder", "Unicorno depresso",
+    "Banana ninja", "Paperella gigante che attacca Tokyo", "Gesù che fa surf",
+    
+    // 😂 SITUAZIONI IMBARAZZANTI
+    "Collega che ruba il pranzo dal frigo", "Riunione Zoom in mutande",
+    "Caffè che non funziona il lunedì", "Excel che crasha prima di salvare",
+    "Stampante posseduta dal demonio", "Mail mandata al capo per sbaglio",
+    "Scorreggia silenziosa in ascensore", "Russare durante una call",
+    
+    // 🦄 CREATURE IMPOSSIBILI
+    "Drago che ha paura del fuoco", "Squalo vegano", "Zombie influencer",
+    "Fantasma con gli occhiali", "Sirena con le gambe", "Centauro in monopattino",
+    "Fenicottero punk", "Bradipo su Red Bull", "Polpo massaggiatore",
+    
+    // 🎭 PERSONAGGI ASSURDI
+    "Batman al supermercato", "Shrek al primo appuntamento", "Thanos che fa giardinaggio",
+    "Mario Bros in palestra", "Pikachu arrabbiato col capo", "Yoda che balla reggaeton",
+    "Gollum che vince alla lotteria", "Darth Vader in vacanza",
+    
+    // 🍕 CIBO CHE FA COSE
+    "Hamburger in terapia", "Sushi che fa karate", "Donut alla guida",
+    "Pasta che corre la maratona", "Gelato al sole in panico", "Caffè che medita",
+    "Pollo arrosto che scappa", "Uovo che si allena per Pasqua",
+    
+    // 🏢 VITA DA UFFICIO ASSURDA
+    "Meeting che poteva essere una mail", "Stapler posseduto",
+    "Collega che scalda il pesce in microonde", "Capo trasformato in rospo",
+    "Deadline che insegue", "Ferie cancellate personificate",
+    "Bonus di fine anno (molto piccolo)", "Lunedì mattina",
+    
+    // 🌍 SCENE EPICHE
+    "Mondiale di nascondino", "Gara di rutti spaziale", "Olimpiadi del divano",
+    "Apocalisse dei post-it", "Invasione di piccioni giganti",
+    "T-Rex che fa il DJ", "Vulcano di nutella", "Tornado di coriandoli",
+    
+    // 😱 PAURE MODERNE
+    "Notifica di lavoro alle 23", "Batteria al 1%", "WiFi che non va",
+    "Aggiornamento Windows forzato", "Messaggio vocale di 5 minuti",
+    "Suocera a sorpresa", "Dentista sadico", "Sveglia del lunedì",
+    
+    // 🎪 COMBO IMPOSSIBILI
+    "Papa Francesco che skatea", "Regina Elisabetta al rave",
+    "Einstein che fa TikTok", "Leonardo da Vinci su OnlyFans",
+    "Napoleone che ordina da Glovo", "Cleopatra al centro commerciale",
+    
+    // 🐾 ANIMALI IN SITUAZIONI UMANE
+    "Gatto che paga le tasse", "Cane commercialista", "Piccione avvocato",
+    "Mucca in palestra", "Gallina in smart working", "Pesce che guida Uber",
+    "Ape influencer", "Lumaca corriere espresso", "Ragno architetto"
 ];
 
 const COLORS = [
@@ -906,8 +940,23 @@ function renderLobby(data) {
         timeSelect.onchange = () => updateSettings();
     }
     
-    roundsSelect.value = data.settings.rounds;
-    timeSelect.value = data.settings.timePerRound;
+// ✅ Aggiorna display round automatici
+const autoRoundsDisplay = document.getElementById('auto-rounds-display');
+if (autoRoundsDisplay) {
+    autoRoundsDisplay.textContent = data.players.length;
+}
+
+const timeSelect = document.getElementById('lobby-time-select');
+if (timeSelect) {
+    timeSelect.value = data.settings?.timePerRound || 60;
+    
+    if (state.isHost && !data.sfidaDiretta) {
+        timeSelect.disabled = false;
+        timeSelect.onchange = () => updateSettings();
+    } else {
+        timeSelect.disabled = true;
+    }
+}
     
     const readyBtn = document.getElementById('lobby-ready-btn');
     const statusDiv = document.getElementById('lobby-status');
@@ -946,7 +995,6 @@ function renderLobby(data) {
 
 async function updateSettings() {
     await db.collection("pictionary_rooms").doc(state.roomId).update({
-        'settings.rounds': parseInt(document.getElementById('lobby-rounds-select').value),
         'settings.timePerRound': parseInt(document.getElementById('lobby-time-select').value)
     });
 }
@@ -982,36 +1030,38 @@ async function startGame() {
     
     const data = state.roomData;
     const players = data.players;
+    const numPlayers = players.length;
+    
+    // ✅ ROUND AUTOMATICI = numero giocatori
+    const totalRounds = numPlayers;
     
     const seed = cyrb128(state.roomId + Date.now());
     const rng = sfc32(seed);
     const shuffledThemes = shuffleArray(THEMES, rng);
     
-    const initialThemes = {};
-    players.forEach((player, idx) => {
-        initialThemes[player] = shuffledThemes[idx % shuffledThemes.length];
-    });
-    
+    // ✅ Crea una catena per ogni tema (= numero giocatori)
     const chains = {};
-    players.forEach((player, idx) => {
-        chains[idx] = {
-            originalTheme: initialThemes[player],
-            originalPlayer: player,
-            steps: []
+    for (let i = 0; i < numPlayers; i++) {
+        chains[i] = {
+            themeIndex: i,
+            originalTheme: shuffledThemes[i % shuffledThemes.length],
+            steps: [],
+            drawnBy: [] // Chi ha già disegnato questo tema
         };
-    });
+    }
     
     const scores = {};
     players.forEach(p => scores[p] = 0);
     
     await db.collection("pictionary_rooms").doc(state.roomId).update({
         stato: 'drawing',
-        currentPhase: 0,
+        currentRound: 0,
+        totalRounds: totalRounds,
         chains: chains,
         scores: scores,
         votes: {},
-        completedPhase: {},
-        initialThemes: initialThemes
+        completedRound: {},
+        playerOrder: players // Ordine fisso per la rotazione
     });
 }
 
@@ -1019,53 +1069,46 @@ async function startGame() {
 // ✅ FASE DISEGNO - CORRETTA
 // ========================================
 function handleDrawingPhase(data) {
-    const phase = data.currentPhase;
-    const completed = data.completedPhase?.[phase] || [];
+    const currentRound = data.currentRound;
+    const completed = data.completedRound?.[currentRound] || [];
     
-    console.log(`📝 handleDrawingPhase: fase=${phase}, completed=${completed.join(',')}, me=${state.playerName}`);
+    console.log(`📝 handleDrawingPhase: round=${currentRound}, completed=${completed.join(',')}`);
     
-    // ✅ Se ho già completato questa fase, mostra waiting
+    // ✅ Se ho già completato questo round, mostra waiting
     if (completed.includes(state.playerName)) {
         showWaitingScreen(data);
         return;
     }
     
-    // ✅ Calcola quale catena devo disegnare
-    const players = data.players;
+    // ✅ CALCOLA QUALE TEMA DEVO DISEGNARE
+    const players = data.playerOrder || data.players;
     const numPlayers = players.length;
     const myIdx = players.indexOf(state.playerName);
     
-    let myChainId, myTheme, referenceDrawing = null;
+    // Round k → Giocatore i disegna tema (i + k) % N
+    const myChainId = (myIdx + currentRound) % numPlayers;
+    const chain = data.chains[myChainId];
     
-    if (phase === 0) {
-        // Fase 0: Disegna il tuo tema originale
-        myTheme = data.initialThemes[state.playerName];
-        myChainId = myIdx;
+    let myTheme, referenceDrawing = null;
+    
+    if (currentRound === 0) {
+        // ✅ Round 0: Disegno il tema originale
+        myTheme = chain.originalTheme;
     } else {
-        // Fasi successive: rotazione
-        if (numPlayers === 2) {
-            myChainId = (myIdx + 1) % 2;
-        } else {
-            const offset = Math.floor(phase / 2) + 1;
-            myChainId = (myIdx + offset) % numPlayers;
-        }
-        
-        const chain = data.chains[myChainId];
+        // ✅ Round 1+: Ridisegno guardando l'ultimo disegno della catena
+        myTheme = "RIDISEGNALO!";
         const lastStep = chain.steps[chain.steps.length - 1];
-        
         if (lastStep && lastStep.drawing) {
-            myTheme = "RIDISEGNA";
             referenceDrawing = lastStep.drawing;
-        } else {
-            myTheme = chain.originalTheme;
         }
     }
     
-    state.myCurrentTheme = myTheme;
+    state.myCurrentTheme = currentRound === 0 ? chain.originalTheme : myTheme;
+    state.originalTheme = chain.originalTheme; // Salva per riferimento
     state.receivedDrawing = referenceDrawing;
     state.myChainId = myChainId;
     
-    console.log(`🎯 Devo disegnare: tema="${myTheme}", chain=${myChainId}, hasRef=${!!referenceDrawing}`);
+    console.log(`🎯 Round ${currentRound}: Disegno chain ${myChainId} ("${chain.originalTheme}"), hasRef=${!!referenceDrawing}`);
     
     launchCanvas(data);
 }
@@ -1083,29 +1126,29 @@ function launchCanvas(data) {
     const refThumbnail = document.getElementById('reference-thumbnail');
     const themeBadge = document.getElementById('canvas-theme-badge');
     
-    if (state.receivedDrawing) {
-        refThumbnail.style.display = 'block';
-        
-        const miniCanvas = document.getElementById('reference-mini-canvas');
-        miniCanvas.width = LOGICAL_SIZE;
-        miniCanvas.height = LOGICAL_SIZE;
-        const miniCtx = miniCanvas.getContext('2d');
-        miniCtx.fillStyle = '#ffffff';
-        miniCtx.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
-        
-        const actions = decompressDrawing(state.receivedDrawing);
-        actions.forEach(act => applyAction(act, miniCtx));
-        
-        themeBadge.textContent = "RIDISEGNALO!";
-        themeBadge.style.background = 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)';
-    } else {
-        if (refThumbnail) refThumbnail.style.display = 'none';
-        themeBadge.textContent = state.myCurrentTheme;
-        themeBadge.style.background = 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
-    }
+if (state.receivedDrawing) {
+    refThumbnail.style.display = 'block';
     
-    document.getElementById('ui-round-info').textContent = 
-        `ROUND ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
+    const miniCanvas = document.getElementById('reference-mini-canvas');
+    miniCanvas.width = LOGICAL_SIZE;
+    miniCanvas.height = LOGICAL_SIZE;
+    const miniCtx = miniCanvas.getContext('2d');
+    miniCtx.fillStyle = '#ffffff';
+    miniCtx.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+    
+    const actions = decompressDrawing(state.receivedDrawing);
+    actions.forEach(act => applyAction(act, miniCtx));
+    
+    themeBadge.textContent = "🎨 COPIA QUESTO!";
+    themeBadge.style.background = 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)';
+} else {
+    if (refThumbnail) refThumbnail.style.display = 'none';
+    themeBadge.textContent = state.myCurrentTheme;
+    themeBadge.style.background = 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
+}
+    
+document.getElementById('ui-round-info').textContent = 
+    `ROUND ${data.currentRound + 1}/${data.totalRounds}`;
     document.getElementById('ui-player').textContent = state.playerName;
     
     renderPalette();
@@ -1129,7 +1172,7 @@ function startTimerWithBanner() {
     const isRedraw = !!state.receivedDrawing;
     const fase = isRedraw ? 'RIDISEGNA' : 'DISEGNA';
     const tema = state.myCurrentTheme;
-    const roundInfo = `Round ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
+    const roundInfo = `Round ${data.currentRound + 1}/${data.totalRounds}`;
     
     // ✅ BANNER CON TIMER VISIBILE
     showBanner({
@@ -1169,56 +1212,57 @@ function startTimerWithBanner() {
 
 // ✅ FINISH PHASE - CORRETTO
 async function finishCurrentPhase() {
-    if (state.isAdvancing) return; // Evita chiamate multiple
+    if (state.isAdvancing) return;
     
     clearInterval(timerInterval);
     removeBanner();
     state.isDrawing = false;
     
     const data = state.roomData;
-    const phase = data.currentPhase;
+    const currentRound = data.currentRound;
     const myChainId = state.myChainId;
     
-    console.log(`✅ finishCurrentPhase: fase=${phase}, chain=${myChainId}`);
+    console.log(`✅ finishCurrentPhase: round=${currentRound}, chain=${myChainId}`);
     
     const drawingData = compressDrawing(history);
     
     const step = {
         player: state.playerName,
-        type: state.receivedDrawing ? 'interpret' : 'draw',
+        round: currentRound,
         drawing: drawingData
     };
     
     const chainPath = `chains.${myChainId}.steps`;
-    const completedPath = `completedPhase.${phase}`;
+    const drawnByPath = `chains.${myChainId}.drawnBy`;
+    const completedPath = `completedRound.${currentRound}`;
     
     await db.collection("pictionary_rooms").doc(state.roomId).update({
         [chainPath]: firebase.firestore.FieldValue.arrayUnion(step),
+        [drawnByPath]: firebase.firestore.FieldValue.arrayUnion(state.playerName),
         [completedPath]: firebase.firestore.FieldValue.arrayUnion(state.playerName)
     });
     
     state.receivedDrawing = null;
     
-    // ✅ Leggi dati freschi e controlla se tutti hanno finito
+    // Leggi dati freschi
     const freshDoc = await db.collection("pictionary_rooms").doc(state.roomId).get();
     const freshData = freshDoc.data();
     state.roomData = freshData;
     
-    const completed = freshData.completedPhase?.[phase] || [];
+    const completed = freshData.completedRound?.[currentRound] || [];
     const total = freshData.players.length;
     
     console.log(`📊 Completati: ${completed.length}/${total}, isHost=${state.isHost}`);
     
-    // ✅ SE TUTTI HANNO FINITO E SONO HOST, AVANZA
     if (completed.length >= total && state.isHost) {
-        await advanceToNextPhase(freshData);
+        await advanceToNextRound(freshData);
     } else {
         showWaitingScreen(freshData);
     }
 }
 
 // ✅ AVANZAMENTO FASE - CORRETTO
-async function advanceToNextPhase(data) {
+async function advanceToNextRound(data) {
     if (state.isAdvancing) {
         console.log("⚠️ Già in avanzamento, skip");
         return;
@@ -1226,27 +1270,29 @@ async function advanceToNextPhase(data) {
     
     state.isAdvancing = true;
     
-    const phase = data.currentPhase;
-    const totalPhases = data.settings.rounds * 2;
-    const nextPhase = phase + 1;
+    const currentRound = data.currentRound;
+    const totalRounds = data.totalRounds;
+    const nextRound = currentRound + 1;
     
-    console.log(`🚀 advanceToNextPhase: ${phase} → ${nextPhase} (totale: ${totalPhases})`);
+    console.log(`🚀 advanceToNextRound: ${currentRound} → ${nextRound} (totale: ${totalRounds})`);
     
     try {
-        if (nextPhase >= totalPhases) {
+        if (nextRound >= totalRounds) {
+            // ✅ Tutti i round completati → Votazione
             console.log("🗳️ Passaggio a VOTAZIONE");
             await db.collection("pictionary_rooms").doc(state.roomId).update({
                 stato: 'voting'
             });
         } else {
-            console.log(`➡️ Passaggio a fase ${nextPhase}`);
+            // ✅ Prossimo round
+            console.log(`➡️ Passaggio a round ${nextRound}`);
             await db.collection("pictionary_rooms").doc(state.roomId).update({
-                currentPhase: nextPhase,
+                currentRound: nextRound,
                 stato: 'drawing'
             });
         }
     } catch (e) {
-        console.error("❌ Errore avanzamento fase:", e);
+        console.error("❌ Errore avanzamento round:", e);
     } finally {
         setTimeout(() => { state.isAdvancing = false; }, 2000);
     }
@@ -1260,13 +1306,13 @@ function showWaitingScreen(data) {
     showScreen('waiting-screen');
     showHomeButton();
     
-    const phase = data.currentPhase;
-    const completed = data.completedPhase?.[phase] || [];
+    const currentRound = data.currentRound;
+    const completed = data.completedRound?.[currentRound] || [];
     const total = data.players.length;
     
     const remaining = data.players.filter(p => !completed.includes(p));
     
-    document.getElementById('waiting-title').textContent = '✏️ DISEGNO INVIATO!';
+    document.getElementById('waiting-title').textContent = `✏️ ROUND ${currentRound + 1}/${data.totalRounds} COMPLETATO!`;
     document.getElementById('waiting-message').textContent = 
         remaining.length > 0 
             ? `In attesa di: ${remaining.join(', ')}`
@@ -1285,7 +1331,7 @@ function showWaitingScreen(data) {
     // ✅ SE TUTTI HANNO FINITO E SONO HOST, AVANZA
     if (completed.length >= total && state.isHost && !state.isAdvancing) {
         console.log("✅ Tutti finito in waiting, host avanza");
-        advanceToNextPhase(data);
+        advanceToNextRound(data);
     }
 }
 
@@ -1503,16 +1549,18 @@ async function playAgain() {
     
     await db.collection("pictionary_rooms").doc(state.roomId).update({
         stato: 'lobby',
-        currentPhase: 0,
+        currentRound: 0,
+        totalRounds: 0,
         chains: {},
         votes: {},
         scores: {},
-        completedPhase: {},
+        completedRound: {},
         ready: [],
-        initialThemes: {}
+        playerOrder: []
     });
     
     state.myVotes = {};
+    state.isAdvancing = false;
 }
 
 function goHome() {
