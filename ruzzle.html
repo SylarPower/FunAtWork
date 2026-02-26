@@ -1839,7 +1839,11 @@
 			function initGame(forceSeed) {
 			  timerDisplay.style.color = "";
 			  document.getElementById('start-screen').style.display = 'none';
-			  document.getElementById('fixed-home-btn').style.display = 'none';
+			  if (!matchId) {
+			    document.getElementById('fixed-home-btn').style.display = 'block';
+			  } else {
+			    document.getElementById('fixed-home-btn').style.display = 'none';
+			  }
 			  clearInterval(timerInterval);
 			  isGameActive = false;
 			  isAnalysisPhase = false;
@@ -4138,4 +4142,5 @@
 		</div>
 	</body>
 </html>
+
 
