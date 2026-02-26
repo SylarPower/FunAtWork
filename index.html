@@ -637,6 +637,11 @@
 			let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
 			let amiciSelezionati = new Set();
 			let giocoSelezionato = "ruzzle";
+			let partiteCache = {
+			    ruzzle: [],
+			    pictionary: [],
+			    neonwar: []
+			};
 			// ✅ CONFIGURAZIONE GIOCHI (aggiungi qui nuovi giochi)
 			const GIOCHI_CONFIG = {
 			  ruzzle: {
@@ -895,162 +900,204 @@
 			  });
 			}
 			
-			function listen() {
-			  // ✅ VARIABILE CONDIVISA tra i due listener
-			  let presenzeData = {};
-			  let amicizieSnapshot = null;
-			  // LISTENER 1: Presenze (si aggiorna ogni 20 secondi quando aggiorni presenza)
-			  db.collection("presenze").onSnapshot(presSnap => {
-			    // Aggiorna cache presenze
-			    presenzeData = {};
-			    presSnap.forEach(doc => {
-			      const u = doc.data();
-			      if (u.last > Date.now() - 60000) {
-			        presenzeData[u.nome] = u;
-			      }
-			    });
-			    // Se abbiamo già i dati amicizie, aggiorna la vista
-			    if (amicizieSnapshot) {
-			      aggiornaListaAmici(amicizieSnapshot, presenzeData);
-			    }
-			    // Aggiorna lista globale
-			    aggiornaListaGlobale(presenzeData);
-			  });
-			  // LISTENER 2: Amicizie (si aggiorna solo quando aggiungi/rimuovi amici)
-			  db.collection("amicizie").onSnapshot(snap => {
-			    amicizieSnapshot = snap;
-			    aggiornaListaAmici(snap, presenzeData);
-			  });
-			  // LISTENER 3: Partite
-			db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
-			    const div = document.getElementById('lista-partite');
-			    const configGioco = GIOCHI_CONFIG[giocoSelezionato] || GIOCHI_CONFIG.ruzzle;
-			    div.innerHTML = `
-			        <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
-			            <span>🎯 Allenamento Solo (${configGioco.nome})</span>
-			            <button>GIOCA</button>
-			        </div>`;
-			    
-			    // ✅ AGGIUNGI LISTENER PER PICTIONARY
-			    db.collection("pictionary_rooms").where("players", "array-contains", mioNome).onSnapshot(picSnap => {
-			        picSnap.forEach(picDoc => {
-			            const p = picDoc.data();
-			            const roomId = picDoc.id;
-			            
-			            // Salta se conclusa
-			            if (p.stato === 'results') return;
-			            
-			            const altri = p.players.filter(n => n !== mioNome).join(", ");
-			            const statoText = p.stato === 'lobby' ? 'In attesa' : 
-			                             p.stato === 'drawing' ? 'Disegno' :
-			                             p.stato === 'interpreting' ? 'Interpretazione' :
-			                             p.stato === 'voting' ? 'Votazione' : 'In corso';
-			            
-			            div.innerHTML += `
-			                <div class="user-item live-match" style="border-left-color: #e94560;">
-			                    <span>🎨 ${altri.length > 0 ? `vs ${altri}` : 'Pictionary'} (${statoText})</span>
-			                    <div>
-			                        <button onclick="window.location.href='pictionary.html?room=${roomId}'" style="background:#e94560; color:white;">ENTRA</button>
-			                        <button onclick="event.stopPropagation(); eliminaPictionary('${roomId}')" style="background:#cf6679; margin-left:5px;">🗑️</button>
-			                    </div>
-			                </div>`;
-			        });
-			    });
-			    
-			    snap.forEach(doc => {
-			      const p = doc.data();
-			      const partitaId = doc.id;
-			      // ✅ Salta partite concluse
-			      if (p.stato === "conclusa") return;
-			      // ✅ GESTIONE RIFIUTI (stile rivincita)
-			      const rifiutanti = p.rivincitaRifiutataDa || [];
-			      const accettanti = p.rivincitaAccettataDa || [];
-			      const creatore = p.partecipanti[0];
-			      const altriGiocatori = p.partecipanti.filter(x => x !== creatore);
-			      // Se qualcuno ha rifiutato, mostra notifica
-			      if (rifiutanti.length > 0) {
-			        const ioHoRifiutato = rifiutanti.includes(mioNome);
-			        if (ioHoRifiutato) {
-			          div.innerHTML += `
-											<div class="user-item" style="background:#7f8c8d; color:white; opacity:0.7;">
-												<span>👋 Hai rifiutato la sfida di ${creatore}</span>
-												<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
-											</div>`;
-			        } else {
-			          div.innerHTML += `
-											<div class="user-item" style="background:#cf6679; color:white;">
-												<span>😔 Sfida annullata: ${rifiutanti.join(', ')} ha rifiutato</span>
-												<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
-											</div>`;
-			        }
-			        return;
-			      }
-			      // ✅ STATO: ATTESA
-			      if (p.stato === "attesa") {
-			        // Sono il creatore?
-			        if (creatore === mioNome) {
-			          // Ho già accettato di default (sono io che ho creato)
-			          const numAccettanti = accettanti.length + 1; // +1 per me
-			          const totale = p.partecipanti.length;
-			          if (numAccettanti < totale) {
-			            // Attendo che altri accettino
-			            div.innerHTML += `
-											<div class="user-item" style="background:#9b59b6; color:white;">
-												<span>⏳ Sfida creata: in attesa (${numAccettanti}/${totale})</span>
-												<div>
-													<button onclick="event.stopPropagation(); window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-													<button onclick="event.stopPropagation(); annullaSfida('${partitaId}')" style="background:#cf6679; margin-left:5px;">🚫 ANNULLA</button>
-												</div>
-											</div>`;
-			          } else {
-			            // Tutti hanno accettato
-			            div.innerHTML += `
-											<div class="user-item live-match">
-												<span>✅ Sfida vs ${altriGiocatori.join(', ')} (${p.gioco})</span>
-												<div>
-													<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-													<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
-												</div>
-											</div>`;
-			          }
-			        } else {
-			          // Sono stato sfidato
-			          if (accettanti.includes(mioNome)) {
-			            // Ho già accettato
-			            const numAccettanti = accettanti.length + 1; // +1 per il creatore
-			            const totale = p.partecipanti.length;
-			            div.innerHTML += `
-											<div class="user-item" style="background:#2ecc71; color:white;">
-												<span>✅ Hai accettato: attesa altri (${numAccettanti}/${totale})</span>
-												<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#fff; color:#000;">ENTRA</button>
-											</div>`;
-			          } else {
-			            // Devo ancora accettare/rifiutare
-			            div.innerHTML += `
-											<div class="user-item" style="background:#f1c40f; color:black; border:3px solid #e67e22;">
-												<span style="font-weight:bold;">⚔️ SFIDA DA ${creatore}</span>
-												<div>
-													<button onclick="event.stopPropagation(); accettaSfida('${partitaId}')" style="background:#2ecc71; color:white;">✅ ACCETTA</button>
-													<button onclick="event.stopPropagation(); rifiutaSfida('${partitaId}')" style="background:#cf6679; color:white; margin-left:5px;">❌ RIFIUTA</button>
-												</div>
-											</div>`;
-			          }
-			        }
-			      } else {
-			        // ✅ STATO: IN_CORSO o VERIFICA
-			        const altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
-			        div.innerHTML += `
-											<div class="user-item live-match">
-												<span>vs ${altri} (${p.gioco})</span>
-												<div>
-													<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-													<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
-												</div>
-											</div>`;
-			      }
-			    });
-			  });
-			}
+function listen() {
+    let presenzeData = {};
+    let amicizieSnapshot = null;
+
+    // LISTENER 1: Presenze
+    db.collection("presenze").onSnapshot(presSnap => {
+        presenzeData = {};
+        presSnap.forEach(doc => {
+            const u = doc.data();
+            if (u.last > Date.now() - 60000) {
+                presenzeData[u.nome] = u;
+            }
+        });
+        if (amicizieSnapshot) {
+            aggiornaListaAmici(amicizieSnapshot, presenzeData);
+        }
+        aggiornaListaGlobale(presenzeData);
+    });
+
+    // LISTENER 2: Amicizie
+    db.collection("amicizie").onSnapshot(snap => {
+        amicizieSnapshot = snap;
+        aggiornaListaAmici(snap, presenzeData);
+    });
+
+    // ========================================
+    // ✅ LISTENER 3: Partite Ruzzle/NeonWar
+    // ========================================
+    db.collection("partite")
+        .where("partecipanti", "array-contains", mioNome)
+        .onSnapshot(snap => {
+            partiteCache.ruzzle = [];
+            partiteCache.neonwar = [];
+            
+            snap.forEach(doc => {
+                const data = { id: doc.id, ...doc.data() };
+                if (data.gioco === 'neonwar') {
+                    partiteCache.neonwar.push(data);
+                } else {
+                    partiteCache.ruzzle.push(data);
+                }
+            });
+            
+            renderTutteLePartite();
+        });
+
+    // ========================================
+    // ✅ LISTENER 4: Pictionary
+    // ========================================
+    db.collection("pictionary_rooms")
+        .where("players", "array-contains", mioNome)
+        .onSnapshot(snap => {
+            partiteCache.pictionary = [];
+            
+            snap.forEach(doc => {
+                partiteCache.pictionary.push({ id: doc.id, ...doc.data() });
+            });
+            
+            renderTutteLePartite();
+        });
+}
+// ========================================
+// ✅ RENDER UNIFICATO
+// ========================================
+function renderTutteLePartite() {
+    const div = document.getElementById('lista-partite');
+    const configGioco = GIOCHI_CONFIG[giocoSelezionato] || GIOCHI_CONFIG.ruzzle;
+    
+    // Reset completo
+    div.innerHTML = `
+        <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
+            <span>🎯 Allenamento Solo (${configGioco.nome})</span>
+            <button>GIOCA</button>
+        </div>`;
+    
+    // Render Ruzzle
+    partiteCache.ruzzle.forEach(p => renderPartitaRuzzle(p, div));
+    
+    // Render NeonWar
+    partiteCache.neonwar.forEach(p => renderPartitaRuzzle(p, div));
+    
+    // Render Pictionary
+    partiteCache.pictionary.forEach(p => renderPartitaPictionary(p, div));
+}
+
+// ========================================
+// 🔠 RENDER RUZZLE/NEONWAR
+// ========================================
+function renderPartitaRuzzle(p, div) {
+    const partitaId = p.id;
+    
+    if (p.stato === "conclusa") return;
+    
+    const rifiutanti = p.rivincitaRifiutataDa || [];
+    const accettanti = p.rivincitaAccettataDa || [];
+    const creatore = p.partecipanti[0];
+    const altriGiocatori = p.partecipanti.filter(x => x !== creatore);
+    
+    // Rifiuti
+    if (rifiutanti.length > 0) {
+        const ioHoRifiutato = rifiutanti.includes(mioNome);
+        if (ioHoRifiutato) {
+            div.innerHTML += `
+                <div class="user-item" style="background:#7f8c8d; color:white; opacity:0.7;">
+                    <span>👋 Hai rifiutato la sfida di ${creatore}</span>
+                    <button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
+                </div>`;
+        } else {
+            div.innerHTML += `
+                <div class="user-item" style="background:#cf6679; color:white;">
+                    <span>😔 Sfida annullata: ${rifiutanti.join(', ')} ha rifiutato</span>
+                    <button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
+                </div>`;
+        }
+        return;
+    }
+    
+    // Attesa
+    if (p.stato === "attesa") {
+        if (creatore === mioNome) {
+            const numAccettanti = accettanti.length + 1;
+            const totale = p.partecipanti.length;
+            if (numAccettanti < totale) {
+                div.innerHTML += `
+                    <div class="user-item" style="background:#9b59b6; color:white;">
+                        <span>⏳ Sfida creata: in attesa (${numAccettanti}/${totale})</span>
+                        <div>
+                            <button onclick="event.stopPropagation(); window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+                            <button onclick="event.stopPropagation(); annullaSfida('${partitaId}')" style="background:#cf6679; margin-left:5px;">🚫 ANNULLA</button>
+                        </div>
+                    </div>`;
+            } else {
+                div.innerHTML += `
+                    <div class="user-item live-match">
+                        <span>✅ Sfida vs ${altriGiocatori.join(', ')} (${p.gioco})</span>
+                        <div>
+                            <button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+                            <button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+                        </div>
+                    </div>`;
+            }
+        } else {
+            if (accettanti.includes(mioNome)) {
+                const numAccettanti = accettanti.length + 1;
+                const totale = p.partecipanti.length;
+                div.innerHTML += `
+                    <div class="user-item" style="background:#2ecc71; color:white;">
+                        <span>✅ Hai accettato: attesa altri (${numAccettanti}/${totale})</span>
+                        <button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#fff; color:#000;">ENTRA</button>
+                    </div>`;
+            } else {
+                div.innerHTML += `
+                    <div class="user-item" style="background:#f1c40f; color:black; border:3px solid #e67e22;">
+                        <span style="font-weight:bold;">⚔️ SFIDA DA ${creatore}</span>
+                        <div>
+                            <button onclick="event.stopPropagation(); accettaSfida('${partitaId}')" style="background:#2ecc71; color:white;">✅ ACCETTA</button>
+                            <button onclick="event.stopPropagation(); rifiutaSfida('${partitaId}')" style="background:#cf6679; color:white; margin-left:5px;">❌ RIFIUTA</button>
+                        </div>
+                    </div>`;
+            }
+        }
+    } else {
+        // In corso
+        const altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
+        div.innerHTML += `
+            <div class="user-item live-match">
+                <span>vs ${altri} (${p.gioco})</span>
+                <div>
+                    <button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+                    <button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+                </div>
+            </div>`;
+    }
+}
+
+// ========================================
+// 🎨 RENDER PICTIONARY
+// ========================================
+function renderPartitaPictionary(p, div) {
+    const roomId = p.id;
+    
+    if (p.stato === 'results') return;
+    
+    const altri = p.players.filter(n => n !== mioNome).join(", ");
+    const statoText = p.stato === 'lobby' ? 'In attesa' : 
+                     p.stato === 'drawing' ? 'Disegno' :
+                     p.stato === 'interpreting' ? 'Ridisegno' :
+                     p.stato === 'voting' ? 'Votazione' : 'In corso';
+    
+    div.innerHTML += `
+        <div class="user-item live-match" style="border-left-color: #e94560;">
+            <span>🎨 ${altri.length > 0 ? `vs ${altri}` : 'Pictionary'} (${statoText})</span>
+            <div>
+                <button onclick="window.location.href='pictionary.html?room=${roomId}'" style="background:#e94560; color:white;">ENTRA</button>
+                <button onclick="event.stopPropagation(); eliminaPictionary('${roomId}')" style="background:#cf6679; margin-left:5px;">🗑️</button>
+            </div>
+        </div>`;
+}
 			// FUNZIONE 1: Aggiorna lista amici
 			function aggiornaListaAmici(amicizieSnap, presenzeData) {
 			  const div = document.getElementById('lista-amici');
@@ -1783,6 +1830,7 @@
 		</script>
 	</body>
 </html>
+
 
 
 
