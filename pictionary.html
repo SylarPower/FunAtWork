@@ -1357,12 +1357,52 @@ function handleVotingPhase(data) {
     const votedCount = Object.keys(state.myVotes).length;
     const totalChains = Object.keys(data.chains).length;
     
-    showBanner({
-        icon: '🗳️',
-        title: 'VOTAZIONE IN CORSO',
-        subtitle: `Vota il disegno più divertente (${votedCount}/${totalChains})`,
-        color: '#f39c12'
-    });
+    // ✅ Controlla se ho già votato (i miei voti sono su Firebase)
+    const myVotesOnFirebase = data.votes?.[state.playerName];
+    const confirmBtn = document.getElementById('confirm-votes-btn');
+    
+    if (myVotesOnFirebase && Object.keys(myVotesOnFirebase).length > 0) {
+        // ✅ Ho già confermato i voti
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '✅ VOTI INVIATI';
+            confirmBtn.style.opacity = '0.6';
+            confirmBtn.style.cursor = 'not-allowed';
+            confirmBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+        }
+        
+        const votedPlayers = Object.keys(data.votes).length;
+        const totalPlayers = data.players.length;
+        
+        showBanner({
+            icon: '⏳',
+            title: `ATTESA VOTI (${votedPlayers}/${totalPlayers})`,
+            subtitle: 'Hai già votato. Attendi gli altri...',
+            color: '#27ae60',
+            spinner: true
+        });
+        
+        // ✅ Host controlla se tutti hanno votato
+        if (state.isHost && votedPlayers >= totalPlayers) {
+            checkAndCalculateResults();
+        }
+    } else {
+        // ✅ Non ho ancora votato
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '✅ CONFERMA VOTI';
+            confirmBtn.style.opacity = '1';
+            confirmBtn.style.cursor = 'pointer';
+            confirmBtn.style.background = 'linear-gradient(135deg, #ffd700 0%, #ffaa00 100%)';
+        }
+        
+        showBanner({
+            icon: '🗳️',
+            title: 'VOTAZIONE IN CORSO',
+            subtitle: `Vota il disegno più bello di ogni catena (${votedCount}/${totalChains})`,
+            color: '#f39c12'
+        });
+    }
 }
 
 function renderGallery(data) {
@@ -1381,10 +1421,8 @@ function renderGallery(data) {
             ? `<div style="font-size: 0.8rem; opacity: 0.7;">🎯 Tema originale nascosto</div>`
             : `<div style="font-size: 0.8rem; opacity: 0.7;">di ${chain.steps[0]?.player || '?'}</div>`;
         
-        // ✅ Durante la votazione NON mostrare il tema
-        const themeDisplay = isVotingPhase
-            ? `<span>Catena #${parseInt(chainId) + 1}</span>`
-            : `<span>Tema: "${chain.originalTheme}"</span>`;
+// ✅ Tema sempre visibile
+const themeDisplay = `<span>Tema: "${chain.originalTheme}"</span>`;
         
         card.innerHTML = `
             <div class="chain-header">
@@ -1505,13 +1543,21 @@ function voteFor(chainId, uniqueVoteId) {
         color: '#f39c12'
     });
 }
-
 async function confirmVotes() {
     const data = state.roomData;
     const totalChains = Object.keys(data.chains).length;
     
     if (Object.keys(state.myVotes).length < totalChains) {
         return alert(`Devi votare in tutte le ${totalChains} catene!`);
+    }
+    
+    // ✅ Disabilita subito il pulsante per evitare doppi click
+    const confirmBtn = document.getElementById('confirm-votes-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '⏳ INVIO VOTI...';
+        confirmBtn.style.opacity = '0.6';
+        confirmBtn.style.cursor = 'not-allowed';
     }
     
     // ✅ Converti voti in formato {chainId: playerName}
@@ -1523,42 +1569,64 @@ async function confirmVotes() {
         votesForFirebase[chainId] = votedPlayer;
     });
     
-    await db.collection("pictionary_rooms").doc(state.roomId).update({
-        [`votes.${state.playerName}`]: votesForFirebase
-    });
+    try {
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            [`votes.${state.playerName}`]: votesForFirebase
+        });
+        
+        // ✅ Aggiorna pulsante a stato "confermato"
+        if (confirmBtn) {
+            confirmBtn.innerHTML = '✅ VOTI INVIATI';
+            confirmBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+        }
+        
+        showBanner({
+            icon: '⏳',
+            title: 'VOTI CONFERMATI',
+            subtitle: 'Attendi gli altri giocatori...',
+            color: '#27ae60',
+            spinner: true
+        });
+        
+        // ✅ Host controlla e calcola risultati
+        if (state.isHost) {
+            await checkAndCalculateResults();
+        }
+        
+    } catch (e) {
+        console.error("Errore invio voti:", e);
+        // Riabilita in caso di errore
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '✅ CONFERMA VOTI';
+            confirmBtn.style.opacity = '1';
+            confirmBtn.style.cursor = 'pointer';
+        }
+        alert("Errore nell'invio dei voti. Riprova.");
+    }
+}
+
+// ✅ Funzione separata per calcolare risultati (chiamata anche dal listener)
+async function checkAndCalculateResults() {
+    const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+    const newData = doc.data();
     
-    showBanner({
-        icon: '⏳',
-        title: 'VOTI CONFERMATI',
-        subtitle: 'Attendi gli altri giocatori...',
-        color: '#27ae60',
-        spinner: true
-    });
-    
-    // ✅ Host calcola risultati quando tutti hanno votato
-    if (state.isHost) {
-        setTimeout(async () => {
-            const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
-            const newData = doc.data();
-            
-            if (Object.keys(newData.votes).length >= newData.players.length) {
-                const scores = {};
-                newData.players.forEach(p => scores[p] = 0);
-                
-                Object.values(newData.votes).forEach(playerVotes => {
-                    Object.values(playerVotes).forEach(votedPlayer => {
-                        if (scores[votedPlayer] !== undefined) {
-                            scores[votedPlayer]++;
-                        }
-                    });
-                });
-                
-                await db.collection("pictionary_rooms").doc(state.roomId).update({
-                    scores: scores,
-                    stato: 'results'
-                });
-            }
-        }, 500);
+    if (Object.keys(newData.votes).length >= newData.players.length) {
+        const scores = {};
+        newData.players.forEach(p => scores[p] = 0);
+        
+        Object.values(newData.votes).forEach(playerVotes => {
+            Object.values(playerVotes).forEach(votedPlayer => {
+                if (scores[votedPlayer] !== undefined) {
+                    scores[votedPlayer]++;
+                }
+            });
+        });
+        
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            scores: scores,
+            stato: 'results'
+        });
     }
 }
 
@@ -1576,24 +1644,25 @@ function handleResultsPhase(data) {
     const podium = document.getElementById('podium');
     podium.innerHTML = '';
     
-    const places = [1, 0, 2];
-    places.forEach((idx) => {
-        if (sorted[idx]) {
-            const [player, score] = sorted[idx];
-            const place = idx + 1;
-            
-            const div = document.createElement('div');
-            div.className = `podium-place place-${place}`;
-            div.innerHTML = `
-                <div class="podium-avatar">${player.charAt(0)}</div>
-                <div class="podium-bar">
-                    <div class="podium-score">${score}</div>
-                </div>
-                <div class="podium-name">${player}</div>
-            `;
-            podium.appendChild(div);
-        }
-    });
+const podiumOrder = [1, 0, 2];
+podiumOrder.forEach((idx) => {
+    if (sorted[idx]) {
+        const [player, score] = sorted[idx];
+        const place = idx + 1;
+        
+        const div = document.createElement('div');
+        div.className = `podium-place place-${place}`;
+        div.style.animationDelay = `${idx * 0.2}s`;
+        div.innerHTML = `
+            <div class="podium-avatar">${place}°</div>
+            <div class="podium-bar">
+                <div class="podium-score">${score}</div>
+            </div>
+            <div class="podium-name">${player}</div>
+        `;
+        podium.appendChild(div);
+    }
+});
     
     const ranking = document.getElementById('full-ranking');
     ranking.innerHTML = '<h3 style="margin-top: 0;">Classifica Completa</h3>';
