@@ -3315,7 +3315,7 @@ function handleGuessItPhase(data) {
         // Aggiorna UI
         document.getElementById('guessit-round-info').textContent = 
             `ROUND ${currentRoundFromDB + 1}/${gi.totalRounds || 5}`;
-        
+    
         if (amIDrawer) {
             setupGuessItDrawer(gi);
         } else {
