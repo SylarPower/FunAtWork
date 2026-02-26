@@ -735,38 +735,28 @@
 			     minGiocatori: 1,
 			     maxGiocatori: 8
 			 },
-			pictionary: {
-		    nome: "Pictionary",
-		    icona: "🎨",
-		    opzioni: [
-		        {
-		            id: "rounds",
-		            label: "Passaggi",
-		            default: "2",
-		            valori: [
-		                { value: "1", label: "1 Passaggio" },
-		                { value: "2", label: "2 Passaggi" },
-		                { value: "3", label: "3 Passaggi" }
-		            ]
-		        },
-		        {
-		            id: "timePerRound",
-		            label: "Tempo",
-		            default: "60",
-		            valori: [
-		                { value: "30", label: "30 secondi" },
-		                { value: "45", label: "45 secondi" },
-		                { value: "60", label: "60 secondi" },
-		                { value: "90", label: "90 secondi" }
-		            ]
-		        }
-		    ],
-		    modalita: [
-		        { id: "classic", label: "PARTITA", colore: "#e94560", testo: "white" }
-		    ],
-		    minGiocatori: 2,
-		    maxGiocatori: 6
-		}
+pictionary: {
+    nome: "Pictionary",
+    icona: "🎨",
+    opzioni: [
+        {
+            id: "timePerRound",
+            label: "Tempo",
+            default: "60",
+            valori: [
+                { value: "30", label: "30s" },
+                { value: "45", label: "45s" },
+                { value: "60", label: "60s" },
+                { value: "90", label: "90s" }
+            ]
+        }
+    ],
+    modalita: [
+        { id: "classic", label: "GIOCA 🎨", colore: "#e94560", testo: "white" }
+    ],
+    minGiocatori: 2,
+    maxGiocatori: 8
+}
 			  // Aggiungerai qui altri giochi in futuro
 			};
 			// Debug helper
@@ -1830,6 +1820,7 @@ function renderPartitaPictionary(p, div) {
 		</script>
 	</body>
 </html>
+
 
 
 
