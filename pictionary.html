@@ -841,6 +841,9 @@ async function createNewRoom() {
     state.playerName = name;
     localStorage.setItem('pictionaryPlayerName', name);
     
+    // ✅ Salva anche in mioNome per compatibilità index
+    localStorage.setItem('mioNome', name);
+    
     const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
     
     try {
@@ -850,10 +853,11 @@ async function createNewRoom() {
             ready: [],
             settings: { rounds: 2, timePerRound: 60 },
             stato: 'lobby',
-            currentPhase: 0, // 0: prima draw, 1: prima interpret, 2: seconda draw...
-            chains: {}, // { chainId: { originalTheme, steps: [{player, type, theme/guess, drawing}] } }
+            currentPhase: 0,
+            chains: {},
             votes: {},
             scores: {},
+            completedPhase: {},
             timestamp: Date.now()
         });
         
@@ -875,6 +879,7 @@ async function joinExistingRoom() {
     
     state.playerName = name;
     localStorage.setItem('pictionaryPlayerName', name);
+    localStorage.setItem('mioNome', name); // ✅ Compatibilità
     
     try {
         const doc = await db.collection("pictionary_rooms").doc(code).get();
@@ -1773,19 +1778,57 @@ function decompressDrawing(str) {
 }
 
 // ========================================
-// INIT
+// INIT - Gestione parametri URL + Auto-login
 // ========================================
 window.onload = () => {
-    const savedName = localStorage.getItem('pictionaryPlayerName');
+    // ✅ Carica nome da localStorage (priorità: mioNome > pictionaryPlayerName)
+    const savedName = localStorage.getItem('mioNome') || localStorage.getItem('pictionaryPlayerName');
+    
     if (savedName) {
         document.getElementById('player-name-input').value = savedName;
+        state.playerName = savedName;
     }
     
-    // Check URL params per join diretto
+    // Check URL params per join/creazione automatica
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('room');
-    if (roomCode) {
+    
+    if (roomCode && savedName) {
+        // Join automatico se arrivi da index
+        state.roomId = roomCode;
+        
+        db.collection("pictionary_rooms").doc(roomCode).get().then(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                
+                if (data.players.includes(savedName)) {
+                    // Già dentro - vai alla lobby
+                    state.isHost = data.host === savedName;
+                    enterLobby();
+                } else if (data.stato === 'lobby') {
+                    // Aggiungi e entra
+                    db.collection("pictionary_rooms").doc(roomCode).update({
+                        players: firebase.firestore.FieldValue.arrayUnion(savedName)
+                    }).then(() => {
+                        state.isHost = false;
+                        enterLobby();
+                    });
+                } else {
+                    alert("Partita già iniziata!");
+                    showScreen('login-screen');
+                }
+            } else {
+                alert("Stanza non trovata!");
+                showScreen('login-screen');
+            }
+        }).catch(e => {
+            console.error(e);
+            showScreen('login-screen');
+        });
+    } else if (roomCode) {
+        // Ha il codice ma non il nome - mostra login con codice precompilato
         document.getElementById('join-room-code').value = roomCode;
+        showScreen('login-screen');
     }
 };
 </script>
