@@ -526,9 +526,13 @@
 						<div class="game-card" onclick="selezionaGioco('neonwar', this)" id="game-neonwar">
 							<span style="font-size:2rem;">🚀</span><br>Neon War
 						</div>
+						<div class="game-card" onclick="selezionaGioco('pictionary', this)" id="game-pictionary">
+						    <span style="font-size:2rem;">🎨</span><br>Pictionary
+						    <div style="position:absolute; top:5px; right:5px; background:#f1c40f; color:#000; padding:2px 6px; border-radius:10px; font-size:0.65rem; font-weight:bold;">NEW</div>
+						</div>
+						
 						<div class="game-card" style="opacity:0.3; cursor:not-allowed; pointer-events:none;">
-							<span style="font-size:2rem;">❌</span>
-							<br>Prossimamente
+						    <span style="font-size:2rem;">❌</span><br>Prossimamente
 						</div>
 						<!-- Aggiungerai qui i futuri giochi -->
 					</div>
@@ -725,7 +729,39 @@
 			     ],
 			     minGiocatori: 1,
 			     maxGiocatori: 8
-			 }
+			 },
+			pictionary: {
+		    nome: "Pictionary",
+		    icona: "🎨",
+		    opzioni: [
+		        {
+		            id: "rounds",
+		            label: "Passaggi",
+		            default: "2",
+		            valori: [
+		                { value: "1", label: "1 Passaggio" },
+		                { value: "2", label: "2 Passaggi" },
+		                { value: "3", label: "3 Passaggi" }
+		            ]
+		        },
+		        {
+		            id: "timePerRound",
+		            label: "Tempo",
+		            default: "60",
+		            valori: [
+		                { value: "30", label: "30 secondi" },
+		                { value: "45", label: "45 secondi" },
+		                { value: "60", label: "60 secondi" },
+		                { value: "90", label: "90 secondi" }
+		            ]
+		        }
+		    ],
+		    modalita: [
+		        { id: "classic", label: "PARTITA", colore: "#e94560", testo: "white" }
+		    ],
+		    minGiocatori: 2,
+		    maxGiocatori: 6
+		}
 			  // Aggiungerai qui altri giochi in futuro
 			};
 			// Debug helper
@@ -886,14 +922,41 @@
 			    aggiornaListaAmici(snap, presenzeData);
 			  });
 			  // LISTENER 3: Partite
-			  db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
+			db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
 			    const div = document.getElementById('lista-partite');
-				const configGioco = GIOCHI_CONFIG[giocoSelezionato] || GIOCHI_CONFIG.ruzzle;
-				div.innerHTML = `
-				    <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
-				        <span>🎯 Allenamento Solo (${configGioco.nome})</span>
-				        <button>GIOCA</button>
-				    </div>`;
+			    const configGioco = GIOCHI_CONFIG[giocoSelezionato] || GIOCHI_CONFIG.ruzzle;
+			    div.innerHTML = `
+			        <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
+			            <span>🎯 Allenamento Solo (${configGioco.nome})</span>
+			            <button>GIOCA</button>
+			        </div>`;
+			    
+			    // ✅ AGGIUNGI LISTENER PER PICTIONARY
+			    db.collection("pictionary_rooms").where("players", "array-contains", mioNome).onSnapshot(picSnap => {
+			        picSnap.forEach(picDoc => {
+			            const p = picDoc.data();
+			            const roomId = picDoc.id;
+			            
+			            // Salta se conclusa
+			            if (p.stato === 'results') return;
+			            
+			            const altri = p.players.filter(n => n !== mioNome).join(", ");
+			            const statoText = p.stato === 'lobby' ? 'In attesa' : 
+			                             p.stato === 'drawing' ? 'Disegno' :
+			                             p.stato === 'interpreting' ? 'Interpretazione' :
+			                             p.stato === 'voting' ? 'Votazione' : 'In corso';
+			            
+			            div.innerHTML += `
+			                <div class="user-item live-match" style="border-left-color: #e94560;">
+			                    <span>🎨 ${altri.length > 0 ? `vs ${altri}` : 'Pictionary'} (${statoText})</span>
+			                    <div>
+			                        <button onclick="window.location.href='pictionary.html?room=${roomId}'" style="background:#e94560; color:white;">ENTRA</button>
+			                        <button onclick="event.stopPropagation(); eliminaPictionary('${roomId}')" style="background:#cf6679; margin-left:5px;">🗑️</button>
+			                    </div>
+			                </div>`;
+			        });
+			    });
+			    
 			    snap.forEach(doc => {
 			      const p = doc.data();
 			      const partitaId = doc.id;
@@ -1203,71 +1266,120 @@
 			  aggiornaBottoneSfida();
 			}
 			async function creaPartitaDaBanner(modalitaId) {
-			  const config = GIOCHI_CONFIG[giocoSelezionato];
-			  if (!config) return;
-			  // Raccogli opzioni dinamicamente
-			  const opzioni = {
-			    mode: modalitaId
-			  };
-			  config.opzioni.forEach(opt => {
-			    const el = document.getElementById(`opt-${opt.id}-banner`);
-			    if (el) {
-			      opzioni[opt.id] = el.value;
-			      localStorage.setItem(`ultimo_${giocoSelezionato}_${opt.id}`, el.value);
-			    }
-			  });
-			  // Aggiungi seed
-			  opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
-			  const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
-			  // Validazione
-			  if (partecipanti.length < config.minGiocatori) {
-			    mostraToast(`❌ Servono almeno ${config.minGiocatori} giocatori`);
-			    return;
-			  }
-			  if (partecipanti.length > config.maxGiocatori) {
-			    mostraToast(`❌ Massimo ${config.maxGiocatori} giocatori`);
-			    return;
-			  }
-			  let pIniziali = {};
-			  let paroleIniziali = {};
-			  partecipanti.forEach(p => {
-			    pIniziali[p] = 0;
-			    paroleIniziali[p] = [];
-			  });
-			  // Mostra loading
-			  showLoadingBanner('Creazione sfida...');
-			  try {
-			    const doc = await db.collection("partite").add({
-			      gioco: giocoSelezionato,
-			      partecipanti: partecipanti,
-			      punteggi: pIniziali,
-			      parole: paroleIniziali,
-			      pronti: [],
-			      finito: [],
-			      confermaVerifica: [],
-			      stato: "attesa",
-			      rivincitaAccettataDa: [],
-			      rivincitaRifiutataDa: [],
-			      dataOra: new Date().toLocaleString('it-IT', {
-			        day: '2-digit',
-			        month: '2-digit',
-			        hour: '2-digit',
-			        minute: '2-digit'
-			      }),
-			      timestamp: Date.now(),
-			      opzioni: opzioni
+			    const config = GIOCHI_CONFIG[giocoSelezionato];
+			    if (!config) return;
+			    
+			    // Raccogli opzioni dinamicamente
+			    const opzioni = { mode: modalitaId };
+			    config.opzioni.forEach(opt => {
+			        const el = document.getElementById(`opt-${opt.id}-banner`);
+			        if (el) {
+			            opzioni[opt.id] = el.value;
+			            localStorage.setItem(`ultimo_${giocoSelezionato}_${opt.id}`, el.value);
+			        }
 			    });
-			    // Deseleziona amici
-			    amiciSelezionati.clear();
-			    document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-			    aggiornaBottoneSfida();
-			    // Mostra conferma
-			    showSuccessBanner(doc.id);
-			  } catch (e) {
-			    console.error("Errore creazione partita:", e);
-			    removeGameBanner();
-			    mostraToast('❌ Errore creazione sfida');
-			  }
+			    
+			    // Aggiungi seed
+			    opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
+			    
+			    const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
+			    
+			    // Validazione
+			    if (partecipanti.length < config.minGiocatori) {
+			        mostraToast(`❌ Servono almeno ${config.minGiocatori} giocatori`);
+			        return;
+			    }
+			    if (partecipanti.length > config.maxGiocatori) {
+			        mostraToast(`❌ Massimo ${config.maxGiocatori} giocatori`);
+			        return;
+			    }
+			    
+			    // ✅ GESTIONE SPECIFICA PER PICTIONARY
+			    if (giocoSelezionato === 'pictionary') {
+			        showLoadingBanner('Creazione sfida Pictionary...');
+			        
+			        try {
+			            const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+			            
+			            await db.collection("pictionary_rooms").doc(roomCode).set({
+			                host: mioNome,
+			                players: partecipanti,
+			                ready: [],
+			                settings: { 
+			                    rounds: parseInt(opzioni.rounds), 
+			                    timePerRound: parseInt(opzioni.timePerRound) 
+			                },
+			                stato: 'lobby',
+			                currentPhase: 0,
+			                chains: {},
+			                votes: {},
+			                scores: {},
+			                completedPhase: {},
+			                timestamp: Date.now(),
+			                dataOra: new Date().toLocaleString('it-IT'),
+			                sfidaDiretta: true
+			            });
+			            
+			            // Deseleziona amici
+			            amiciSelezionati.clear();
+			            document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+			            aggiornaBottoneSfida();
+			            
+			            // Redirect diretto (non serve attendere accettazione)
+			            window.location.href = `pictionary.html?room=${roomCode}`;
+			            
+			        } catch (e) {
+			            console.error("Errore creazione Pictionary:", e);
+			            removeGameBanner();
+			            mostraToast('❌ Errore creazione sfida');
+			        }
+			        return; // ← ESCI SUBITO
+			    }
+			    
+			    // ✅ CONTINUA CON LA LOGICA NORMALE PER GLI ALTRI GIOCHI
+			    let pIniziali = {};
+			    let paroleIniziali = {};
+			    partecipanti.forEach(p => {
+			        pIniziali[p] = 0;
+			        paroleIniziali[p] = [];
+			    });
+			    
+			    showLoadingBanner('Creazione sfida...');
+			    
+			    try {
+			        const doc = await db.collection("partite").add({
+			            gioco: giocoSelezionato,
+			            partecipanti: partecipanti,
+			            punteggi: pIniziali,
+			            parole: paroleIniziali,
+			            pronti: [],
+			            finito: [],
+			            confermaVerifica: [],
+			            stato: "attesa",
+			            rivincitaAccettataDa: [],
+			            rivincitaRifiutataDa: [],
+			            dataOra: new Date().toLocaleString('it-IT', {
+			                day: '2-digit',
+			                month: '2-digit',
+			                hour: '2-digit',
+			                minute: '2-digit'
+			            }),
+			            timestamp: Date.now(),
+			            opzioni: opzioni
+			        });
+			        
+			        // Deseleziona amici
+			        amiciSelezionati.clear();
+			        document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+			        aggiornaBottoneSfida();
+			        
+			        // Mostra conferma
+			        showSuccessBanner(doc.id);
+			    } catch (e) {
+			        console.error("Errore creazione partita:", e);
+			        removeGameBanner();
+			        mostraToast('❌ Errore creazione sfida');
+			    }
 			}
 			
 			function showLoadingBanner(messaggio) {
@@ -1659,9 +1771,19 @@
 			    }
 			  }
 			}
+			async function eliminaPictionary(roomId) {
+			    if (!confirm('Eliminare questa partita Pictionary?')) return;
+			    try {
+			        await db.collection("pictionary_rooms").doc(roomId).delete();
+			        mostraToast('🗑️ Partita eliminata');
+			    } catch (e) {
+			        console.error("Errore eliminazione:", e);
+			    }
+			}
 		</script>
 	</body>
 </html>
+
 
 
 
