@@ -346,7 +346,26 @@
         }
         .vote-btn:hover { background: var(--primary); }
         .vote-btn.voted { background: var(--gold); color: #1a1a2e; }
+/* ✅ Evidenzia i propri disegni durante la votazione */
+.chain-step.my-drawing {
+    border-color: var(--primary);
+    background: rgba(233, 69, 96, 0.1);
+    position: relative;
+}
 
+.chain-step.my-drawing::before {
+    content: '👤 TUO';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 10px;
+    z-index: 10;
+}
         /* === RISULTATI === */
         .results-container {
             width: 100%; max-width: 600px;
@@ -1351,18 +1370,29 @@ function renderGallery(data) {
     container.innerHTML = '';
     
     const myVotes = state.myVotes;
+    const isVotingPhase = data.stato === 'voting';
     
     Object.entries(data.chains).forEach(([chainId, chain]) => {
         const card = document.createElement('div');
         card.className = 'chain-card';
         
+        // ✅ Durante la votazione NON mostrare chi ha creato il tema originale
+        const headerInfo = isVotingPhase 
+            ? `<div style="font-size: 0.8rem; opacity: 0.7;">🎯 Tema originale nascosto</div>`
+            : `<div style="font-size: 0.8rem; opacity: 0.7;">di ${chain.steps[0]?.player || '?'}</div>`;
+        
+        // ✅ Durante la votazione NON mostrare il tema
+        const themeDisplay = isVotingPhase
+            ? `<span>Catena #${parseInt(chainId) + 1}</span>`
+            : `<span>Tema: "${chain.originalTheme}"</span>`;
+        
         card.innerHTML = `
             <div class="chain-header">
                 <div class="chain-title">
-                    <span>🎯</span>
-                    <span>Tema: "${chain.originalTheme}"</span>
+                    <span>🎨</span>
+                    ${themeDisplay}
                 </div>
-                <div style="font-size: 0.8rem; opacity: 0.7;">di ${chain.originalPlayer}</div>
+                ${headerInfo}
             </div>
             <div class="chain-flow" id="chain-flow-${chainId}"></div>
         `;
@@ -1377,21 +1407,45 @@ function renderGallery(data) {
                 flowContainer.appendChild(arrow);
             }
             
+            // ✅ Controlla se questo disegno è mio (non posso votarmi)
+            const isMyDrawing = step.player === state.playerName;
+            const isVoted = myVotes[chainId] === `${chainId}-${stepIdx}`;
+            
             const stepCard = document.createElement('div');
-            stepCard.className = `chain-step ${myVotes[chainId] === step.player ? 'voted' : ''}`;
+            stepCard.className = `chain-step ${isVoted ? 'voted' : ''} ${isMyDrawing && isVotingPhase ? 'my-drawing' : ''}`;
+            
+            // ✅ Durante votazione: nascondo nome, durante risultati: mostro nome
+            const playerDisplay = isVotingPhase 
+                ? `<div class="step-player" style="color: #888;">Disegno #${stepIdx + 1}</div>`
+                : `<div class="step-player">${step.player}</div>`;
+            
+            // ✅ Pulsante voto: disabilitato se è il mio disegno
+            let voteButton = '';
+            if (isVotingPhase) {
+                if (isMyDrawing) {
+                    voteButton = `
+                        <button class="vote-btn" disabled 
+                                style="opacity: 0.4; cursor: not-allowed; background: #444;">
+                            🚫 Tuo disegno
+                        </button>`;
+                } else {
+                    voteButton = `
+                        <button class="vote-btn ${isVoted ? 'voted' : ''}" 
+                                onclick="voteFor('${chainId}', '${chainId}-${stepIdx}')">
+                            ${isVoted ? '⭐ VOTATO' : '👍 VOTA'}
+                        </button>`;
+                }
+            }
             
             stepCard.innerHTML = `
                 <div class="step-canvas"><canvas id="step-canvas-${chainId}-${stepIdx}"></canvas></div>
                 <div class="step-info">
-                    <div class="step-player">${step.player}</div>
+                    ${playerDisplay}
                     <div class="step-type" style="font-size: 0.65rem; opacity: 0.6;">
-                        ${step.type === 'draw' ? '🎯 Originale' : '🔄 Copia'}
+                        ${stepIdx === 0 ? '🎯 Primo disegno' : `🔄 Copia #${stepIdx}`}
                     </div>
                 </div>
-                <button class="vote-btn ${myVotes[chainId] === step.player ? 'voted' : ''}" 
-                        onclick="voteFor('${chainId}', '${step.player}')">
-                    ${myVotes[chainId] === step.player ? '⭐ VOTATO' : '👍 VOTA'}
-                </button>
+                ${voteButton}
             `;
             
             flowContainer.appendChild(stepCard);
@@ -1401,11 +1455,11 @@ function renderGallery(data) {
                 if (cvs && step.drawing) {
                     cvs.width = LOGICAL_SIZE;
                     cvs.height = LOGICAL_SIZE;
-                    const ctx = cvs.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+                    const ctxCanvas = cvs.getContext('2d');
+                    ctxCanvas.fillStyle = '#ffffff';
+                    ctxCanvas.fillRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
                     const actions = decompressDrawing(step.drawing);
-                    actions.forEach(act => applyAction(act, ctx));
+                    actions.forEach(act => applyAction(act, ctxCanvas));
                 }
             }, 50);
         });
@@ -1413,12 +1467,32 @@ function renderGallery(data) {
         container.appendChild(card);
     });
     
+    // ✅ Conta solo i voti validi (non i propri disegni)
+    const validVotesCount = Object.keys(myVotes).length;
+    const totalChains = Object.keys(data.chains).length;
     document.getElementById('vote-status').textContent = 
-        `Voti: ${Object.keys(myVotes).length}/${Object.keys(data.chains).length}`;
+        `Voti: ${validVotesCount}/${totalChains}`;
 }
 
-function voteFor(chainId, playerName) {
-    state.myVotes[chainId] = playerName;
+function voteFor(chainId, uniqueVoteId) {
+    // ✅ Estrai stepIdx dal uniqueVoteId
+    const stepIdx = parseInt(uniqueVoteId.split('-')[1]);
+    const chain = state.roomData.chains[chainId];
+    const step = chain.steps[stepIdx];
+    
+    // ✅ Doppio controllo: non posso votare me stesso
+    if (step.player === state.playerName) {
+        alert("Non puoi votare il tuo disegno!");
+        return;
+    }
+    
+    // ✅ Toggle voto (clicca di nuovo per deselezionare)
+    if (state.myVotes[chainId] === uniqueVoteId) {
+        delete state.myVotes[chainId];
+    } else {
+        state.myVotes[chainId] = uniqueVoteId;
+    }
+    
     renderGallery(state.roomData);
     
     const votedCount = Object.keys(state.myVotes).length;
@@ -1427,7 +1501,7 @@ function voteFor(chainId, playerName) {
     showBanner({
         icon: '🗳️',
         title: 'VOTAZIONE IN CORSO',
-        subtitle: `Vota il disegno più divertente (${votedCount}/${totalChains})`,
+        subtitle: `Vota il disegno più bello di ogni catena (${votedCount}/${totalChains})`,
         color: '#f39c12'
     });
 }
@@ -1440,8 +1514,17 @@ async function confirmVotes() {
         return alert(`Devi votare in tutte le ${totalChains} catene!`);
     }
     
+    // ✅ Converti voti in formato {chainId: playerName}
+    const votesForFirebase = {};
+    Object.entries(state.myVotes).forEach(([chainId, uniqueVoteId]) => {
+        const stepIdx = parseInt(uniqueVoteId.split('-')[1]);
+        const chain = data.chains[chainId];
+        const votedPlayer = chain.steps[stepIdx].player;
+        votesForFirebase[chainId] = votedPlayer;
+    });
+    
     await db.collection("pictionary_rooms").doc(state.roomId).update({
-        [`votes.${state.playerName}`]: state.myVotes
+        [`votes.${state.playerName}`]: votesForFirebase
     });
     
     showBanner({
@@ -1454,26 +1537,28 @@ async function confirmVotes() {
     
     // ✅ Host calcola risultati quando tutti hanno votato
     if (state.isHost) {
-        const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
-        const newData = doc.data();
-        
-        if (Object.keys(newData.votes).length >= newData.players.length) {
-            const scores = {};
-            newData.players.forEach(p => scores[p] = 0);
+        setTimeout(async () => {
+            const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+            const newData = doc.data();
             
-            Object.values(newData.votes).forEach(playerVotes => {
-                Object.values(playerVotes).forEach(votedPlayer => {
-                    if (scores[votedPlayer] !== undefined) {
-                        scores[votedPlayer]++;
-                    }
+            if (Object.keys(newData.votes).length >= newData.players.length) {
+                const scores = {};
+                newData.players.forEach(p => scores[p] = 0);
+                
+                Object.values(newData.votes).forEach(playerVotes => {
+                    Object.values(playerVotes).forEach(votedPlayer => {
+                        if (scores[votedPlayer] !== undefined) {
+                            scores[votedPlayer]++;
+                        }
+                    });
                 });
-            });
-            
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                scores: scores,
-                stato: 'results'
-            });
-        }
+                
+                await db.collection("pictionary_rooms").doc(state.roomId).update({
+                    scores: scores,
+                    stato: 'results'
+                });
+            }
+        }, 500);
     }
 }
 
@@ -1523,7 +1608,12 @@ function handleResultsPhase(data) {
         `;
         ranking.appendChild(row);
     });
-    
+    // ✅ Mostra tema originale di ogni catena nei risultati
+    let chainsInfo = '';
+    Object.entries(data.chains).forEach(([chainId, chain]) => {
+        const firstPlayer = chain.steps[0]?.player || '?';
+        chainsInfo += `\n• "${chain.originalTheme}" (iniziato da ${firstPlayer})`;
+    });    
     const isWinner = sorted[0]?.[0] === state.playerName;
     showBanner({
         icon: isWinner ? '👑' : '🏆',
