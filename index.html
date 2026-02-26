@@ -888,11 +888,11 @@
 			  // LISTENER 3: Partite
 			  db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
 			    const div = document.getElementById('lista-partite');
-			    div.innerHTML = `
-											<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'">
-												<span>🎯 Allenamento Solo</span>
-												<button>GIOCA</button>
-											</div>`;
+				div.innerHTML = `
+				    <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
+				        <span>🎯 Allenamento Solo (${GIOCHI_CONFIG[giocoSelezionato]?.nome || giocoSelezionato})</span>
+				        <button>GIOCA</button>
+				    </div>`;
 			    snap.forEach(doc => {
 			      const p = doc.data();
 			      const partitaId = doc.id;
@@ -1648,4 +1648,5 @@
 		</script>
 	</body>
 </html>
+
 
