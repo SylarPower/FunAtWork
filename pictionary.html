@@ -731,7 +731,8 @@ let state = {
     localHistory: [],
     myCurrentTheme: null,
     isInterpretPhase: false,
-    receivedDrawing: null  // ✅ AGGIUNGI QUESTO
+    receivedDrawing: null,
+    isDrawing: false  // ✅ AGGIUNGI QUESTO
 };
 
 let canvas, ctx;
@@ -858,15 +859,115 @@ function handleRoomUpdate(doc) {
     }
     
     const data = doc.data();
+    const prevStato = state.roomData?.stato;
+    const prevPhase = state.roomData?.currentPhase;
+    
     state.roomData = data;
     state.isHost = data.host === state.playerName;
     
+    // ✅ SE STO DISEGNANDO, NON TOCCARE L'INTERFACCIA!
+    if (state.isDrawing) {
+        console.log("📝 Update ricevuto ma sto disegnando, ignoro UI update");
+        return;
+    }
+    
+    // ✅ CONTROLLA SE LO STATO O LA FASE È CAMBIATA
+    const statoChanged = prevStato !== data.stato;
+    const phaseChanged = prevPhase !== data.currentPhase;
+    
+    // ✅ SE SONO IN WAITING E NIENTE È CAMBIATO, AGGIORNA SOLO IL CONTEGGIO
+    const waitingScreen = document.getElementById('waiting-screen');
+    const inWaiting = waitingScreen && !waitingScreen.classList.contains('hidden');
+    
+    if (inWaiting && !statoChanged && !phaseChanged) {
+        updateWaitingProgress(data);
+        return;
+    }
+    
+    // ✅ STATO O FASE CAMBIATA → GESTISCI NORMALMENTE
+    console.log(`🔄 Stato: ${prevStato} → ${data.stato}, Fase: ${prevPhase} → ${data.currentPhase}`);
+    
     switch(data.stato) {
-        case 'lobby': renderLobby(data); break;
-        case 'drawing': handleDrawingPhase(data); break;
-        case 'interpreting': handleInterpretPhase(data); break;
-        case 'voting': handleVotingPhase(data); break;
-        case 'results': handleResultsPhase(data); break;
+        case 'lobby': 
+            renderLobby(data); 
+            break;
+        case 'drawing': 
+            handleDrawingPhase(data); 
+            break;
+        case 'interpreting': 
+            handleInterpretPhase(data); 
+            break;
+        case 'voting': 
+            handleVotingPhase(data); 
+            break;
+        case 'results': 
+            handleResultsPhase(data); 
+            break;
+    }
+}
+
+// ✅ NUOVA FUNZIONE: Aggiorna solo il progresso in waiting
+function updateWaitingProgress(data) {
+    const phase = data.currentPhase;
+    const completed = data.completedPhase?.[phase] || [];
+    const total = data.players.length;
+    
+    // Aggiorna conteggio
+    const doneEl = document.getElementById('done-count');
+    const totalEl = document.getElementById('total-players');
+    const msgEl = document.getElementById('waiting-message');
+    
+    if (doneEl) doneEl.textContent = completed.length;
+    if (totalEl) totalEl.textContent = total;
+    
+    // Aggiorna chi manca
+    const remaining = data.players.filter(p => !completed.includes(p));
+    if (msgEl) {
+        msgEl.textContent = remaining.length > 0 
+            ? `In attesa di: ${remaining.join(', ')}`
+            : 'Tutti hanno finito! Passaggio alla fase successiva...';
+    }
+    
+    // Aggiorna banner
+    const banner = document.getElementById('game-banner');
+    if (banner) {
+        const titleEl = banner.querySelector('.banner-title');
+        const subtitleEl = banner.querySelector('.banner-subtitle');
+        if (titleEl) titleEl.textContent = `ATTESA (${completed.length}/${total})`;
+        if (subtitleEl) subtitleEl.textContent = `Completato: ${completed.join(', ') || 'Nessuno'}`;
+    }
+    
+    // ✅ Se tutti hanno finito, HOST avanza la fase
+    if (completed.length >= total && state.isHost) {
+        console.log("✅ Tutti hanno finito! Host avanza la fase...");
+        advanceToNextPhase(data);
+    }
+}
+
+// ✅ NUOVA FUNZIONE: Avanza alla fase successiva
+async function advanceToNextPhase(data) {
+    const phase = data.currentPhase;
+    const totalPhases = data.settings.rounds * 2;
+    const nextPhase = phase + 1;
+    
+    try {
+        if (nextPhase >= totalPhases) {
+            // Fine gioco → votazione
+            console.log("🗳️ Passaggio a VOTAZIONE");
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                stato: 'voting'
+            });
+        } else {
+            // Prossima fase
+            const nextStato = (nextPhase % 2 === 0) ? 'drawing' : 'interpreting';
+            console.log(`➡️ Passaggio a fase ${nextPhase} (${nextStato})`);
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                currentPhase: nextPhase,
+                stato: nextStato
+            });
+        }
+    } catch (e) {
+        console.error("Errore avanzamento fase:", e);
     }
 }
 
@@ -887,19 +988,37 @@ function renderLobby(data) {
         list.appendChild(card);
     });
     
-    // Settings (solo host)
-    const roundsSelect = document.getElementById('lobby-rounds-select');
-    const timeSelect = document.getElementById('lobby-time-select');
-    
-    if (state.isHost) {
-        roundsSelect.disabled = false;
-        timeSelect.disabled = false;
-        roundsSelect.onchange = () => updateSettings();
-        timeSelect.onchange = () => updateSettings();
-    } else {
-        roundsSelect.disabled = true;
-        timeSelect.disabled = true;
+// ✅ Settings: bloccate se sfida diretta, altrimenti solo host può modificare
+const roundsSelect = document.getElementById('lobby-rounds-select');
+const timeSelect = document.getElementById('lobby-time-select');
+
+const canEditSettings = state.isHost && !data.sfidaDiretta;
+
+roundsSelect.disabled = !canEditSettings;
+timeSelect.disabled = !canEditSettings;
+
+if (canEditSettings) {
+    roundsSelect.onchange = () => updateSettings();
+    timeSelect.onchange = () => updateSettings();
+} else {
+    roundsSelect.onchange = null;
+    timeSelect.onchange = null;
+}
+
+// ✅ Mostra messaggio se impostazioni bloccate
+const settingsContainer = roundsSelect.closest('div[style*="background"]');
+if (settingsContainer) {
+    let lockMsg = settingsContainer.querySelector('.lock-msg');
+    if (data.sfidaDiretta && !lockMsg) {
+        const msg = document.createElement('div');
+        msg.className = 'lock-msg';
+        msg.style.cssText = 'font-size: 0.7rem; color: #f39c12; margin-top: 10px; text-align: center;';
+        msg.textContent = '🔒 Impostazioni definite dal creatore della sfida';
+        settingsContainer.appendChild(msg);
+    } else if (!data.sfidaDiretta && lockMsg) {
+        lockMsg.remove();
     }
+}
     
     roundsSelect.value = data.settings.rounds;
     timeSelect.value = data.settings.timePerRound;
@@ -1065,6 +1184,7 @@ function showThemeScreen(data, theme) {
 }
 
 function launchCanvas() {
+    state.isDrawing = true;
     showScreen('game-ui');
     showHomeButton();
     
@@ -1126,66 +1246,70 @@ function startTimerWithBanner() {
     const tema = state.myCurrentTheme;
     const roundInfo = `Round ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
     
-    // ✅ Funzione per aggiornare il banner con il timer
-    const updateBanner = () => {
-        const timerColor = timer <= 10 ? '#ff6b6b' : '#4ecdc4';
-        const timerClass = timer <= 10 ? 'pulse' : '';
-        
-        removeBanner();
-        
-        const banner = document.createElement('div');
-        banner.id = 'game-banner';
-        banner.className = 'game-banner';
-        banner.style.background = state.isInterpretPhase 
-            ? 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)'
-            : 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
-        
-        banner.innerHTML = `
-            <div class="banner-left">
-                <span class="banner-icon">${state.isInterpretPhase ? '🎨' : '✏️'}</span>
-                <div>
-                    <div class="banner-title">${fase}: ${tema}</div>
-                    <div class="banner-subtitle">${roundInfo}</div>
-                </div>
-            </div>
-            <div class="banner-right">
-                <div style="
-                    font-family: 'JetBrains Mono', monospace;
-                    font-size: 2rem;
-                    font-weight: 900;
-                    color: ${timerColor};
-                    min-width: 70px;
-                    text-align: center;
-                    text-shadow: 0 0 10px ${timerColor};
-                    ${timer <= 10 ? 'animation: pulse 0.5s infinite;' : ''}
-                ">${timer}s</div>
-            </div>
-        `;
-        
-        document.body.appendChild(banner);
-    };
+    // ✅ CREA BANNER UNA VOLTA SOLA
+    removeBanner();
     
-    // ✅ Mostra banner iniziale
-    updateBanner();
+    const banner = document.createElement('div');
+    banner.id = 'game-banner';
+    banner.className = 'game-banner';
+    banner.style.background = state.isInterpretPhase 
+        ? 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)'
+        : 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
     
-    // ✅ Aggiorna header del canvas
+    banner.innerHTML = `
+        <div class="banner-left">
+            <span class="banner-icon">${state.isInterpretPhase ? '🎨' : '✏️'}</span>
+            <div>
+                <div class="banner-title">${fase}: ${tema}</div>
+                <div class="banner-subtitle">${roundInfo}</div>
+            </div>
+        </div>
+        <div class="banner-right">
+            <div id="banner-timer" style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 2rem;
+                font-weight: 900;
+                color: #4ecdc4;
+                min-width: 70px;
+                text-align: center;
+                text-shadow: 0 0 10px #4ecdc4;
+                transition: color 0.3s, text-shadow 0.3s;
+            ">${timer}s</div>
+        </div>
+    `;
+    
+    document.body.appendChild(banner);
+    
+    // Aggiorna header del canvas
     const timerEl = document.getElementById('timer');
-    timerEl.textContent = timer;
+    if (timerEl) timerEl.textContent = timer;
     
-    // ✅ Avvia countdown
+    // ✅ AVVIA COUNTDOWN - AGGIORNA SOLO IL TESTO (niente ricreazione)
     timerInterval = setInterval(() => {
         timer--;
         
-        // Aggiorna header
-        timerEl.textContent = timer;
-        if (timer <= 10) {
-            timerEl.classList.add('warning');
+        // Aggiorna header canvas
+        if (timerEl) {
+            timerEl.textContent = timer;
+            if (timer <= 10) timerEl.classList.add('warning');
         }
         
-        // Aggiorna banner
-        updateBanner();
+        // ✅ AGGIORNA SOLO IL NUMERO NEL BANNER (no flickering!)
+        const bannerTimer = document.getElementById('banner-timer');
+        if (bannerTimer) {
+            bannerTimer.textContent = `${timer}s`;
+            
+            // Cambia colore negli ultimi 10 secondi
+            if (timer <= 10) {
+                bannerTimer.style.color = '#ff6b6b';
+                bannerTimer.style.textShadow = '0 0 15px #ff6b6b';
+            }
+            if (timer <= 5) {
+                bannerTimer.style.transform = timer % 2 === 0 ? 'scale(1.1)' : 'scale(1)';
+            }
+        }
         
-        // ✅ TEMPO SCADUTO
+        // TEMPO SCADUTO
         if (timer <= 0) {
             clearInterval(timerInterval);
             finishCurrentPhase();
@@ -1196,6 +1320,7 @@ function startTimerWithBanner() {
 async function finishCurrentPhase() {
     clearInterval(timerInterval);
     removeBanner();
+    state.isDrawing = false;
     
     const data = state.roomData;
     const phase = data.currentPhase;
@@ -1231,13 +1356,14 @@ async function finishCurrentPhase() {
     state.isInterpretPhase = false;
     state.receivedDrawing = null;
     
-    if (state.isHost) {
-        checkPhaseComplete();
-    }
-    
-    // ✅ Rileggi dati aggiornati per mostrare waiting corretta
+    // ✅ Mostra waiting - il listener gestirà l'avanzamento
     const freshDoc = await db.collection("pictionary_rooms").doc(state.roomId).get();
-    showWaitingScreen(freshDoc.data(), 'drawing');
+    const freshData = freshDoc.data();
+    state.roomData = freshData;
+    
+    showWaitingScreen(freshData, 'drawing');
+    
+    // ✅ RIMOSSO: checkPhaseComplete() - ora gestito dal listener
 }
 
 // ========================================
@@ -1274,8 +1400,7 @@ function handleInterpretPhase(data) {
 // WAITING
 // ========================================
 function showWaitingScreen(data, type) {
-    clearInterval(timerInterval); // ✅ Ferma il timer
-    removeBanner();
+    clearInterval(timerInterval);
     showScreen('waiting-screen');
     showHomeButton();
     
@@ -1283,28 +1408,29 @@ function showWaitingScreen(data, type) {
     const completed = data.completedPhase?.[phase] || [];
     const total = data.players.length;
     
-    // ✅ Mostra chi ha finito
-    const completedNames = completed.join(', ') || 'Nessuno ancora';
+    // Chi manca
     const remaining = data.players.filter(p => !completed.includes(p));
-    const remainingNames = remaining.join(', ') || 'Tutti hanno finito!';
     
     document.getElementById('waiting-title').textContent = 
         type === 'drawing' ? '✏️ DISEGNO INVIATO!' : '🎯 RIDISEGNO INVIATO!';
     document.getElementById('waiting-message').textContent = 
-        `In attesa di: ${remainingNames}`;
+        remaining.length > 0 
+            ? `In attesa di: ${remaining.join(', ')}`
+            : 'Tutti hanno finito!';
     document.getElementById('done-count').textContent = completed.length;
     document.getElementById('total-players').textContent = total;
     
-    // ✅ Banner attesa con dettagli
+    // Banner attesa
     showBanner({
         icon: '⏳',
         title: `ATTESA (${completed.length}/${total})`,
-        subtitle: `Completato: ${completedNames}`,
+        subtitle: `Completato: ${completed.join(', ') || 'Nessuno'}`,
         color: '#9b59b6',
         spinner: true
     });
 }
 
+// ✅ Mantieni per retrocompatibilità ma usa advanceToNextPhase
 async function checkPhaseComplete() {
     if (!state.isHost) return;
     
@@ -1315,20 +1441,7 @@ async function checkPhaseComplete() {
     const completed = data.completedPhase?.[phase] || [];
     
     if (completed.length >= data.players.length) {
-        const totalPhases = data.settings.rounds * 2;
-        const nextPhase = phase + 1;
-        
-        if (nextPhase >= totalPhases) {
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                stato: 'voting'
-            });
-        } else {
-            const nextStato = (nextPhase % 2 === 0) ? 'drawing' : 'interpreting';
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                currentPhase: nextPhase,
-                stato: nextStato
-            });
-        }
+        advanceToNextPhase(data);
     }
 }
 
