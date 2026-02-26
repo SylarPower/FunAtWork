@@ -715,7 +715,22 @@
     border-color: white;
     box-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
+/* Pulsanti dimensione */
+.size-dot {
+    display: block;
+    background: currentColor;
+    border-radius: 50%;
+}
 
+.size-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.size-btn.active .size-dot {
+    background: white;
+}
 /* ========================================
    CANVAS AREA - QUADRATO PIENA ALTEZZA
    ======================================== */
@@ -1029,18 +1044,19 @@
             <button class="tool-btn" onclick="clearCanvas()" title="Pulisci">🗑️</button>
         </div>
         
-        <!-- Dimensione -->
-        <div class="tool-section">
-            <div class="tool-label">Dimensione</div>
-            <div class="size-slider-container">
-                <input type="range" id="brush-size-slider" class="size-slider" 
-                       min="2" max="40" value="8" oninput="setSizeFromSlider(this.value)">
-                <div class="size-preview" id="size-preview">
-                    <div class="size-preview-dot" id="size-preview-dot"></div>
-                    <span class="size-preview-text" id="size-preview-text">8</span>
-                </div>
-            </div>
-        </div>
+<!-- Dimensione -->
+<div class="tool-section">
+    <div class="tool-label">Dimensione</div>
+    <button class="tool-btn size-btn" id="size-small" onclick="setSize(4)" title="Piccolo">
+        <span class="size-dot" style="width: 8px; height: 8px;"></span>
+    </button>
+    <button class="tool-btn size-btn active" id="size-medium" onclick="setSize(12)" title="Medio">
+        <span class="size-dot" style="width: 16px; height: 16px;"></span>
+    </button>
+    <button class="tool-btn size-btn" id="size-large" onclick="setSize(28)" title="Grande">
+        <span class="size-dot" style="width: 28px; height: 28px;"></span>
+    </button>
+</div>
         
         <!-- Colore -->
         <div class="tool-section">
@@ -1144,65 +1160,100 @@
         </div>
     </div>
 </div>
-<!-- GUESS IT - DISEGNATORE -->
-<div id="guessit-drawer-screen" class="overlay hidden">
-    <div style="position: fixed; inset: 0; display: flex; background: var(--bg);">
-        <!-- Stessa toolbar del canvas normale -->
-        <div class="toolbar-left">
-            <!-- ... stessi controlli ... -->
-        </div>
-        
-        <div class="canvas-area-fullscreen">
-            <div class="canvas-badge-fullscreen" id="guessit-theme-badge">DISEGNA: ???</div>
-            <canvas id="guessitCanvas"></canvas>
-        </div>
-        
-        <div class="info-bar-right">
-            <div class="timer-box">
-                <div class="timer-label">⏱️ TEMPO</div>
-                <div id="guessit-timer" class="timer-display">60</div>
-            </div>
-            <div style="margin-top: 20px; font-size: 0.8rem; text-align: center;">
-                <div style="opacity: 0.7;">INDOVINATI</div>
-                <div id="guessit-score" style="font-size: 2rem; font-weight: 900; color: var(--success);">0</div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- GUESS IT - INDOVINATORI -->
-<div id="guessit-guesser-screen" class="overlay hidden">
-    <div style="display: flex; flex-direction: column; height: 100%; padding: 20px;">
-        <!-- Canvas in streaming -->
-        <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
-            <canvas id="guessitViewCanvas" style="
-                max-width: 100%;
-                max-height: 60vh;
-                background: white;
-                border-radius: 12px;
-                border: 3px solid var(--primary);
-            "></canvas>
+<!-- GUESS IT - SCHERMATA UNICA -->
+<div id="guessit-screen" class="overlay hidden">
+    <div style="position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg);">
+        
+        <!-- HEADER -->
+        <div style="padding: 15px 20px; background: var(--panel); border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5rem;">🎯</span>
+                <div>
+                    <div style="font-weight: 900;" id="guessit-header-title">GUESS IT!</div>
+                    <div style="font-size: 0.8rem; opacity: 0.7;" id="guessit-header-subtitle">Round 1/5</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 0.7rem; opacity: 0.7;">TEMPO</div>
+                    <div id="guessit-timer" style="font-family: 'JetBrains Mono'; font-size: 1.8rem; font-weight: 900; color: var(--success);">60</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 0.7rem; opacity: 0.7;">PUNTI</div>
+                    <div id="guessit-my-score" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">0</div>
+                </div>
+            </div>
         </div>
         
-        <!-- Input per indovinare -->
-        <div style="padding: 20px; background: var(--panel); border-radius: 15px; margin-top: 20px;">
-            <input type="text" id="guess-input" placeholder="Scrivi cosa pensi sia..." 
-                   autocomplete="off" autocorrect="off" spellcheck="false"
-                   style="font-size: 1.2rem; text-align: center;">
-            <button class="btn btn-primary" onclick="submitGuess()" style="width: 100%; margin-top: 10px;">
-                🎯 INDOVINA!
-            </button>
+        <!-- AREA CENTRALE -->
+        <div style="flex: 1; display: flex; overflow: hidden;">
+            
+            <!-- CANVAS AREA -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; position: relative;">
+                
+                <!-- Badge per disegnatore -->
+                <div id="guessit-word-badge" style="
+                    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+                    background: linear-gradient(135deg, var(--primary) 0%, #ff6b9d 100%);
+                    color: white; padding: 12px 30px; border-radius: 25px;
+                    font-size: 1.2rem; font-weight: 900; text-transform: uppercase;
+                    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
+                    display: none;
+                ">PAROLA</div>
+                
+                <!-- Canvas -->
+                <canvas id="guessitCanvas" style="
+                    max-width: 100%; max-height: 60vh; aspect-ratio: 1/1;
+                    background: white; border-radius: 12px;
+                    border: 4px solid var(--primary);
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+                    cursor: crosshair;
+                "></canvas>
+                
+                <!-- Toolbar disegnatore -->
+                <div id="guessit-toolbar" style="
+                    display: none; margin-top: 15px; padding: 10px 20px;
+                    background: var(--panel); border-radius: 15px;
+                    gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;
+                ">
+                    <div style="display: flex; gap: 5px;">
+                        <button class="tool-btn active" id="gi-tool-pen" onclick="setGuessItTool('pen')">✏️</button>
+                        <button class="tool-btn" id="gi-tool-eraser" onclick="setGuessItTool('eraser')">🧹</button>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="tool-btn size-btn" onclick="setGuessItSize(4)"><span class="size-dot" style="width:8px;height:8px;"></span></button>
+                        <button class="tool-btn size-btn active" onclick="setGuessItSize(12)"><span class="size-dot" style="width:14px;height:14px;"></span></button>
+                        <button class="tool-btn size-btn" onclick="setGuessItSize(28)"><span class="size-dot" style="width:22px;height:22px;"></span></button>
+                    </div>
+                    <input type="color" id="gi-color-picker" value="#000000" onchange="setGuessItColor(this.value)" style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;">
+                    <button class="tool-btn" onclick="clearGuessItCanvas()">🗑️</button>
+                </div>
+            </div>
+            
+            <!-- SIDEBAR CHAT/RISPOSTE -->
+            <div style="width: 300px; background: var(--panel); border-left: 2px solid var(--border); display: flex; flex-direction: column;">
+                
+                <!-- Lista risposte -->
+                <div id="guessit-feed" style="flex: 1; overflow-y: auto; padding: 15px;">
+                    <div style="text-align: center; opacity: 0.5; padding: 20px;">
+                        Le risposte appariranno qui...
+                    </div>
+                </div>
+                
+                <!-- Input risposta (solo per indovinatori) -->
+                <div id="guessit-input-area" style="padding: 15px; border-top: 2px solid var(--border); display: none;">
+                    <input type="text" id="guessit-input" placeholder="Scrivi la tua risposta..." 
+                           autocomplete="off" autocorrect="off" spellcheck="false"
+                           style="margin-bottom: 10px;">
+                    <button class="btn btn-primary" onclick="submitGuessItAnswer()" style="width: 100%;">
+                        🎯 INDOVINA!
+                    </button>
+                </div>
+                
+            </div>
         </div>
         
-        <!-- Feed risposte -->
-        <div id="guesses-feed" style="
-            max-height: 150px; 
-            overflow-y: auto; 
-            margin-top: 15px;
-            padding: 10px;
-            background: var(--bg);
-            border-radius: 10px;
-        "></div>
     </div>
 </div>
 <div id="fixed-home-btn">
@@ -1360,7 +1411,13 @@ function showBanner(options) {
 function removeBanner() {
     document.getElementById('game-banner')?.remove();
 }
-
+function updateBannerText(title, subtitle) {
+    const bannerTitle = document.querySelector('#game-banner .banner-title');
+    const bannerSubtitle = document.querySelector('#game-banner .banner-subtitle');
+    
+    if (bannerTitle) bannerTitle.textContent = title;
+    if (bannerSubtitle) bannerSubtitle.textContent = subtitle;
+}
 function adjustColor(hex, amount) {
     let c = hex.replace('#', '');
     if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
@@ -1424,8 +1481,12 @@ function enterLobby() {
 
 function handleRoomUpdate(doc) {
     if (!doc.exists) {
-        alert("Stanza chiusa!");
-        location.reload();
+        // ✅ Nessun alert, reindirizza silenziosamente
+        if (unsubscribeRoom) {
+            unsubscribeRoom();
+            unsubscribeRoom = null;
+        }
+        window.location.href = 'index.html';
         return;
     }
     
@@ -1436,7 +1497,28 @@ function handleRoomUpdate(doc) {
     state.roomData = data;
     state.isHost = data.host === state.playerName;
     
-    // ✅ SE STO DISEGNANDO, IGNORA COMPLETAMENTE
+    // ✅ GESTIONE SPECIALE GUESS IT - Aggiorna canvas in streaming
+    if (data.stato === 'guessit' && !guessIt.isDrawer && data.guessIt?.canvasData) {
+        const img = new Image();
+        img.onload = () => {
+            const c = document.getElementById('guessitCanvas');
+            if (c) {
+                const ctx = c.getContext('2d');
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+            }
+        };
+        img.src = data.guessIt.canvasData;
+        
+        // Aggiorna feed risposte
+        updateGuessItFeed(data.guessIt.guesses || {});
+        
+        // Aggiorna punteggio
+        const myScore = data.guessIt.scores?.[state.playerName] || 0;
+        const scoreEl = document.getElementById('guessit-my-score');
+        if (scoreEl) scoreEl.textContent = myScore;
+    }
+    
+    // ✅ SE STO DISEGNANDO, IGNORA CAMBIO SCHERMATA
     if (state.isDrawing) {
         console.log("📝 Sto disegnando, ignoro update");
         return;
@@ -1445,25 +1527,25 @@ function handleRoomUpdate(doc) {
     console.log(`🔄 Update: stato=${data.stato}, fase=${data.currentPhase}, prev=${prevStato}/${prevPhase}`);
     
     // ✅ GESTISCI IN BASE ALLO STATO CORRENTE
-switch(data.stato) {
-    case 'lobby': 
-        renderLobby(data); 
-        break;
-    case 'drawing': 
-        handleDrawingPhase(data); 
-        break;
-    case 'guessit':
-        handleGuessItPhase(data);
-        break;
-    case 'voting': 
-        handleVotingPhase(data); 
-        break;
-    case 'results': 
-        handleResultsPhase(data); 
-        break;
-    default:
-        console.error('Stato non riconosciuto:', data.stato);
-}
+    switch(data.stato) {
+        case 'lobby': 
+            renderLobby(data); 
+            break;
+        case 'drawing': 
+            handleDrawingPhase(data); 
+            break;
+        case 'guessit':
+            handleGuessItPhase(data);
+            break;
+        case 'voting': 
+            handleVotingPhase(data); 
+            break;
+        case 'results': 
+            handleResultsPhase(data); 
+            break;
+        default:
+            console.error('Stato non riconosciuto:', data.stato);
+    }
 }
 
 function renderLobby(data) {
@@ -1616,24 +1698,29 @@ async function startGame() {
     const numPlayers = players.length;
     const gameMode = data.settings?.mode || 'classic';
     
-    if (gameMode === 'guessit') {
-        // ✅ MODALITÀ GUESS IT
-        const firstDrawer = players[0];
-        const firstWord = THEMES[Math.floor(Math.random() * THEMES.length)];
-        
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            stato: 'guessit',
-            guessIt: {
-                round: 0,
-                currentDrawer: firstDrawer,
-                currentWord: firstWord,
-                canvasData: null,
-                guesses: {},
-                scores: {}
-            }
-        });
-        return;
-    }
+if (gameMode === 'guessit') {
+    const firstDrawer = players[Math.floor(Math.random() * players.length)];
+    const firstWord = THEMES[Math.floor(Math.random() * THEMES.length)];
+    
+    const initialScores = {};
+    players.forEach(p => initialScores[p] = 0);
+    
+    await db.collection("pictionary_rooms").doc(state.roomId).update({
+        stato: 'guessit',
+        guessIt: {
+            round: 0,
+            totalRounds: players.length * 2, // Ogni giocatore disegna 2 volte
+            currentDrawer: firstDrawer,
+            currentWord: firstWord,
+            canvasData: null,
+            guesses: {},
+            scores: initialScores,
+            roundWinner: null,
+            timePerRound: data.settings?.timePerRound || 60
+        }
+    });
+    return;
+}
     
     // ✅ MODALITÀ CLASSICA (codice esistente)
     const totalRounds = numPlayers;
@@ -1783,43 +1870,20 @@ function launchCanvas(data) {
     startTimerWithBanner();
 }
 
-// ✅ TIMER CON BANNER - CORRETTO
 function startTimerWithBanner() {
     clearInterval(timerInterval);
     
-    const data = state.roomData;
-    const isRedraw = !!state.receivedDrawing;
-    const fase = isRedraw ? 'RIDISEGNA' : 'DISEGNA';
-    const tema = state.myCurrentTheme;
-    const roundInfo = `Round ${data.currentRound + 1}/${data.totalRounds}`;
-    
-    // ✅ BANNER CON TIMER VISIBILE
-    showBanner({
-        icon: isRedraw ? '🎨' : '✏️',
-        title: `${fase}: ${tema}`,
-        subtitle: roundInfo,
-        color: isRedraw ? '#4ecdc4' : '#e94560',
-        timer: timer
-    });
+    // ✅ NESSUN BANNER - Il timer è già nella sidebar destra
+    removeBanner();
     
     const timerEl = document.getElementById('timer');
     
     timerInterval = setInterval(() => {
         timer--;
         
-        // Aggiorna header canvas
         if (timerEl) {
             timerEl.textContent = timer;
             if (timer <= 10) timerEl.classList.add('warning');
-        }
-        
-        // ✅ Aggiorna timer nel banner
-        const bannerTimer = document.getElementById('banner-timer');
-        if (bannerTimer) {
-            bannerTimer.textContent = `${timer}s`;
-            if (timer <= 10) {
-                bannerTimer.classList.add('warning');
-            }
         }
         
         if (timer <= 0) {
@@ -2145,12 +2209,13 @@ function voteFor(chainId, uniqueVoteId) {
     const votedCount = Object.keys(state.myVotes).length;
     const totalChains = Object.keys(state.roomData.chains).length;
     
-    showBanner({
-        icon: '🗳️',
-        title: 'VOTAZIONE IN CORSO',
-        subtitle: `Vota il disegno più bello di ogni catena (${votedCount}/${totalChains})`,
-        color: '#f39c12'
-    });
+    // ✅ Solo aggiorna testo, non ricreare banner
+    updateBannerText(
+        'VOTAZIONE IN CORSO',
+        `Vota il disegno più bello di ogni catena (${votedCount}/${totalChains})`
+    );
+    
+    document.getElementById('vote-status').textContent = `Voti: ${votedCount}/${totalChains}`;
 }
 async function confirmVotes() {
     const data = state.roomData;
@@ -2616,8 +2681,6 @@ function setColorFromPicker(color) {
     document.querySelectorAll('.qcolor').forEach(el => {
         el.classList.toggle('active', el.dataset.color === color);
     });
-    
-    updateSizePreview();
 }
 function renderQuickColors() {
     const container = document.getElementById('quick-colors');
@@ -2630,21 +2693,6 @@ function renderQuickColors() {
              onclick="setColorFromPicker('${c}')">
         </div>
     `).join('');
-}
-function updateSizePreview() {
-    const dot = document.getElementById('size-preview-dot');
-    const text = document.getElementById('size-preview-text');
-    
-    if (dot) {
-        const displaySize = Math.min(currentSize, 35);
-        dot.style.width = `${displaySize}px`;
-        dot.style.height = `${displaySize}px`;
-        dot.style.backgroundColor = currentColor;
-    }
-    
-    if (text) {
-        text.textContent = currentSize;
-    }
 }
 
 function hexToRgb(hex) {
@@ -2686,21 +2734,19 @@ function setTool(t) {
     const btn = document.getElementById(`tool-${t}`);
     if (btn) btn.classList.add('active');
 }
-
-function setSizeFromSlider(value) {
-    currentSize = parseInt(value);
-    updateSizePreview();
-}
-
 function setSize(s) {
     currentSize = parseInt(s);
-    const slider = document.getElementById('brush-size-slider');
-    if (slider) slider.value = currentSize;
-    updateSizePreview();
-}
-
-function renderPalette() {
-    updateSizePreview();
+    
+    // Aggiorna pulsanti visivamente
+    document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (s <= 6) {
+        document.getElementById('size-small')?.classList.add('active');
+    } else if (s <= 18) {
+        document.getElementById('size-medium')?.classList.add('active');
+    } else {
+        document.getElementById('size-large')?.classList.add('active');
+    }
 }
 
 // ========================================
@@ -2772,11 +2818,11 @@ window.onload = async () => {
     try {
         const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
         
-        if (!doc.exists) {
-            alert("Stanza non trovata!");
-            window.location.href = 'index.html';
-            return;
-        }
+if (!doc.exists) {
+    // ✅ Nessun alert
+    window.location.href = 'index.html';
+    return;
+}
         
         const data = doc.data();
         
@@ -2794,11 +2840,11 @@ window.onload = async () => {
             window.location.href = 'index.html';
         }
         
-    } catch (e) {
-        console.error("Errore auto-join:", e);
-        alert("Errore di connessione!");
-        window.location.href = 'index.html';
-    }
+} catch (e) {
+    console.error("Errore auto-join:", e);
+    // ✅ Nessun alert
+    window.location.href = 'index.html';
+}
 };
 
 // ========================================
@@ -2826,165 +2872,307 @@ function hideHomeButton() {
     const btn = document.getElementById('fixed-home-btn');
     if (btn) btn.style.display = 'none';
 }
-    // ========================================
-// MODALITÀ GUESS IT!
+// ========================================
+// MODALITÀ GUESS IT! - COMPLETA
 // ========================================
 
-let guessItState = {
+let guessIt = {
+    canvas: null,
+    ctx: null,
     isDrawer: false,
-    currentWord: null,
-    roundNumber: 0,
-    totalRounds: 5,
-    scores: {},
-    streamInterval: null
+    currentWord: '',
+    isDrawing: false,
+    streamInterval: null,
+    timerInterval: null,
+    tool: 'pen',
+    color: '#000000',
+    size: 12
 };
 
 function handleGuessItPhase(data) {
-    const currentDrawer = data.guessIt?.currentDrawer;
+    showScreen('guessit-screen');
+    showHomeButton();
+    removeBanner();
     
-    if (currentDrawer === state.playerName) {
-        // Sono il disegnatore
-        guessItState.isDrawer = true;
-        guessItState.currentWord = data.guessIt.currentWord;
-        showGuessItDrawer(data);
+    const gi = data.guessIt;
+    const amIDrawer = gi.currentDrawer === state.playerName;
+    guessIt.isDrawer = amIDrawer;
+    
+    // Setup canvas
+    guessIt.canvas = document.getElementById('guessitCanvas');
+    guessIt.ctx = guessIt.canvas.getContext('2d');
+    guessIt.canvas.width = 500;
+    guessIt.canvas.height = 500;
+    guessIt.ctx.fillStyle = '#ffffff';
+    guessIt.ctx.fillRect(0, 0, 500, 500);
+    
+    // Header
+    document.getElementById('guessit-header-subtitle').textContent = 
+        `Round ${(gi.round || 0) + 1}/${gi.totalRounds || 5} • Disegna: ${gi.currentDrawer}`;
+    
+    // Punteggio personale
+    const myScore = gi.scores?.[state.playerName] || 0;
+    document.getElementById('guessit-my-score').textContent = myScore;
+    
+    if (amIDrawer) {
+        setupGuessItDrawer(gi);
     } else {
-        // Sono un indovinatore
-        guessItState.isDrawer = false;
-        showGuessItGuesser(data);
+        setupGuessItGuesser(gi);
     }
+    
+    // Ascolta aggiornamenti canvas e risposte
+    startGuessItListeners();
 }
 
-function showGuessItDrawer(data) {
-    showScreen('guessit-drawer-screen');
-    showHomeButton();
+function setupGuessItDrawer(gi) {
+    guessIt.currentWord = gi.currentWord;
     
-    const canvas = document.getElementById('guessitCanvas');
-    const ctx = canvas.getContext('2d');
-    setupCanvas(canvas);
+    // Mostra parola e toolbar
+    const badge = document.getElementById('guessit-word-badge');
+    badge.textContent = `DISEGNA: ${gi.currentWord}`;
+    badge.style.display = 'block';
     
-    document.getElementById('guessit-theme-badge').textContent = 
-        `DISEGNA: ${guessItState.currentWord}`;
+    document.getElementById('guessit-toolbar').style.display = 'flex';
+    document.getElementById('guessit-input-area').style.display = 'none';
     
-    // Avvia streaming del canvas
-    startCanvasStreaming(canvas);
+    // Canvas interattivo
+    guessIt.canvas.style.cursor = 'crosshair';
+    attachGuessItCanvasListeners();
     
     // Timer
-    startGuessItTimer(data.settings?.timePerRound || 60);
+    startGuessItTimer(gi.timePerRound || 60);
     
-    showBanner({
-        icon: '✏️',
-        title: `DISEGNA: ${guessItState.currentWord}`,
-        subtitle: 'Gli altri devono indovinare!',
-        color: '#e94560'
-    });
+    // Streaming canvas
+    startGuessItStreaming();
 }
 
-function showGuessItGuesser(data) {
-    showScreen('guessit-guesser-screen');
-    showHomeButton();
+function setupGuessItGuesser(gi) {
+    // Nascondi toolbar, mostra input
+    document.getElementById('guessit-word-badge').style.display = 'none';
+    document.getElementById('guessit-toolbar').style.display = 'none';
+    document.getElementById('guessit-input-area').style.display = 'block';
     
-    const drawer = data.guessIt?.currentDrawer;
+    // Canvas non interattivo
+    guessIt.canvas.style.cursor = 'default';
     
-    showBanner({
-        icon: '🔮',
-        title: 'INDOVINA!',
-        subtitle: `${drawer} sta disegnando...`,
-        color: '#9b59b6'
-    });
-    
-    // Ascolta streaming canvas
-    listenToCanvasStream();
-    
-    // Focus sull'input
-    document.getElementById('guess-input').focus();
-    
-    // Listener per Enter
-    document.getElementById('guess-input').onkeypress = (e) => {
-        if (e.key === 'Enter') submitGuess();
-    };
-}
-
-function startCanvasStreaming(canvas) {
-    // Invia lo stato del canvas ogni 500ms
-    guessItState.streamInterval = setInterval(async () => {
-        const dataUrl = canvas.toDataURL('image/png', 0.5);
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            'guessIt.canvasData': dataUrl,
-            'guessIt.lastUpdate': Date.now()
-        });
-    }, 500);
-}
-
-function listenToCanvasStream() {
-    // Il listener principale già gestisce gli update
-}
-
-async function submitGuess() {
-    const input = document.getElementById('guess-input');
-    const guess = input.value.trim().toUpperCase();
-    
-    if (!guess) return;
-    
+    // Focus input + enter
+    const input = document.getElementById('guessit-input');
     input.value = '';
+    input.focus();
+    input.onkeypress = (e) => {
+        if (e.key === 'Enter') submitGuessItAnswer();
+    };
     
-    // Invia la risposta
-    await db.collection("pictionary_rooms").doc(state.roomId).update({
-        [`guessIt.guesses.${Date.now()}`]: {
-            player: state.playerName,
-            guess: guess,
-            timestamp: Date.now()
-        }
-    });
+    // Timer (solo visualizzazione, controllato dall'host)
+    startGuessItTimer(gi.timePerRound || 60);
+}
+
+function attachGuessItCanvasListeners() {
+    const c = guessIt.canvas;
+    const ctx = guessIt.ctx;
+    
+    const getPos = (e) => {
+        const rect = c.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (c.width / rect.width),
+            y: (clientY - rect.top) * (c.height / rect.height)
+        };
+    };
+    
+    let lastPos = null;
+    
+    const start = (e) => {
+        e.preventDefault();
+        guessIt.isDrawing = true;
+        lastPos = getPos(e);
+        
+        ctx.beginPath();
+        ctx.fillStyle = guessIt.tool === 'eraser' ? '#ffffff' : guessIt.color;
+        ctx.arc(lastPos.x, lastPos.y, guessIt.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+    };
+    
+    const draw = (e) => {
+        if (!guessIt.isDrawing) return;
+        e.preventDefault();
+        
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.strokeStyle = guessIt.tool === 'eraser' ? '#ffffff' : guessIt.color;
+        ctx.lineWidth = guessIt.size;
+        ctx.lineCap = 'round';
+        ctx.moveTo(lastPos.x, lastPos.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        lastPos = pos;
+    };
+    
+    const stop = () => { guessIt.isDrawing = false; };
+    
+    c.onmousedown = start;
+    c.onmousemove = draw;
+    c.onmouseup = stop;
+    c.onmouseleave = stop;
+    c.ontouchstart = start;
+    c.ontouchmove = draw;
+    c.ontouchend = stop;
+}
+
+function setGuessItTool(t) {
+    guessIt.tool = t;
+    document.getElementById('gi-tool-pen').classList.toggle('active', t === 'pen');
+    document.getElementById('gi-tool-eraser').classList.toggle('active', t === 'eraser');
+}
+
+function setGuessItSize(s) {
+    guessIt.size = s;
+}
+
+function setGuessItColor(c) {
+    guessIt.color = c;
+}
+
+function clearGuessItCanvas() {
+    guessIt.ctx.fillStyle = '#ffffff';
+    guessIt.ctx.fillRect(0, 0, 500, 500);
+}
+
+function startGuessItStreaming() {
+    if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
+    
+    guessIt.streamInterval = setInterval(async () => {
+        if (!guessIt.isDrawer) return;
+        
+        const dataUrl = guessIt.canvas.toDataURL('image/png', 0.6);
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'guessIt.canvasData': dataUrl
+        });
+    }, 300);
+}
+
+function startGuessItListeners() {
+    // Il listener principale handleRoomUpdate gestisce già gli update
+    // Ma dobbiamo reagire ai cambiamenti specifici
 }
 
 function startGuessItTimer(seconds) {
+    if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
+    
     let remaining = seconds;
     const timerEl = document.getElementById('guessit-timer');
     
-    const interval = setInterval(() => {
+    guessIt.timerInterval = setInterval(async () => {
         remaining--;
-        if (timerEl) timerEl.textContent = remaining;
-        
-        if (remaining <= 10) timerEl?.classList.add('warning');
+        if (timerEl) {
+            timerEl.textContent = remaining;
+            timerEl.style.color = remaining <= 10 ? 'var(--danger)' : 'var(--success)';
+        }
         
         if (remaining <= 0) {
-            clearInterval(interval);
-            endGuessItRound();
+            clearInterval(guessIt.timerInterval);
+            if (state.isHost) {
+                await advanceGuessItRound();
+            }
         }
     }, 1000);
 }
 
-async function endGuessItRound() {
-    if (guessItState.streamInterval) {
-        clearInterval(guessItState.streamInterval);
-    }
+async function submitGuessItAnswer() {
+    const input = document.getElementById('guessit-input');
+    const answer = input.value.trim();
+    if (!answer) return;
     
-    if (state.isHost) {
-        // Passa al prossimo round o termina
-        const data = state.roomData;
-        const nextRound = (data.guessIt?.round || 0) + 1;
+    input.value = '';
+    
+    const gi = state.roomData.guessIt;
+    const correctWord = gi.currentWord.toUpperCase();
+    const isCorrect = answer.toUpperCase() === correctWord;
+    
+    // Aggiungi al feed
+    await db.collection("pictionary_rooms").doc(state.roomId).update({
+        [`guessIt.guesses.${Date.now()}`]: {
+            player: state.playerName,
+            answer: answer,
+            correct: isCorrect,
+            timestamp: Date.now()
+        }
+    });
+    
+    if (isCorrect) {
+        // Aggiorna punteggi
+        const pointsGuesser = 10;
+        const pointsDrawer = 5;
         
-        if (nextRound >= guessItState.totalRounds) {
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                stato: 'results',
-                scores: guessItState.scores
-            });
-        } else {
-            // Prossimo disegnatore
-            const players = data.players;
-            const nextDrawerIdx = nextRound % players.length;
-            const nextDrawer = players[nextDrawerIdx];
-            const nextWord = THEMES[Math.floor(Math.random() * THEMES.length)];
-            
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                'guessIt.round': nextRound,
-                'guessIt.currentDrawer': nextDrawer,
-                'guessIt.currentWord': nextWord,
-                'guessIt.canvasData': null,
-                'guessIt.guesses': {}
-            });
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            [`guessIt.scores.${state.playerName}`]: firebase.firestore.FieldValue.increment(pointsGuesser),
+            [`guessIt.scores.${gi.currentDrawer}`]: firebase.firestore.FieldValue.increment(pointsDrawer),
+            'guessIt.roundWinner': state.playerName
+        });
+        
+        // L'host avanzerà al prossimo round
+        if (state.isHost) {
+            setTimeout(() => advanceGuessItRound(), 2000);
         }
     }
+}
+
+async function advanceGuessItRound() {
+    clearInterval(guessIt.streamInterval);
+    clearInterval(guessIt.timerInterval);
+    
+    const data = state.roomData;
+    const gi = data.guessIt;
+    const nextRound = (gi.round || 0) + 1;
+    const totalRounds = gi.totalRounds || data.players.length;
+    
+    if (nextRound >= totalRounds) {
+        // Fine gioco
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            stato: 'results',
+            scores: gi.scores || {}
+        });
+    } else {
+        // Prossimo round, prossimo disegnatore
+        const nextDrawerIdx = nextRound % data.players.length;
+        const nextDrawer = data.players[nextDrawerIdx];
+        const nextWord = THEMES[Math.floor(Math.random() * THEMES.length)];
+        
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'guessIt.round': nextRound,
+            'guessIt.currentDrawer': nextDrawer,
+            'guessIt.currentWord': nextWord,
+            'guessIt.canvasData': null,
+            'guessIt.guesses': {},
+            'guessIt.roundWinner': null
+        });
+    }
+}
+
+function updateGuessItFeed(guesses) {
+    const feed = document.getElementById('guessit-feed');
+    if (!feed) return;
+    
+    const sorted = Object.values(guesses).sort((a, b) => b.timestamp - a.timestamp);
+    
+    if (sorted.length === 0) {
+        feed.innerHTML = '<div style="text-align: center; opacity: 0.5; padding: 20px;">Le risposte appariranno qui...</div>';
+        return;
+    }
+    
+    feed.innerHTML = sorted.map(g => `
+        <div style="
+            padding: 10px 15px; margin-bottom: 8px; border-radius: 10px;
+            background: ${g.correct ? 'rgba(78, 205, 196, 0.2)' : 'var(--bg)'};
+            border-left: 3px solid ${g.correct ? 'var(--success)' : 'var(--border)'};
+        ">
+            <div style="font-weight: 700; font-size: 0.85rem; color: ${g.correct ? 'var(--success)' : 'var(--text)'};">
+                ${g.player} ${g.correct ? '✅' : ''}
+            </div>
+            <div style="font-size: 0.9rem; opacity: 0.9;">${g.answer}</div>
+        </div>
+    `).join('');
 }
 </script>
 
