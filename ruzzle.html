@@ -439,6 +439,8 @@
 			.tile.blurred {
 			color: transparent;
 			text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+			background-color: var(--tile-bg); /* ✅ GIÀ PRESENTE */
+    		opacity: 0.7; /* ← AGGIUNGI QUESTA RIGA */
 			}
 			.tile.selected {
 			background-color: var(--tile-selected);
@@ -830,17 +832,19 @@
 			border-color: var(--primary);
 			}
 			#grid-overlay {
-			position: absolute;
-			inset: 0;
-			background: var(--overlay-bg);
-			border-radius: 10px;
-			display: none;
-			flex-direction: column;
-			justify-content: center;
-			align-items: center;
-			z-index: 20;
-			color: white;
-			text-align: center;
+			    position: absolute;
+			    inset: 0;
+			    background: var(--overlay-bg);
+			    border-radius: 10px;
+			    display: none;
+			    flex-direction: column;
+			    justify-content: center;
+			    align-items: center;
+			    z-index: 20;
+			    color: white;
+			    text-align: center;
+			    pointer-events: auto;
+			    backdrop-filter: blur(3px); /* ← AGGIUNGI per vedere sotto */
 			}
 			#pause-overlay {
 			position: absolute;
@@ -2027,8 +2031,15 @@
 			    const char = displayLetters[i];
 			    const bonus = displayBonuses[i];
 			    const tile = document.createElement('div');
-			    tile.classList.add('tile');
-			    if (!isGameActive && !isAnalysisPhase && !isPaused && !isSandboxMode) tile.classList.add('blurred');
+				tile.classList.add('tile');
+				
+				// ✅ Mostra sempre le celle se la griglia è stata generata
+				if (!isGameActive && !isAnalysisPhase && !isPaused && !isSandboxMode) {
+				    // Solo se NON siamo in attesa in multiplayer
+				    if (!matchId || (currentGameData && currentGameData.stato !== 'attesa')) {
+				        tile.classList.add('blurred');
+				    }
+				}
 			    if (gridSize === 4) tile.classList.add('medium-font');
 			    else if (gridSize === 5) tile.classList.add('five-font');
 			    else if (gridSize === 6) tile.classList.add('six-font');
@@ -3346,10 +3357,10 @@
 			        renderGrid();
 			        gridEl.dataset.seed = currentSeed; // Marca come generata
 			      }
-			      // ✅ SEMPRE oscurata in attesa
-			      document.getElementById('start-screen').style.display = 'none';
-			      gridOverlay.style.display = 'none';
-			      document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
+					// ✅ MOSTRA la griglia blurrata con overlay sopra
+					document.getElementById('start-screen').style.display = 'none';
+					gridOverlay.style.display = 'flex'; // ← CAMBIA DA 'none' A 'flex'
+					document.querySelectorAll('.tile').forEach(t => t.classList.add('blurred'));
 			      timerDisplay.textContent = formatTime(timeRemaining);
 			      if (!pronti.includes(mioNome)) {
 			        showGameBanner({
@@ -4142,5 +4153,6 @@
 		</div>
 	</body>
 </html>
+
 
 
