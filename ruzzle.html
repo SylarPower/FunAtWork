@@ -1168,7 +1168,9 @@
 						<button class="sort-btn" title="Punteggio" onclick="setSortMode('score')">🏆</button>
 						<button class="sort-btn" title="Ordinamento" onclick="toggleSortDirection()" id="sort-dir-btn">⬇️</button>
 					</div>
-					<div style="font-size:0.8rem; color:var(--accent); margin-bottom:5px; display:none; flex-shrink:0;" id="analysis-msg">Clicca per eliminare una parola</div>
+					<div style="font-size:0.8rem; color:var(--accent); margin-bottom:5px; display:none; flex-shrink:0;" id="analysis-msg">
+					    Clicca sulle TUE parole per eliminarle
+					</div>
 					<div id="ach-notification">🏆 <span id="ach-text">Obiettivo Sbloccato!</span>
 					</div>
 					<ul class="words-list" id="found-words"></ul>
@@ -3906,37 +3908,96 @@ if (data.stato === "in_corso") {
 			  });
 			  alert("Proposta inviata! Gli altri devono approvare.");
 			}
-			async function applicaModificaDizionario(parola, tipo) {
-			  if (tipo === 'extra') {
-			    if (!EXTRA_WORDS.includes(parola)) EXTRA_WORDS.push(parola);
-			    dictionary.add(parola);
-			  } else {
-			    if (!EXCLUDED_WORDS.includes(parola)) EXCLUDED_WORDS.push(parola);
-			    dictionary.delete(parola);
-			  }
-			  buildTrie();
-			  if (matchId) {
-			    await db.collection("partite").doc(matchId).update({
-			      [`dizionarioCustom.extra`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'extra' ? parola : null),
-			      [`dizionarioCustom.excluded`]: firebase.firestore.FieldValue.arrayUnion(tipo === 'exclude' ? parola : null)
-			    });
-			  }
-			  const globalRef = db.collection("config").doc("dizionario");
-			  if (tipo === 'extra') {
-			    await globalRef.set({
-			      extra: firebase.firestore.FieldValue.arrayUnion(parola)
-			    }, {
-			      merge: true
-			    });
-			  } else {
-			    await globalRef.set({
-			      excluded: firebase.firestore.FieldValue.arrayUnion(parola)
-			    }, {
-			      merge: true
-			    });
-			  }
-			  alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'} PERMANENTEMENTE: "${parola}"`);
-			}
+async function applicaModificaDizionario(parola, tipo) {
+    if (tipo === 'extra') {
+        if (!EXTRA_WORDS.includes(parola)) EXTRA_WORDS.push(parola);
+        dictionary.add(parola);
+    } else {
+        if (!EXCLUDED_WORDS.includes(parola)) EXCLUDED_WORDS.push(parola);
+        dictionary.delete(parola);
+    }
+    buildTrie();
+    
+    // ✅ Aggiorna dizionario custom nella partita
+    if (matchId) {
+        const updateData = {};
+        if (tipo === 'extra') {
+            updateData['dizionarioCustom.extra'] = firebase.firestore.FieldValue.arrayUnion(parola);
+        } else {
+            updateData['dizionarioCustom.excluded'] = firebase.firestore.FieldValue.arrayUnion(parola);
+        }
+        
+        await db.collection("partite").doc(matchId).update(updateData);
+        
+        // ✅ RICALCOLA PUNTEGGI PER TUTTI I GIOCATORI
+        if (tipo === 'exclude' && currentGameData) {
+            const nuoviPunteggi = {};
+            const nuoveParole = {};
+            
+            currentGameData.partecipanti.forEach(player => {
+                let parolePlayer = currentGameData.parole[player] || [];
+                
+                // Rimuovi la parola esclusa
+                parolePlayer = parolePlayer.filter(p => p.w !== parola);
+                nuoveParole[player] = parolePlayer;
+                
+                // Ricalcola punteggio (considerando duplicati)
+                let punteggio = 0;
+                parolePlayer.forEach(p => {
+                    // Conta quanti giocatori hanno questa parola
+                    let count = 0;
+                    currentGameData.partecipanti.forEach(altro => {
+                        const paroleAltro = altro === player ? parolePlayer : (nuoveParole[altro] || currentGameData.parole[altro] || []);
+                        if (paroleAltro.some(x => x.w === p.w)) count++;
+                    });
+                    // Se solo uno ha la parola, conta
+                    if (count <= 1) punteggio += p.p;
+                });
+                
+                nuoviPunteggi[player] = punteggio;
+            });
+            
+            // Aggiorna Firebase con nuovi punteggi
+            await db.collection("partite").doc(matchId).update({
+                parole: nuoveParole,
+                punteggi: nuoviPunteggi
+            });
+            
+            // Aggiorna locale
+            score = nuoviPunteggi[mioNome] || 0;
+            scoreDisplay.textContent = score;
+        }
+    }
+    
+    // Aggiorna dizionario globale
+    const globalRef = db.collection("config").doc("dizionario");
+    if (tipo === 'extra') {
+        await globalRef.set({
+            extra: firebase.firestore.FieldValue.arrayUnion(parola)
+        }, { merge: true });
+    } else {
+        await globalRef.set({
+            excluded: firebase.firestore.FieldValue.arrayUnion(parola)
+        }, { merge: true });
+    }
+    
+    alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'} PERMANENTEMENTE: "${parola}"`);
+    
+    // ✅ Forza refresh dell'analisi
+    if (currentGameData) {
+        let conteggioParoleGlobali = {};
+        currentGameData.partecipanti.forEach(p => {
+            (currentGameData.parole[p] || []).forEach(par => {
+                conteggioParoleGlobali[par.w] = (conteggioParoleGlobali[par.w] || 0) + 1;
+            });
+        });
+        
+        const selAnalisi = document.getElementById('sel-analisi');
+        if (selAnalisi) {
+            renderizzaAnalisiPlayerSilent(selAnalisi.value, currentGameData, conteggioParoleGlobali);
+        }
+    }
+}
 			// ✅ CLEANUP FIREBASE
 			function cleanupFirebaseListeners() {
 			  if (unsubscribePartita) {
@@ -4166,61 +4227,148 @@ if (data.stato === "in_corso") {
 			  renderizzaAnalisiPlayerSilent(mioNome, data, conteggioParoleGlobali);
 			}
 			
-			function renderizzaAnalisiPlayerSilent(nomePlayer, data, conteggioParoleGlobali) {
-			    const wordsListEl = document.getElementById('found-words');
-			    wordsListEl.innerHTML = "";
-			    
-			    // ✅ Reset foundWords per il player selezionato
-			    if (nomePlayer !== mioNome) {
-			        foundWords.clear();
-			    }
-			    
-			    const parole = (data.parole[nomePlayer] || []).sort((a, b) => a.w.localeCompare(b.w));
-			    
-			    // ✅ Calcola punteggio totale del player
-			    let playerScore = 0;
-			    
-			    parole.forEach(item => {
-			        foundWords.set(item.w, {
-			            points: item.p,
-			            path: item.path,
-			            active: true
-			        });
-			        
-			        const isDuplicata = conteggioParoleGlobali[item.w] > 1;
-			        const puntiEffettivi = isDuplicata ? 0 : item.p;
-			        playerScore += puntiEffettivi;
-			        
-			        const li = document.createElement('li');
-			        li.dataset.word = item.w;
-			        
-			        if (isDuplicata) {
-			            li.style.textDecoration = "line-through";
-			            li.style.opacity = "0.5";
-			        }
-			        
-			        li.innerHTML = `
-			            <div class="word-item-left">
-			                <button class="btn-eye" onclick="showWordOnGrid('${item.w}')">👁️</button>
-			                <span>${item.w}</span>
-			                <button onclick="inviaPropostaFirebase('${item.w}', 'exclude')" style="background:none; border:none; cursor:pointer;" title="Proponi Rimozione">📢</button>
-			            </div>
-			            <span class="pts">${puntiEffettivi}</span>
-			        `;
-			        
-			        wordsListEl.appendChild(li);
-			    });
-			    
-			    // ✅ Aggiorna punteggio mostrato se è il mio player
-			    if (nomePlayer === mioNome) {
-			        scoreDisplay.textContent = playerScore;
-			        score = playerScore;
-			    }
-			    
-			    // ✅ Mostra conteggio parole
-			    wordCountDisplay.textContent = parole.length;
-			}
-			
+function renderizzaAnalisiPlayerSilent(nomePlayer, data, conteggioParoleGlobali) {
+    const wordsListEl = document.getElementById('found-words');
+    wordsListEl.innerHTML = "";
+    
+    // ✅ Ricostruisci foundWords per il player visualizzato
+    foundWords.clear();
+    
+    const parole = (data.parole[nomePlayer] || []).sort((a, b) => a.w.localeCompare(b.w));
+    
+    // ✅ Calcola punteggio totale del player
+    let playerScore = 0;
+    
+    parole.forEach(item => {
+        const isDuplicata = conteggioParoleGlobali[item.w] > 1;
+        const puntiEffettivi = isDuplicata ? 0 : item.p;
+        playerScore += puntiEffettivi;
+        
+        foundWords.set(item.w, {
+            points: item.p,
+            path: item.path,
+            active: true // Le parole caricate da Firebase sono sempre attive
+        });
+        
+        const li = document.createElement('li');
+        li.dataset.word = item.w;
+        
+        if (isDuplicata) {
+            li.classList.add('deleted'); // Usa stile barrato per duplicati
+        }
+        
+        li.innerHTML = `
+            <div class="word-item-left">
+                <button class="btn-eye" onclick="event.stopPropagation(); showWordOnGrid('${item.w}')">👁️</button>
+                <span>${item.w}</span>
+                ${nomePlayer === mioNome ? `<button onclick="event.stopPropagation(); inviaPropostaFirebase('${item.w}', 'exclude')" style="background:none; border:none; cursor:pointer;" title="Proponi Rimozione">📢</button>` : ''}
+            </div>
+            <span class="pts">${isDuplicata ? '0 (dup)' : puntiEffettivi}</span>
+        `;
+        
+        // ✅ CLICK PER ELIMINARE (solo le proprie parole, non duplicate)
+        if (nomePlayer === mioNome && !isDuplicata) {
+            li.style.cursor = 'pointer';
+            li.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('btn-eye')) {
+                    toggleWordMultiplayer(item.w, li, data, conteggioParoleGlobali);
+                }
+            });
+        }
+        
+        wordsListEl.appendChild(li);
+    });
+    
+    // ✅ Aggiorna punteggio mostrato
+    if (nomePlayer === mioNome) {
+        scoreDisplay.textContent = playerScore;
+        score = playerScore;
+    }
+    
+    // ✅ Mostra conteggio parole
+    wordCountDisplay.textContent = parole.length;
+    
+    // ✅ Abilita stile interattivo
+    if (nomePlayer === mioNome) {
+        wordsListEl.classList.add('interactive');
+    } else {
+        wordsListEl.classList.remove('interactive');
+    }
+}
+// ✅ TOGGLE PAROLA IN MULTIPLAYER (elimina/ripristina)
+async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
+    const isDeleted = li.classList.contains('deleted');
+    
+    if (isDeleted) {
+        // RIPRISTINA: riaggiunge la parola
+        li.classList.remove('deleted');
+        const wordData = foundWords.get(word);
+        const pts = wordData ? wordData.points : 0;
+        li.querySelector('.pts').textContent = pts;
+        
+        // Aggiungi a Firebase
+        const mieParole = data.parole[mioNome] || [];
+        const esisteGia = mieParole.some(p => p.w === word);
+        
+        if (!esisteGia && wordData) {
+            mieParole.push({ w: word, p: wordData.points, path: wordData.path });
+        }
+        
+        try {
+            // Ricalcola punteggio
+            let nuovoPunteggio = 0;
+            mieParole.forEach(p => {
+                const isDup = conteggioParoleGlobali[p.w] > 1;
+                if (!isDup) nuovoPunteggio += p.p;
+            });
+            
+            await db.collection("partite").doc(matchId).update({
+                [`parole.${mioNome}`]: mieParole,
+                [`punteggi.${mioNome}`]: nuovoPunteggio
+            });
+            
+            score = nuovoPunteggio;
+            scoreDisplay.textContent = nuovoPunteggio;
+            
+        } catch(e) {
+            console.error("Errore ripristino parola:", e);
+            li.classList.add('deleted');
+        }
+        
+    } else {
+        // ELIMINA: rimuove la parola
+        li.classList.add('deleted');
+        li.querySelector('.pts').textContent = '0';
+        
+        // Rimuovi da Firebase
+        let mieParole = data.parole[mioNome] || [];
+        mieParole = mieParole.filter(p => p.w !== word);
+        
+        try {
+            // Ricalcola punteggio
+            let nuovoPunteggio = 0;
+            mieParole.forEach(p => {
+                const isDup = conteggioParoleGlobali[p.w] > 1;
+                if (!isDup) nuovoPunteggio += p.p;
+            });
+            
+            await db.collection("partite").doc(matchId).update({
+                [`parole.${mioNome}`]: mieParole,
+                [`punteggi.${mioNome}`]: nuovoPunteggio
+            });
+            
+            score = nuovoPunteggio;
+            scoreDisplay.textContent = nuovoPunteggio;
+            
+            // Aggiorna anche il conteggio globale
+            conteggioParoleGlobali[word] = (conteggioParoleGlobali[word] || 1) - 1;
+            
+        } catch(e) {
+            console.error("Errore eliminazione parola:", e);
+            li.classList.remove('deleted');
+        }
+    }
+}		
 			function apriModalRivincita() {
 			  document.getElementById('multiplayer-lobby').style.display = 'none';
 			  apriRivincitaBanner();
@@ -4285,6 +4433,7 @@ if (data.stato === "in_corso") {
 		</div>
 	</body>
 </html>
+
 
 
 
