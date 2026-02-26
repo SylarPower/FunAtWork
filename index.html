@@ -888,9 +888,10 @@
 			  // LISTENER 3: Partite
 			  db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
 			    const div = document.getElementById('lista-partite');
+				const configGioco = GIOCHI_CONFIG[giocoSelezionato] || GIOCHI_CONFIG.ruzzle;
 				div.innerHTML = `
 				    <div class="user-item" style="background:#34495e;" onclick="window.location.href='${giocoSelezionato}.html'">
-				        <span>🎯 Allenamento Solo (${GIOCHI_CONFIG[giocoSelezionato]?.nome || giocoSelezionato})</span>
+				        <span>🎯 Allenamento Solo (${configGioco.nome})</span>
 				        <button>GIOCA</button>
 				    </div>`;
 			    snap.forEach(doc => {
@@ -1117,6 +1118,19 @@
 			  giocoSelezionato = g;
 			  document.querySelectorAll('.game-card').forEach(c => c.classList.remove('selected'));
 			  el.classList.add('selected');
+			  
+			  // ✅ Aggiorna il pulsante Allenamento Solo
+			  aggiornaAllenamentoSolo();
+			}
+			
+			// ✅ Nuova funzione per aggiornare l'allenamento solo
+			function aggiornaAllenamentoSolo() {
+			  const config = GIOCHI_CONFIG[giocoSelezionato];
+			  const allenamentoDiv = document.querySelector('#lista-partite .user-item[style*="34495e"]');
+			  if (allenamentoDiv && config) {
+			    allenamentoDiv.onclick = () => window.location.href = `${giocoSelezionato}.html`;
+			    allenamentoDiv.querySelector('span').textContent = `🎯 Allenamento Solo (${config.nome})`;
+			  }
 			}
 			
 			function apriModalSfida() {
@@ -1648,5 +1662,6 @@
 		</script>
 	</body>
 </html>
+
 
 
