@@ -25,10 +25,7 @@
         /* === ANIMAZIONI === */
         @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
-}
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
@@ -91,45 +88,54 @@
             pointer-events: none; z-index: 20; text-transform: uppercase;
             box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
         }
-/* === MINIATURA RIFERIMENTO === */
-.reference-thumbnail {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 80px;
-    height: 80px;
-    background: white;
-    border: 3px solid var(--success);
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    z-index: 25;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
 
-.reference-thumbnail:hover {
-    transform: scale(2);
-    z-index: 100;
-}
+        /* === MINIATURA RIFERIMENTO INGRANDIBILE === */
+        .reference-thumbnail {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 100px;
+            background: white;
+            border: 3px solid var(--success);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 25;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            overflow: hidden;
+        }
 
-.reference-thumbnail canvas {
-    width: 100%;
-    height: 100%;
-}
+        .reference-thumbnail:hover {
+            transform: scale(3.5) translate(-35%, 15%);
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        }
 
-.reference-thumbnail .label {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--success);
-    color: white;
-    font-size: 0.5rem;
-    font-weight: bold;
-    text-align: center;
-    padding: 2px;
-}
+        .reference-thumbnail canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .reference-thumbnail .label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--success);
+            color: white;
+            font-size: 0.5rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 2px;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+
+        .reference-thumbnail:hover .label {
+            opacity: 0;
+        }
+
         canvas { width: 100%; height: 100%; display: block; border-radius: 10px; }
 
         /* === TOOLBAR === */
@@ -244,7 +250,7 @@
         .player-card .name { font-weight: 700; font-size: 0.9rem; }
         .player-card .status { font-size: 0.7rem; opacity: 0.7; margin-top: 5px; }
 
-        /* === BANNER === */
+        /* === BANNER STILE RUZZLE === */
         .game-banner {
             position: fixed; top: 0; left: 0; right: 0;
             padding: 15px 20px; display: flex; justify-content: space-between;
@@ -377,27 +383,6 @@
         .ranking-name { flex: 1; margin-left: 15px; font-weight: 600; }
         .ranking-score { font-weight: 900; color: var(--primary); }
 
-        /* === INTERPRETAZIONE === */
-        .interpret-container {
-            display: flex; flex-direction: column; gap: 20px; align-items: center;
-        }
-
-        .received-drawing {
-            width: 100%; max-width: 300px; aspect-ratio: 1/1;
-            background: white; border-radius: 12px; overflow: hidden;
-            border: 3px solid var(--success);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .guess-input-container {
-            width: 100%; max-width: 400px;
-        }
-
-        .guess-label {
-            font-weight: 700; margin-bottom: 10px; display: block;
-            color: var(--success);
-        }
-
         /* === SPINNER === */
         .spinner {
             width: 30px; height: 30px; border: 3px solid white;
@@ -480,6 +465,9 @@
             .btn { padding: 10px 18px; font-size: 0.8rem; }
             .game-banner { flex-direction: column; text-align: center; }
             .banner-left, .banner-right { justify-content: center; width: 100%; }
+            .reference-thumbnail:hover {
+                transform: scale(2.5) translate(-20%, 10%);
+            }
         }
     </style>
 </head>
@@ -549,25 +537,6 @@
     </div>
 </div>
 
-<!-- TEMA ASSEGNATO -->
-<div id="theme-screen" class="overlay hidden">
-    <div class="card">
-        <div style="font-size: 3rem;">🎯</div>
-        <p style="font-size: 0.9rem; opacity: 0.7;">
-            ROUND <span id="round-num">1</span>/<span id="max-rounds">2</span>
-        </p>
-        <p style="font-weight: 700; margin-bottom: 10px;">IL TUO TEMA È:</p>
-        <div class="theme-box" id="current-theme-display">PIZZA</div>
-        <p style="font-size: 0.8rem; opacity: 0.7;">
-            Hai <span id="time-display">60</span> secondi per disegnarlo!
-        </p>
-        <button class="btn btn-primary" style="width: 100%; padding: 18px; margin-top: 10px;" 
-                onclick="launchCanvas()">
-            ✏️ INIZIA A DISEGNARE
-        </button>
-    </div>
-</div>
-
 <!-- CANVAS -->
 <div id="game-ui" class="app-container hidden">
     <header>
@@ -582,10 +551,10 @@
         <div class="canvas-wrapper">
             <div class="canvas-container">
                 <div class="canvas-badge" id="canvas-theme-badge">TEMA</div>
-                    <div class="reference-thumbnail" id="reference-thumbnail" style="display: none;">
-                        <canvas id="reference-mini-canvas"></canvas>
-                        <div class="label">RIFERIMENTO</div>
-                    </div>
+                <div class="reference-thumbnail" id="reference-thumbnail" style="display: none;">
+                    <canvas id="reference-mini-canvas"></canvas>
+                    <div class="label">RIFERIMENTO</div>
+                </div>
                 <canvas id="mainCanvas"></canvas>
             </div>
         </div>
@@ -728,11 +697,9 @@ let state = {
     isHost: false,
     roomData: null,
     myVotes: {},
-    localHistory: [],
     myCurrentTheme: null,
-    isInterpretPhase: false,
     receivedDrawing: null,
-    isDrawing: false  // ✅ AGGIUNGI QUESTO
+    isDrawing: false
 };
 
 let canvas, ctx;
@@ -865,17 +832,14 @@ function handleRoomUpdate(doc) {
     state.roomData = data;
     state.isHost = data.host === state.playerName;
     
-    // ✅ SE STO DISEGNANDO, NON TOCCARE L'INTERFACCIA!
     if (state.isDrawing) {
         console.log("📝 Update ricevuto ma sto disegnando, ignoro UI update");
         return;
     }
     
-    // ✅ CONTROLLA SE LO STATO O LA FASE È CAMBIATA
     const statoChanged = prevStato !== data.stato;
     const phaseChanged = prevPhase !== data.currentPhase;
     
-    // ✅ SE SONO IN WAITING E NIENTE È CAMBIATO, AGGIORNA SOLO IL CONTEGGIO
     const waitingScreen = document.getElementById('waiting-screen');
     const inWaiting = waitingScreen && !waitingScreen.classList.contains('hidden');
     
@@ -884,7 +848,6 @@ function handleRoomUpdate(doc) {
         return;
     }
     
-    // ✅ STATO O FASE CAMBIATA → GESTISCI NORMALMENTE
     console.log(`🔄 Stato: ${prevStato} → ${data.stato}, Fase: ${prevPhase} → ${data.currentPhase}`);
     
     switch(data.stato) {
@@ -893,9 +856,6 @@ function handleRoomUpdate(doc) {
             break;
         case 'drawing': 
             handleDrawingPhase(data); 
-            break;
-        case 'interpreting': 
-            handleInterpretPhase(data); 
             break;
         case 'voting': 
             handleVotingPhase(data); 
@@ -906,13 +866,11 @@ function handleRoomUpdate(doc) {
     }
 }
 
-// ✅ NUOVA FUNZIONE: Aggiorna solo il progresso in waiting
 function updateWaitingProgress(data) {
     const phase = data.currentPhase;
     const completed = data.completedPhase?.[phase] || [];
     const total = data.players.length;
     
-    // Aggiorna conteggio
     const doneEl = document.getElementById('done-count');
     const totalEl = document.getElementById('total-players');
     const msgEl = document.getElementById('waiting-message');
@@ -920,7 +878,6 @@ function updateWaitingProgress(data) {
     if (doneEl) doneEl.textContent = completed.length;
     if (totalEl) totalEl.textContent = total;
     
-    // Aggiorna chi manca
     const remaining = data.players.filter(p => !completed.includes(p));
     if (msgEl) {
         msgEl.textContent = remaining.length > 0 
@@ -928,7 +885,6 @@ function updateWaitingProgress(data) {
             : 'Tutti hanno finito! Passaggio alla fase successiva...';
     }
     
-    // Aggiorna banner
     const banner = document.getElementById('game-banner');
     if (banner) {
         const titleEl = banner.querySelector('.banner-title');
@@ -937,14 +893,12 @@ function updateWaitingProgress(data) {
         if (subtitleEl) subtitleEl.textContent = `Completato: ${completed.join(', ') || 'Nessuno'}`;
     }
     
-    // ✅ Se tutti hanno finito, HOST avanza la fase
     if (completed.length >= total && state.isHost) {
         console.log("✅ Tutti hanno finito! Host avanza la fase...");
         advanceToNextPhase(data);
     }
 }
 
-// ✅ NUOVA FUNZIONE: Avanza alla fase successiva
 async function advanceToNextPhase(data) {
     const phase = data.currentPhase;
     const totalPhases = data.settings.rounds * 2;
@@ -952,18 +906,15 @@ async function advanceToNextPhase(data) {
     
     try {
         if (nextPhase >= totalPhases) {
-            // Fine gioco → votazione
             console.log("🗳️ Passaggio a VOTAZIONE");
             await db.collection("pictionary_rooms").doc(state.roomId).update({
                 stato: 'voting'
             });
         } else {
-            // Prossima fase
-            const nextStato = (nextPhase % 2 === 0) ? 'drawing' : 'interpreting';
-            console.log(`➡️ Passaggio a fase ${nextPhase} (${nextStato})`);
+            console.log(`➡️ Passaggio a fase ${nextPhase}`);
             await db.collection("pictionary_rooms").doc(state.roomId).update({
                 currentPhase: nextPhase,
-                stato: nextStato
+                stato: 'drawing'
             });
         }
     } catch (e) {
@@ -975,7 +926,6 @@ function renderLobby(data) {
     removeBanner();
     showScreen('lobby-screen');
     
-    // Players list
     const list = document.getElementById('lobby-players-list');
     list.innerHTML = '';
     data.players.forEach(p => {
@@ -988,42 +938,39 @@ function renderLobby(data) {
         list.appendChild(card);
     });
     
-// ✅ Settings: bloccate se sfida diretta, altrimenti solo host può modificare
-const roundsSelect = document.getElementById('lobby-rounds-select');
-const timeSelect = document.getElementById('lobby-time-select');
+    const roundsSelect = document.getElementById('lobby-rounds-select');
+    const timeSelect = document.getElementById('lobby-time-select');
 
-const canEditSettings = state.isHost && !data.sfidaDiretta;
+    const canEditSettings = state.isHost && !data.sfidaDiretta;
 
-roundsSelect.disabled = !canEditSettings;
-timeSelect.disabled = !canEditSettings;
+    roundsSelect.disabled = !canEditSettings;
+    timeSelect.disabled = !canEditSettings;
 
-if (canEditSettings) {
-    roundsSelect.onchange = () => updateSettings();
-    timeSelect.onchange = () => updateSettings();
-} else {
-    roundsSelect.onchange = null;
-    timeSelect.onchange = null;
-}
-
-// ✅ Mostra messaggio se impostazioni bloccate
-const settingsContainer = roundsSelect.closest('div[style*="background"]');
-if (settingsContainer) {
-    let lockMsg = settingsContainer.querySelector('.lock-msg');
-    if (data.sfidaDiretta && !lockMsg) {
-        const msg = document.createElement('div');
-        msg.className = 'lock-msg';
-        msg.style.cssText = 'font-size: 0.7rem; color: #f39c12; margin-top: 10px; text-align: center;';
-        msg.textContent = '🔒 Impostazioni definite dal creatore della sfida';
-        settingsContainer.appendChild(msg);
-    } else if (!data.sfidaDiretta && lockMsg) {
-        lockMsg.remove();
+    if (canEditSettings) {
+        roundsSelect.onchange = () => updateSettings();
+        timeSelect.onchange = () => updateSettings();
+    } else {
+        roundsSelect.onchange = null;
+        timeSelect.onchange = null;
     }
-}
+
+    const settingsContainer = roundsSelect.closest('div[style*="background"]');
+    if (settingsContainer) {
+        let lockMsg = settingsContainer.querySelector('.lock-msg');
+        if (data.sfidaDiretta && !lockMsg) {
+            const msg = document.createElement('div');
+            msg.className = 'lock-msg';
+            msg.style.cssText = 'font-size: 0.7rem; color: #f39c12; margin-top: 10px; text-align: center;';
+            msg.textContent = '🔒 Impostazioni definite dal creatore della sfida';
+            settingsContainer.appendChild(msg);
+        } else if (!data.sfidaDiretta && lockMsg) {
+            lockMsg.remove();
+        }
+    }
     
     roundsSelect.value = data.settings.rounds;
     timeSelect.value = data.settings.timePerRound;
     
-    // Ready status
     const readyBtn = document.getElementById('lobby-ready-btn');
     const statusDiv = document.getElementById('lobby-status');
     
@@ -1045,7 +992,6 @@ if (settingsContainer) {
         statusDiv.style.display = 'none';
     }
     
-    // ✅ Banner se non tutti pronti
     if (data.ready.length < data.players.length && data.players.length >= 2) {
         showBanner({
             icon: '🎨',
@@ -1056,7 +1002,6 @@ if (settingsContainer) {
         });
     }
     
-    // Avvio automatico
     if (data.ready.length >= data.players.length && data.players.length >= 2 && state.isHost) {
         startGame();
     }
@@ -1093,22 +1038,29 @@ async function leaveRoom() {
 }
 
 // ========================================
-// AVVIO GIOCO
+// ✅ AVVIO GIOCO CON LOGICA CORRETTA
 // ========================================
 async function startGame() {
     if (!state.isHost) return;
     
     const data = state.roomData;
     const players = data.players;
+    const numPlayers = players.length;
     
     const seed = cyrb128(state.roomId + Date.now());
     const rng = sfc32(seed);
     const shuffledThemes = shuffleArray(THEMES, rng);
     
+    // ✅ ASSEGNA TEMI INIZIALI (uno per giocatore)
+    const initialThemes = {};
+    players.forEach((player, idx) => {
+        initialThemes[player] = shuffledThemes[idx % shuffledThemes.length];
+    });
+    
     const chains = {};
     players.forEach((player, idx) => {
         chains[idx] = {
-            originalTheme: shuffledThemes[idx % shuffledThemes.length],
+            originalTheme: initialThemes[player],
             originalPlayer: player,
             steps: []
         };
@@ -1123,12 +1075,13 @@ async function startGame() {
         chains: chains,
         scores: scores,
         votes: {},
-        completedPhase: {}
+        completedPhase: {},
+        initialThemes: initialThemes
     });
 }
 
 // ========================================
-// FASE DISEGNO
+// ✅ FASE DISEGNO CON LOGICA CORRETTA
 // ========================================
 function handleDrawingPhase(data) {
     const phase = data.currentPhase;
@@ -1139,51 +1092,46 @@ function handleDrawingPhase(data) {
         return;
     }
     
-    const myChainId = getMyChainId(data, phase);
-    const chain = data.chains[myChainId];
+    const players = data.players;
+    const numPlayers = players.length;
+    const myIdx = players.indexOf(state.playerName);
+    
+    let myChainId, myTheme, referenceDrawing = null;
     
     if (phase === 0) {
-        state.myCurrentTheme = chain.originalTheme;
+        // ✅ FASE 0: Disegna il tuo tema originale
+        myTheme = data.initialThemes[state.playerName];
+        myChainId = myIdx;
     } else {
+        // ✅ FASI SUCCESSIVE: Logica rotazione
+        if (numPlayers === 2) {
+            // Con 2 giocatori: A↔B, B↔A
+            myChainId = (myIdx + 1) % 2;
+        } else {
+            // Con 3+: rotazione ciclica offset = floor(phase/2) + 1
+            const offset = Math.floor(phase / 2) + 1;
+            myChainId = (myIdx + offset) % numPlayers;
+        }
+        
+        const chain = data.chains[myChainId];
         const lastStep = chain.steps[chain.steps.length - 1];
-        state.myCurrentTheme = lastStep?.guess || chain.originalTheme;
+        
+        if (lastStep && lastStep.drawing) {
+            myTheme = "RIDISEGNA";
+            referenceDrawing = lastStep.drawing;
+        } else {
+            myTheme = chain.originalTheme;
+        }
     }
     
-    state.isInterpretPhase = false; // ✅ Fase disegno puro
-    showThemeScreen(data, state.myCurrentTheme);
+    state.myCurrentTheme = myTheme;
+    state.receivedDrawing = referenceDrawing;
+    state.myChainId = myChainId;
+    
+    launchCanvas(data);
 }
 
-function getMyChainId(data, phase) {
-    const players = data.players;
-    const myIdx = players.indexOf(state.playerName);
-    const numPlayers = players.length;
-    const chainIdx = (myIdx - Math.floor(phase / 2) + numPlayers) % numPlayers;
-    return chainIdx;
-}
-
-function showThemeScreen(data, theme) {
-    removeBanner();
-    showScreen('theme-screen');
-    
-    const totalPhases = data.settings.rounds * 2;
-    const currentRound = Math.floor(data.currentPhase / 2) + 1;
-    
-    document.getElementById('round-num').textContent = currentRound;
-    document.getElementById('max-rounds').textContent = data.settings.rounds;
-    document.getElementById('current-theme-display').textContent = theme;
-    document.getElementById('time-display').textContent = data.settings.timePerRound;
-    
-    // ✅ Banner fase disegno
-    showBanner({
-        icon: '✏️',
-        title: `ROUND ${currentRound}/${data.settings.rounds} - DISEGNO`,
-        subtitle: `Tema: "${theme}"`,
-        color: '#e94560',
-        buttons: []
-    });
-}
-
-function launchCanvas() {
+function launchCanvas(data) {
     state.isDrawing = true;
     showScreen('game-ui');
     showHomeButton();
@@ -1192,13 +1140,11 @@ function launchCanvas() {
     ctx = canvas.getContext('2d', { willReadFrequently: true });
     setupCanvas(canvas);
     
-    const data = state.roomData;
-    
-    // ✅ Se è fase interpretazione, mostra miniatura riferimento
+    // ✅ Mostra miniatura se presente riferimento
     const refThumbnail = document.getElementById('reference-thumbnail');
     const themeBadge = document.getElementById('canvas-theme-badge');
     
-    if (state.isInterpretPhase && state.receivedDrawing) {
+    if (state.receivedDrawing) {
         refThumbnail.style.display = 'block';
         
         const miniCanvas = document.getElementById('reference-mini-canvas');
@@ -1228,37 +1174,34 @@ function launchCanvas() {
     setSize(8);
     history = [];
     
-    // ✅ TIMER
     timer = data.settings.timePerRound;
     document.getElementById('timer').textContent = timer;
     document.getElementById('timer').classList.remove('warning');
     
-    // ✅ AVVIA TIMER E MOSTRA BANNER CON COUNTDOWN
     startTimerWithBanner();
-    
     attachCanvasListeners();
 }
+
 function startTimerWithBanner() {
     clearInterval(timerInterval);
     
     const data = state.roomData;
-    const fase = state.isInterpretPhase ? 'RIDISEGNA' : 'DISEGNA';
+    const fase = state.receivedDrawing ? 'RIDISEGNA' : 'DISEGNA';
     const tema = state.myCurrentTheme;
     const roundInfo = `Round ${Math.floor(data.currentPhase / 2) + 1}/${data.settings.rounds}`;
     
-    // ✅ CREA BANNER UNA VOLTA SOLA
     removeBanner();
     
     const banner = document.createElement('div');
     banner.id = 'game-banner';
     banner.className = 'game-banner';
-    banner.style.background = state.isInterpretPhase 
+    banner.style.background = state.receivedDrawing 
         ? 'linear-gradient(135deg, #4ecdc4 0%, #26d0ce 100%)'
         : 'linear-gradient(135deg, #e94560 0%, #ff6b9d 100%)';
     
     banner.innerHTML = `
         <div class="banner-left">
-            <span class="banner-icon">${state.isInterpretPhase ? '🎨' : '✏️'}</span>
+            <span class="banner-icon">${state.receivedDrawing ? '🎨' : '✏️'}</span>
             <div>
                 <div class="banner-title">${fase}: ${tema}</div>
                 <div class="banner-subtitle">${roundInfo}</div>
@@ -1280,26 +1223,21 @@ function startTimerWithBanner() {
     
     document.body.appendChild(banner);
     
-    // Aggiorna header del canvas
     const timerEl = document.getElementById('timer');
     if (timerEl) timerEl.textContent = timer;
     
-    // ✅ AVVIA COUNTDOWN - AGGIORNA SOLO IL TESTO (niente ricreazione)
     timerInterval = setInterval(() => {
         timer--;
         
-        // Aggiorna header canvas
         if (timerEl) {
             timerEl.textContent = timer;
             if (timer <= 10) timerEl.classList.add('warning');
         }
         
-        // ✅ AGGIORNA SOLO IL NUMERO NEL BANNER (no flickering!)
         const bannerTimer = document.getElementById('banner-timer');
         if (bannerTimer) {
             bannerTimer.textContent = `${timer}s`;
             
-            // Cambia colore negli ultimi 10 secondi
             if (timer <= 10) {
                 bannerTimer.style.color = '#ff6b6b';
                 bannerTimer.style.textShadow = '0 0 15px #ff6b6b';
@@ -1309,14 +1247,13 @@ function startTimerWithBanner() {
             }
         }
         
-        // TEMPO SCADUTO
         if (timer <= 0) {
             clearInterval(timerInterval);
             finishCurrentPhase();
         }
     }, 1000);
 }
-// ✅ FUNZIONE UNIFICATA per finire fase corrente
+
 async function finishCurrentPhase() {
     clearInterval(timerInterval);
     removeBanner();
@@ -1324,25 +1261,15 @@ async function finishCurrentPhase() {
     
     const data = state.roomData;
     const phase = data.currentPhase;
-    const myChainId = getMyChainId(data, phase);
+    const myChainId = state.myChainId;
     
     const drawingData = compressDrawing(history);
     
-    let step;
-    if (state.isInterpretPhase) {
-        step = {
-            player: state.playerName,
-            type: 'interpret',
-            drawing: drawingData
-        };
-    } else {
-        step = {
-            player: state.playerName,
-            type: 'draw',
-            theme: state.myCurrentTheme,
-            drawing: drawingData
-        };
-    }
+    const step = {
+        player: state.playerName,
+        type: state.receivedDrawing ? 'interpret' : 'draw',
+        drawing: drawingData
+    };
     
     const chainPath = `chains.${myChainId}.steps`;
     const completedPath = `completedPhase.${phase}`;
@@ -1352,48 +1279,13 @@ async function finishCurrentPhase() {
         [completedPath]: firebase.firestore.FieldValue.arrayUnion(state.playerName)
     });
     
-    // Reset stato
-    state.isInterpretPhase = false;
     state.receivedDrawing = null;
     
-    // ✅ Mostra waiting - il listener gestirà l'avanzamento
     const freshDoc = await db.collection("pictionary_rooms").doc(state.roomId).get();
     const freshData = freshDoc.data();
     state.roomData = freshData;
     
     showWaitingScreen(freshData, 'drawing');
-    
-    // ✅ RIMOSSO: checkPhaseComplete() - ora gestito dal listener
-}
-
-// ========================================
-// FASE INTERPRETAZIONE
-// ========================================
-function handleInterpretPhase(data) {
-    const phase = data.currentPhase;
-    const completed = data.completedPhase?.[phase] || [];
-    
-    if (completed.includes(state.playerName)) {
-        showWaitingScreen(data, 'interpreting');
-        return;
-    }
-    
-    const myChainId = getMyChainId(data, phase);
-    const chain = data.chains[myChainId];
-    const lastDrawing = chain.steps[chain.steps.length - 1];
-    
-    if (!lastDrawing || !lastDrawing.drawing) {
-        console.error("Nessun disegno da interpretare!");
-        return;
-    }
-    
-    // ✅ Salva il disegno ricevuto come riferimento
-    state.receivedDrawing = lastDrawing.drawing;
-    state.myCurrentTheme = "COPIA IL DISEGNO";
-    state.isInterpretPhase = true;
-    
-    // ✅ Vai direttamente al canvas con riferimento
-    launchCanvas();
 }
 
 // ========================================
@@ -1408,11 +1300,9 @@ function showWaitingScreen(data, type) {
     const completed = data.completedPhase?.[phase] || [];
     const total = data.players.length;
     
-    // Chi manca
     const remaining = data.players.filter(p => !completed.includes(p));
     
-    document.getElementById('waiting-title').textContent = 
-        type === 'drawing' ? '✏️ DISEGNO INVIATO!' : '🎯 RIDISEGNO INVIATO!';
+    document.getElementById('waiting-title').textContent = '✏️ DISEGNO INVIATO!';
     document.getElementById('waiting-message').textContent = 
         remaining.length > 0 
             ? `In attesa di: ${remaining.join(', ')}`
@@ -1420,7 +1310,6 @@ function showWaitingScreen(data, type) {
     document.getElementById('done-count').textContent = completed.length;
     document.getElementById('total-players').textContent = total;
     
-    // Banner attesa
     showBanner({
         icon: '⏳',
         title: `ATTESA (${completed.length}/${total})`,
@@ -1428,21 +1317,6 @@ function showWaitingScreen(data, type) {
         color: '#9b59b6',
         spinner: true
     });
-}
-
-// ✅ Mantieni per retrocompatibilità ma usa advanceToNextPhase
-async function checkPhaseComplete() {
-    if (!state.isHost) return;
-    
-    const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
-    const data = doc.data();
-    
-    const phase = data.currentPhase;
-    const completed = data.completedPhase?.[phase] || [];
-    
-    if (completed.length >= data.players.length) {
-        advanceToNextPhase(data);
-    }
 }
 
 // ========================================
@@ -1454,7 +1328,6 @@ function handleVotingPhase(data) {
     showHomeButton();
     renderGallery(data);
     
-    // ✅ Banner votazione
     const votedCount = Object.keys(state.myVotes).length;
     const totalChains = Object.keys(data.chains).length;
     
@@ -1505,19 +1378,19 @@ function renderGallery(data) {
                 stepCard.classList.add('voted');
             }
             
-stepCard.innerHTML = `
-    <div class="step-canvas"><canvas id="step-canvas-${chainId}-${stepIdx}"></canvas></div>
-    <div class="step-info">
-        <div class="step-player">${step.player}</div>
-        <div class="step-type" style="font-size: 0.65rem; opacity: 0.6;">
-            ${step.type === 'draw' ? '🎯 Originale' : '🔄 Copia'}
-        </div>
-    </div>
-    <button class="vote-btn ${myVotes[chainId] === step.player ? 'voted' : ''}" 
-            onclick="voteFor('${chainId}', '${step.player}')">
-        ${myVotes[chainId] === step.player ? '⭐ VOTATO' : '👍 VOTA'}
-    </button>
-`;
+            stepCard.innerHTML = `
+                <div class="step-canvas"><canvas id="step-canvas-${chainId}-${stepIdx}"></canvas></div>
+                <div class="step-info">
+                    <div class="step-player">${step.player}</div>
+                    <div class="step-type" style="font-size: 0.65rem; opacity: 0.6;">
+                        ${step.type === 'draw' ? '🎯 Originale' : '🔄 Copia'}
+                    </div>
+                </div>
+                <button class="vote-btn ${myVotes[chainId] === step.player ? 'voted' : ''}" 
+                        onclick="voteFor('${chainId}', '${step.player}')">
+                    ${myVotes[chainId] === step.player ? '⭐ VOTATO' : '👍 VOTA'}
+                </button>
+            `;
             
             flowContainer.appendChild(stepCard);
             
@@ -1547,7 +1420,6 @@ function voteFor(chainId, playerName) {
     state.myVotes[chainId] = playerName;
     renderGallery(state.roomData);
     
-    // ✅ Aggiorna banner
     const votedCount = Object.keys(state.myVotes).length;
     const totalChains = Object.keys(state.roomData.chains).length;
     
@@ -1651,7 +1523,6 @@ function handleResultsPhase(data) {
         ranking.appendChild(row);
     });
     
-    // ✅ Banner risultati
     const isWinner = sorted[0][0] === state.playerName;
     showBanner({
         icon: isWinner ? '👑' : '🏆',
@@ -1674,7 +1545,8 @@ async function playAgain() {
         votes: {},
         scores: {},
         completedPhase: {},
-        ready: []
+        ready: [],
+        initialThemes: {}
     });
 }
 
