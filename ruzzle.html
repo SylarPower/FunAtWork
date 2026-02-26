@@ -2834,55 +2834,71 @@ unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc 
         }
     }
 
-    // ========================================
-    // 4. CONCLUSA
-    // ========================================
-    if (data.stato === "conclusa") {
-        document.getElementById('fixed-home-btn').style.display = 'block';
-        
-        const btnNewEl = document.querySelector('.btn-new');
-        if (btnNewEl) btnNewEl.style.display = 'block';
-        
-        // Rivincita in arrivo?
-        if (data.prossimaPartita) {
+// ========================================
+// 4. CONCLUSA
+// ========================================
+if (data.stato === "conclusa") {
+    document.getElementById('fixed-home-btn').style.display = 'block';
+    
+    const btnNewEl = document.querySelector('.btn-new');
+    if (btnNewEl) btnNewEl.style.display = 'block';
+    
+    // Rivincita proposta?
+    if (data.prossimaPartita) {
+        // Chi ha creato la rivincita viene rediretto automaticamente
+        if (data.prossimaPartitaCreataDa === mioNome) {
             showGameBanner({
-                icon: '🔄',
-                title: 'RIVINCITA IN ARRIVO!',
+                icon: '⏳',
+                title: 'RIVINCITA CREATA!',
                 subtitle: 'Reindirizzamento...',
-                color: '#e74c3c',
+                color: '#27ae60',
                 buttons: [],
                 spinner: true
             });
             
             setTimeout(() => { 
                 window.location.href = `ruzzle.html?matchId=${data.prossimaPartita}`; 
-            }, 2000);
+            }, 1000);
             return;
         }
         
-        // Classifica
-        let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
-        const haVinto = classifica[0][0] === mioNome;
-        let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
-        
+        // Gli altri vedono il banner per accettare/rifiutare
         showGameBanner({
-            icon: haVinto ? '👑' : '🐷',
-            title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
-            subtitle: risultatiStr,
-            color: haVinto ? '#f1c40f' : '#7f8c8d',
+            icon: '🔄',
+            title: 'RIVINCITA PROPOSTA!',
+            subtitle: `${data.prossimaPartitaCreataDa} vuole la rivincita`,
+            color: '#e74c3c',
             buttons: [
-                { text: '🔄 RIVINCITA', onclick: 'apriRivincitaBanner()', special: true }
+                { text: '✅ ACCETTA', onclick: `accettaRivincita('${data.prossimaPartita}')` },
+                { text: '❌ RIFIUTA', onclick: 'rifiutaRivincita()' }
             ]
         });
-        
-        if(haVinto) fireConfettiLight();
-        
-        // Attiva analisi
-        if (!window.analisiGiaAttivata) {
-            window.analisiGiaAttivata = true;
-            setTimeout(() => attivaAnalisiMultiplayerSilent(), 500);
-        }
+        return;
     }
+    
+    // Nessuna rivincita - mostra classifica
+    let classifica = Object.entries(data.punteggi).sort((a,b) => b[1]-a[1]);
+    const haVinto = classifica[0][0] === mioNome;
+    let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+    
+    showGameBanner({
+        icon: haVinto ? '👑' : '🐷',
+        title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
+        subtitle: risultatiStr,
+        color: haVinto ? '#f1c40f' : '#7f8c8d',
+        buttons: [
+            { text: '🔄 RIVINCITA', onclick: 'apriRivincitaBanner()', special: true }
+        ]
+    });
+    
+    if(haVinto) fireConfettiLight();
+    
+    // Attiva analisi
+    if (!window.analisiGiaAttivata) {
+        window.analisiGiaAttivata = true;
+        setTimeout(() => attivaAnalisiMultiplayerSilent(), 500);
+    }
+}
 });
 
         // ✅ LISTENER PROPOSTE
@@ -3092,7 +3108,33 @@ unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc 
         cleanupFirebaseListeners();
         window.location.href = 'index.html';
     }
+function accettaRivincita(nuovoMatchId) {
+    showGameBanner({
+        icon: '🎮',
+        title: 'RIVINCITA ACCETTATA!',
+        subtitle: 'Caricamento...',
+        color: '#27ae60',
+        buttons: [],
+        spinner: true
+    });
+    
+    setTimeout(() => {
+        window.location.href = `ruzzle.html?matchId=${nuovoMatchId}`;
+    }, 500);
+}
 
+function rifiutaRivincita() {
+    showGameBanner({
+        icon: '👋',
+        title: 'RIVINCITA RIFIUTATA',
+        subtitle: 'Puoi tornare alla home o restare qui',
+        color: '#7f8c8d',
+        buttons: [
+            { text: '🏠 TORNA HOME', onclick: 'tornaHome()' },
+            { text: '🔄 ALTRA RIVINCITA', onclick: 'apriRivincitaBanner()' }
+        ]
+    });
+}
 function apriRivincitaBanner() {
     if (!matchId) {
         startNewGame();
@@ -3184,7 +3226,14 @@ async function creaRivincitaConSelettori(bonus, crazy, biatch) {
             dataOra: new Date().toLocaleString('it-IT')
         });
         
-        await db.collection("partite").doc(matchId).update({ prossimaPartita: doc.id });
+        // ✅ Salva chi ha creato la rivincita
+        await db.collection("partite").doc(matchId).update({ 
+            prossimaPartita: doc.id,
+            prossimaPartitaCreataDa: mioNome
+        });
+        
+        // ✅ Chi crea la rivincita viene rediretto subito
+        window.location.href = `ruzzle.html?matchId=${doc.id}`;
         
     } catch(e) {
         console.error("Errore creazione rivincita:", e);
@@ -3339,4 +3388,5 @@ async function creaRivincitaConSelettori(bonus, crazy, biatch) {
 </div>
 </body>
 </html>
+
 
