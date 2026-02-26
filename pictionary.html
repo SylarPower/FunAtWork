@@ -510,6 +510,278 @@
                 transform: scale(2.5) translate(-20%, 10%);
             }
         }
+/* ========================================
+   LAYOUT FULLSCREEN CANVAS
+   ======================================== */
+
+.toolbar-left {
+    width: 80px;
+    background: var(--panel);
+    border-right: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 15px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.tool-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.tool-label {
+    font-size: 0.6rem;
+    font-weight: bold;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.toolbar-left .tool-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 1.4rem;
+}
+
+.size-slider {
+    width: 60px;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    margin: 30px 0;
+    accent-color: var(--primary);
+}
+
+.size-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--bg);
+}
+
+.color-wheel {
+    width: 60px;
+    height: 60px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+}
+
+.color-wheel::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-wheel::-webkit-color-swatch {
+    border-radius: 50%;
+    border: 3px solid var(--border);
+}
+
+.quick-colors {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.qcolor {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.qcolor:hover {
+    transform: scale(1.2);
+    border-color: white;
+}
+
+/* CANVAS AREA FULLSCREEN */
+.canvas-area-fullscreen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: radial-gradient(circle at center, #1e2a4a 0%, var(--bg) 100%);
+    overflow: hidden;
+    padding: 20px;
+}
+
+.canvas-area-fullscreen canvas#mainCanvas {
+    max-width: calc(100vw - 200px);
+    max-height: calc(100vh - 40px);
+    aspect-ratio: 1/1;
+    background: white;
+    border-radius: 12px;
+    border: 3px solid var(--primary);
+    box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.canvas-badge-fullscreen {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--primary) 0%, #ff6b9d 100%);
+    color: white;
+    padding: 12px 30px;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
+    z-index: 50;
+    white-space: nowrap;
+    max-width: 80%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.reference-thumbnail-fullscreen {
+    position: absolute;
+    top: 80px;
+    right: 100px;
+    width: 150px;
+    height: 150px;
+    background: white;
+    border: 4px solid var(--success);
+    border-radius: 12px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+    z-index: 50;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    overflow: hidden;
+}
+
+.reference-thumbnail-fullscreen:hover {
+    transform: scale(2.5);
+    z-index: 200;
+}
+
+.reference-thumbnail-fullscreen canvas {
+    width: 100%;
+    height: calc(100% - 25px);
+}
+
+.reference-thumbnail-fullscreen .ref-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--success);
+    color: white;
+    font-size: 0.55rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 4px;
+}
+
+.reference-thumbnail-fullscreen:hover .ref-label {
+    opacity: 0;
+}
+
+/* INFO BAR DESTRA */
+.info-bar-right {
+    width: 100px;
+    background: var(--panel);
+    border-left: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+    gap: 20px;
+}
+
+.timer-box {
+    text-align: center;
+}
+
+.timer-label {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-bottom: 5px;
+}
+
+.timer-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--success);
+    text-shadow: 0 0 20px var(--success);
+}
+
+.timer-display.warning {
+    color: var(--danger);
+    text-shadow: 0 0 20px var(--danger);
+    animation: pulse 0.5s infinite;
+}
+
+.round-info {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--primary);
+    text-align: center;
+    padding: 8px;
+    background: rgba(233, 69, 96, 0.1);
+    border-radius: 8px;
+}
+
+.player-info {
+    font-size: 0.8rem;
+    font-weight: 900;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .toolbar-left {
+        width: 60px;
+        padding: 5px;
+    }
+    
+    .toolbar-left .tool-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+    
+    .info-bar-right {
+        width: 70px;
+        padding: 10px 5px;
+    }
+    
+    .timer-display {
+        font-size: 1.8rem;
+    }
+    
+    .canvas-area-fullscreen canvas#mainCanvas {
+        max-width: calc(100vw - 150px);
+    }
+    
+    .reference-thumbnail-fullscreen {
+        width: 100px;
+        height: 100px;
+        right: 80px;
+    }
+}
     </style>
 </head>
 <body>
@@ -520,102 +792,93 @@
     <p>Caricamento partita...</p>
 </div>
 
-<!-- LOBBY -->
-<div id="lobby-screen" class="overlay hidden">
-    <div class="card" style="max-width: 550px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>🏠 LOBBY</h2>
-        </div>
-
-        <div style="font-size: 0.8rem; opacity: 0.7; text-align: center; margin-bottom: 15px;">
-            In attesa che tutti i giocatori entrino dalla homepage
-        </div>
+<!-- LOBBY (gestita solo da banner, background neutro) -->
+<div id="lobby-screen" class="overlay hidden" style="justify-content: center; align-items: center;">
+    <div style="text-align: center; padding: 40px;">
+        <div style="font-size: 5rem; margin-bottom: 20px;">🎨</div>
+        <h1 style="margin-bottom: 10px;">PICTIONARY</h1>
+        <p style="opacity: 0.7; margin-bottom: 30px;">In attesa nella lobby...</p>
         
-        <div class="players-grid" id="lobby-players-list"></div>
-
-        <div style="background: var(--bg); padding: 15px; border-radius: 12px;">
-<div style="display: flex; flex-direction: column; gap: 10px;">
-    <div style="text-align: center; padding: 10px; background: rgba(78, 205, 196, 0.1); border-radius: 8px;">
-        <div style="font-size: 0.75rem; opacity: 0.7;">ROUND AUTOMATICI</div>
-        <div style="font-size: 1.2rem; font-weight: 900; color: var(--success);">
-            <span id="auto-rounds-display">2</span> round
-        </div>
-        <div style="font-size: 0.7rem; opacity: 0.5;">= numero giocatori</div>
-    </div>
-    <div>
-        <label style="font-size: 0.75rem; font-weight: bold; display: block; margin-bottom: 5px; opacity: 0.7;">
-            ⏱️ TEMPO PER DISEGNO
-        </label>
-        <select id="lobby-time-select">
-            <option value="30">30 secondi (Veloce)</option>
-            <option value="45">45 secondi</option>
-            <option value="60" selected>60 secondi (Standard)</option>
-            <option value="90">90 secondi (Relax)</option>
-        </select>
-    </div>
-</div>
-        </div>
-
-        <div id="lobby-status" style="padding: 15px; background: rgba(78, 205, 196, 0.1); 
-             border-radius: 10px; border: 2px solid var(--success); display: none;">
-            <div style="font-weight: bold; color: var(--success);">⏳ IN ATTESA</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">
-                Giocatori pronti: <span id="ready-count">0</span>/<span id="total-count">0</span>
-            </div>
-        </div>
-
-        <button class="btn btn-primary" id="lobby-ready-btn" style="width: 100%; padding: 18px;" 
-                onclick="toggleReady()">
-            🚀 SONO PRONTO!
-        </button>
+        <div id="lobby-players-display" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px;"></div>
         
-        <button class="btn btn-secondary" style="width: 100%;" onclick="leaveRoom()">
-            🚪 ESCI
-        </button>
-    </div>
-</div>
-
-<!-- CANVAS -->
-<div id="game-ui" class="app-container hidden">
-    <header>
-        <div class="header-left">
-            <span class="room-tag" id="ui-round-info">ROUND 1/2</span>
-            <span class="player-name" id="ui-player">PLAYER</span>
-        </div>
-        <div id="timer">60</div>
-    </header>
-
-    <div id="game-area">
-        <div class="canvas-wrapper">
-            <div class="canvas-container">
-                <div class="canvas-badge" id="canvas-theme-badge">TEMA</div>
-                <div class="reference-thumbnail" id="reference-thumbnail" style="display: none;">
-                    <canvas id="reference-mini-canvas"></canvas>
-                    <div class="label">👆 HOVER</div>
+        <div style="background: var(--panel); padding: 20px; border-radius: 15px; max-width: 300px; margin: 0 auto;">
+            <div style="text-align: center; padding: 10px; background: rgba(78, 205, 196, 0.1); border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 0.75rem; opacity: 0.7;">ROUND AUTOMATICI</div>
+                <div style="font-size: 1.5rem; font-weight: 900; color: var(--success);">
+                    <span id="auto-rounds-display">2</span> round
                 </div>
-                <canvas id="mainCanvas"></canvas>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="toolbar">
-        <div class="tools-group">
+<!-- CANVAS FULLSCREEN -->
+<div id="game-ui" class="hidden" style="position: fixed; inset: 0; display: flex; background: var(--bg);">
+    
+    <!-- TOOLBAR SINISTRA -->
+    <div class="toolbar-left">
+        <div class="tool-section">
+            <div class="tool-label">🛠️ Strumenti</div>
+            <button class="tool-btn active" id="tool-pen" onclick="setTool('pen')" title="Pennello">✏️</button>
+            <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser')" title="Gomma">🧹</button>
+            <button class="tool-btn" id="tool-bucket" onclick="setTool('bucket')" title="Riempi">🪣</button>
             <button class="tool-btn" onclick="undo()" title="Annulla">↩️</button>
-            <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser')">🧹</button>
-            <button class="tool-btn active" id="tool-pen" onclick="setTool('pen')">✏️</button>
-            <button class="tool-btn" id="tool-bucket" onclick="setTool('bucket')">🪣</button>
+            <button class="tool-btn" onclick="clearCanvas()" title="Pulisci tutto">🗑️</button>
         </div>
-        <div class="tools-group">
-            <button class="tool-btn" id="size-4" onclick="setSize(4)">•</button>
-            <button class="tool-btn active" id="size-8" onclick="setSize(8)">●</button>
-            <button class="tool-btn" id="size-16" onclick="setSize(16)">⬤</button>
-            <button class="tool-btn" id="size-24" onclick="setSize(24)">🔴</button>
+        
+        <div class="tool-section">
+            <div class="tool-label">📏 Dimensione</div>
+            <input type="range" id="brush-size-slider" min="2" max="50" value="8" 
+                   oninput="setSize(this.value)" class="size-slider">
+            <div class="size-preview" id="size-preview"></div>
         </div>
-        <div class="color-palette" id="palette"></div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary" onclick="clearCanvas()">🗑️ RESET</button>
-            <button class="btn btn-success" onclick="finishCurrentPhase()">✅ FATTO</button>
+        
+        <div class="tool-section">
+            <div class="tool-label">🎨 Colore</div>
+            <input type="color" id="color-picker" value="#000000" 
+                   oninput="setColorFromPicker(this.value)" class="color-wheel">
+            <div class="quick-colors">
+                <div class="qcolor" style="background:#000000" onclick="setColorFromPicker('#000000')"></div>
+                <div class="qcolor" style="background:#ffffff" onclick="setColorFromPicker('#ffffff')"></div>
+                <div class="qcolor" style="background:#ff0000" onclick="setColorFromPicker('#ff0000')"></div>
+                <div class="qcolor" style="background:#00ff00" onclick="setColorFromPicker('#00ff00')"></div>
+                <div class="qcolor" style="background:#0000ff" onclick="setColorFromPicker('#0000ff')"></div>
+                <div class="qcolor" style="background:#ffff00" onclick="setColorFromPicker('#ffff00')"></div>
+                <div class="qcolor" style="background:#ff00ff" onclick="setColorFromPicker('#ff00ff')"></div>
+                <div class="qcolor" style="background:#00ffff" onclick="setColorFromPicker('#00ffff')"></div>
+            </div>
         </div>
+        
+        <div class="tool-section" style="margin-top: auto;">
+            <button class="btn btn-success" onclick="finishCurrentPhase()" style="width: 100%;">
+                ✅ FATTO
+            </button>
+        </div>
+    </div>
+    
+    <!-- AREA CANVAS CENTRALE -->
+    <div class="canvas-area-fullscreen">
+        <!-- Badge tema -->
+        <div class="canvas-badge-fullscreen" id="canvas-theme-badge">TEMA</div>
+        
+        <!-- Miniatura riferimento -->
+        <div class="reference-thumbnail-fullscreen" id="reference-thumbnail" style="display: none;">
+            <canvas id="reference-mini-canvas"></canvas>
+            <div class="ref-label">👆 RIFERIMENTO (hover per ingrandire)</div>
+        </div>
+        
+        <!-- Canvas principale -->
+        <canvas id="mainCanvas"></canvas>
+    </div>
+    
+    <!-- INFO BAR DESTRA -->
+    <div class="info-bar-right">
+        <div class="timer-box">
+            <div class="timer-label">⏱️ TEMPO</div>
+            <div id="timer" class="timer-display">60</div>
+        </div>
+        <div class="round-info" id="ui-round-info">ROUND 1/2</div>
+        <div class="player-info" id="ui-player">PLAYER</div>
     </div>
 </div>
 
@@ -674,7 +937,67 @@
         </div>
     </div>
 </div>
+<!-- GUESS IT - DISEGNATORE -->
+<div id="guessit-drawer-screen" class="overlay hidden">
+    <div style="position: fixed; inset: 0; display: flex; background: var(--bg);">
+        <!-- Stessa toolbar del canvas normale -->
+        <div class="toolbar-left">
+            <!-- ... stessi controlli ... -->
+        </div>
+        
+        <div class="canvas-area-fullscreen">
+            <div class="canvas-badge-fullscreen" id="guessit-theme-badge">DISEGNA: ???</div>
+            <canvas id="guessitCanvas"></canvas>
+        </div>
+        
+        <div class="info-bar-right">
+            <div class="timer-box">
+                <div class="timer-label">⏱️ TEMPO</div>
+                <div id="guessit-timer" class="timer-display">60</div>
+            </div>
+            <div style="margin-top: 20px; font-size: 0.8rem; text-align: center;">
+                <div style="opacity: 0.7;">INDOVINATI</div>
+                <div id="guessit-score" style="font-size: 2rem; font-weight: 900; color: var(--success);">0</div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- GUESS IT - INDOVINATORI -->
+<div id="guessit-guesser-screen" class="overlay hidden">
+    <div style="display: flex; flex-direction: column; height: 100%; padding: 20px;">
+        <!-- Canvas in streaming -->
+        <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
+            <canvas id="guessitViewCanvas" style="
+                max-width: 100%;
+                max-height: 60vh;
+                background: white;
+                border-radius: 12px;
+                border: 3px solid var(--primary);
+            "></canvas>
+        </div>
+        
+        <!-- Input per indovinare -->
+        <div style="padding: 20px; background: var(--panel); border-radius: 15px; margin-top: 20px;">
+            <input type="text" id="guess-input" placeholder="Scrivi cosa pensi sia..." 
+                   autocomplete="off" autocorrect="off" spellcheck="false"
+                   style="font-size: 1.2rem; text-align: center;">
+            <button class="btn btn-primary" onclick="submitGuess()" style="width: 100%; margin-top: 10px;">
+                🎯 INDOVINA!
+            </button>
+        </div>
+        
+        <!-- Feed risposte -->
+        <div id="guesses-feed" style="
+            max-height: 150px; 
+            overflow-y: auto; 
+            margin-top: 15px;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 10px;
+        "></div>
+    </div>
+</div>
 <div id="fixed-home-btn">
     <button onclick="tornaHome()">🏠 HOME</button>
 </div>
@@ -915,98 +1238,139 @@ function handleRoomUpdate(doc) {
     console.log(`🔄 Update: stato=${data.stato}, fase=${data.currentPhase}, prev=${prevStato}/${prevPhase}`);
     
     // ✅ GESTISCI IN BASE ALLO STATO CORRENTE
-    switch(data.stato) {
-        case 'lobby': 
-            renderLobby(data); 
-            break;
-        case 'drawing': 
-            handleDrawingPhase(data); 
-            break;
-        case 'voting': 
-            handleVotingPhase(data); 
-            break;
-        case 'results': 
-            handleResultsPhase(data); 
-            break;
-    }
+switch(data.stato) {
+    case 'lobby': 
+        renderLobby(data); 
+        break;
+    case 'drawing': 
+        handleDrawingPhase(data); 
+        break;
+    case 'guessit':  // ✅ NUOVO
+        handleGuessItPhase(data);
+        break;
+    case 'voting': 
+        handleVotingPhase(data); 
+        break;
+    case 'results': 
+        handleResultsPhase(data); 
+        break;
+}
 }
 
 function renderLobby(data) {
-    removeBanner();
     showScreen('lobby-screen');
+    showHomeButton();
     
-    const list = document.getElementById('lobby-players-list');
-    list.innerHTML = '';
-    data.players.forEach(p => {
-        const card = document.createElement('div');
-        card.className = `player-card ${data.ready.includes(p) ? 'ready' : ''} ${p === data.host ? 'host' : ''}`;
-        card.innerHTML = `
-            <div class="name">${p}</div>
-            <div class="status">${data.ready.includes(p) ? '✅ Pronto' : '⏳ In attesa'}</div>
-        `;
-        list.appendChild(card);
-    });
+    // ✅ Aggiorna display giocatori
+    const playersDisplay = document.getElementById('lobby-players-display');
+    if (playersDisplay) {
+        playersDisplay.innerHTML = data.players.map(p => `
+            <div style="
+                background: ${data.ready.includes(p) ? 'var(--success)' : 'var(--accent)'};
+                color: white;
+                padding: 10px 20px;
+                border-radius: 25px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            ">
+                ${p === data.host ? '👑' : ''}
+                ${p}
+                ${data.ready.includes(p) ? '✅' : '⏳'}
+            </div>
+        `).join('');
+    }
     
-    // ✅ Aggiorna display round automatici
+    // ✅ Aggiorna rounds display
     const autoRoundsDisplay = document.getElementById('auto-rounds-display');
     if (autoRoundsDisplay) {
         autoRoundsDisplay.textContent = data.players.length;
     }
     
-    // ✅ Aggiorna selettore tempo
-    const timeSelect = document.getElementById('lobby-time-select');
-    if (timeSelect) {
-        timeSelect.value = data.settings?.timePerRound || 60;
-        
-        const canEdit = state.isHost && !data.sfidaDiretta;
-        timeSelect.disabled = !canEdit;
-        
-        if (canEdit) {
-            timeSelect.onchange = () => updateSettings();
-        } else {
-            timeSelect.onchange = null;
-        }
-    }
-    
-    const readyBtn = document.getElementById('lobby-ready-btn');
-    const statusDiv = document.getElementById('lobby-status');
+    // ✅ Costruisci bottoni per il banner
+    const buttons = [];
     
     if (data.ready.includes(state.playerName)) {
-        readyBtn.innerHTML = '⏸️ ANNULLA';
-        readyBtn.className = 'btn btn-secondary';
-        state.isReady = true;
+        buttons.push({
+            text: '⏸️ ANNULLA',
+            onclick: 'toggleReady()',
+            class: 'btn-secondary'
+        });
     } else {
-        readyBtn.innerHTML = '🚀 SONO PRONTO!';
-        readyBtn.className = 'btn btn-primary';
-        state.isReady = false;
-    }
-    
-    if (data.ready.length > 0) {
-        statusDiv.style.display = 'block';
-        document.getElementById('ready-count').textContent = data.ready.length;
-        document.getElementById('total-count').textContent = data.players.length;
-    } else {
-        statusDiv.style.display = 'none';
-    }
-    
-    if (data.ready.length < data.players.length && data.players.length >= 2) {
-        showBanner({
-            icon: '🎨',
-            title: 'PICTIONARY - LOBBY',
-            subtitle: `${data.ready.length}/${data.players.length} giocatori pronti`,
-            color: '#9b59b6'
+        buttons.push({
+            text: '🚀 SONO PRONTO!',
+            onclick: 'toggleReady()',
+            class: 'btn-primary'
         });
     }
     
+    // ✅ Selettore tempo (solo host)
+    let timeSelector = '';
+    if (state.isHost && !data.sfidaDiretta) {
+        const currentTime = data.settings?.timePerRound || 60;
+        timeSelector = `
+            <select onchange="updateSettings()" id="banner-time-select" style="
+                padding: 8px 12px;
+                border-radius: 8px;
+                border: none;
+                font-weight: bold;
+                cursor: pointer;
+            ">
+                <option value="30" ${currentTime == 30 ? 'selected' : ''}>30s</option>
+                <option value="45" ${currentTime == 45 ? 'selected' : ''}>45s</option>
+                <option value="60" ${currentTime == 60 ? 'selected' : ''}>60s</option>
+                <option value="90" ${currentTime == 90 ? 'selected' : ''}>90s</option>
+            </select>
+        `;
+    }
+    
+    buttons.push({
+        text: '🚪 ESCI',
+        onclick: 'leaveRoom()',
+        class: 'btn-danger'
+    });
+    
+    // ✅ Banner stile Ruzzle
+    removeBanner();
+    const banner = document.createElement('div');
+    banner.id = 'game-banner';
+    banner.className = 'game-banner';
+    banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+    
+    banner.innerHTML = `
+        <div class="banner-left">
+            <span class="banner-icon">🎨</span>
+            <div>
+                <div class="banner-title">PICTIONARY - LOBBY</div>
+                <div class="banner-subtitle">${data.ready.length}/${data.players.length} pronti • ${data.players.length} round</div>
+            </div>
+        </div>
+        <div class="banner-right">
+            ${timeSelector}
+            ${buttons.map(btn => `
+                <button class="btn ${btn.class}" onclick="${btn.onclick}" style="padding: 10px 20px;">
+                    ${btn.text}
+                </button>
+            `).join('')}
+        </div>
+    `;
+    
+    document.body.appendChild(banner);
+    
+    // ✅ Avvio automatico quando tutti pronti
     if (data.ready.length >= data.players.length && data.players.length >= 2 && state.isHost) {
         startGame();
     }
 }
 
 async function updateSettings() {
-    await db.collection("pictionary_rooms").doc(state.roomId).update({
-        'settings.timePerRound': parseInt(document.getElementById('lobby-time-select').value)
-    });
+    const timeSelect = document.getElementById('banner-time-select') || document.getElementById('lobby-time-select');
+    if (timeSelect) {
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'settings.timePerRound': parseInt(timeSelect.value)
+        });
+    }
 }
 
 async function toggleReady() {
@@ -1041,8 +1405,28 @@ async function startGame() {
     const data = state.roomData;
     const players = data.players;
     const numPlayers = players.length;
+    const gameMode = data.settings?.mode || 'classic';
     
-    // ✅ ROUND AUTOMATICI = numero giocatori
+    if (gameMode === 'guessit') {
+        // ✅ MODALITÀ GUESS IT
+        const firstDrawer = players[0];
+        const firstWord = THEMES[Math.floor(Math.random() * THEMES.length)];
+        
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            stato: 'guessit',
+            guessIt: {
+                round: 0,
+                currentDrawer: firstDrawer,
+                currentWord: firstWord,
+                canvasData: null,
+                guesses: {},
+                scores: {}
+            }
+        });
+        return;
+    }
+    
+    // ✅ MODALITÀ CLASSICA (codice esistente)
     const totalRounds = numPlayers;
     
     const seed = cyrb128(state.roomId + Date.now());
@@ -1732,11 +2116,20 @@ function setupCanvas(c) {
 
 function getPos(e, c) {
     const rect = c.getBoundingClientRect();
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
-    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    
+    // ✅ Calcolo preciso considerando la scala del canvas
+    const scaleX = c.width / rect.width;
+    const scaleY = c.height / rect.height;
+    
+    const x = Math.round((clientX - rect.left) * scaleX);
+    const y = Math.round((clientY - rect.top) * scaleY);
+    
+    // ✅ Clamp ai bordi
     return {
-        x: Math.round(((clientX - rect.left) / rect.width) * LOGICAL_SIZE),
-        y: Math.round(((clientY - rect.top) / rect.height) * LOGICAL_SIZE)
+        x: Math.max(0, Math.min(c.width - 1, x)),
+        y: Math.max(0, Math.min(c.height - 1, y))
     };
 }
 
@@ -1829,28 +2222,101 @@ function clearCanvas() {
     }
 }
 
-function floodFill(x, y, color, cx) {
-    const img = cx.getImageData(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
-    const target = getPixel(img, x, y);
-    const fill = hexToRgb(color);
-    if (colorsMatch(target, fill)) return;
+function floodFill(startX, startY, fillColor, context) {
+    const canvas = context.canvas;
+    const width = canvas.width;
+    const height = canvas.height;
     
-    const stack = [[x, y]];
-    const visited = new Set();
+    // Clamp coordinate
+    startX = Math.max(0, Math.min(width - 1, Math.floor(startX)));
+    startY = Math.max(0, Math.min(height - 1, Math.floor(startY)));
     
-    while (stack.length && stack.length < 100000) {
-        const [cx2, cy] = stack.pop();
-        const key = `${cx2},${cy}`;
-        if (visited.has(key)) continue;
-        if (cx2 < 0 || cx2 >= LOGICAL_SIZE || cy < 0 || cy >= LOGICAL_SIZE) continue;
-        if (!colorsMatch(getPixel(img, cx2, cy), target)) continue;
+    const imageData = context.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    
+    const targetColor = getPixelColor(data, startX, startY, width);
+    const fillRgb = hexToRgb(fillColor);
+    
+    // Non riempire se stesso
+    if (colorsMatch(targetColor, fillRgb, 5)) return;
+    
+    const pixelsToCheck = [[startX, startY]];
+    const visited = new Uint8Array(width * height);
+    const tolerance = 30;
+    
+    let iterations = 0;
+    const maxIterations = width * height;
+    
+    while (pixelsToCheck.length > 0 && iterations < maxIterations) {
+        iterations++;
+        const [x, y] = pixelsToCheck.pop();
         
-        visited.add(key);
-        setPixel(img, cx2, cy, fill);
-        stack.push([cx2 + 1, cy], [cx2 - 1, cy], [cx2, cy + 1], [cx2, cy - 1]);
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        
+        const idx = y * width + x;
+        if (visited[idx]) continue;
+        visited[idx] = 1;
+        
+        const currentColor = getPixelColor(data, x, y, width);
+        if (!colorsMatch(currentColor, targetColor, tolerance)) continue;
+        
+        // Riempi pixel
+        const pixelIdx = idx * 4;
+        data[pixelIdx] = fillRgb[0];
+        data[pixelIdx + 1] = fillRgb[1];
+        data[pixelIdx + 2] = fillRgb[2];
+        data[pixelIdx + 3] = 255;
+        
+        // Aggiungi vicini
+        pixelsToCheck.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
-    cx.putImageData(img, 0, 0);
+    context.putImageData(imageData, 0, 0);
+}
+
+function getPixelColor(data, x, y, width) {
+    const idx = (y * width + x) * 4;
+    return [data[idx], data[idx + 1], data[idx + 2]];
+}
+
+function colorsMatch(c1, c2, tolerance = 15) {
+    return Math.abs(c1[0] - c2[0]) <= tolerance &&
+           Math.abs(c1[1] - c2[1]) <= tolerance &&
+           Math.abs(c1[2] - c2[2]) <= tolerance;
+}
+function setColorFromPicker(color) {
+    currentColor = color;
+    document.getElementById('color-picker').value = color;
+    updateSizePreview();
+}
+
+function updateSizePreview() {
+    const preview = document.getElementById('size-preview');
+    if (preview) {
+        const size = Math.min(currentSize, 30);
+        preview.style.width = `${size + 10}px`;
+        preview.style.height = `${size + 10}px`;
+        preview.style.background = currentColor;
+        preview.textContent = currentSize;
+    }
+}
+
+// Aggiorna setSize per includere preview
+const originalSetSize = setSize;
+function setSize(s) {
+    currentSize = parseInt(s);
+    document.querySelectorAll('[id^="size-"]').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`size-${s}`)?.classList.add('active');
+    updateSizePreview();
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+    ] : [0, 0, 0];
 }
 
 function getPixel(d, x, y) {
@@ -1885,15 +2351,7 @@ function setSize(s) {
 }
 
 function renderPalette() {
-    const p = document.getElementById('palette');
-    p.innerHTML = '';
-    COLORS.forEach(c => {
-        const dot = document.createElement('div');
-        dot.className = `color-dot ${c === currentColor ? 'active' : ''}`;
-        dot.style.background = c;
-        dot.onclick = () => { currentColor = c; renderPalette(); };
-        p.appendChild(dot);
-    });
+    updateSizePreview();
 }
 
 // ========================================
@@ -2018,6 +2476,166 @@ function showHomeButton() {
 function hideHomeButton() {
     const btn = document.getElementById('fixed-home-btn');
     if (btn) btn.style.display = 'none';
+}
+    // ========================================
+// MODALITÀ GUESS IT!
+// ========================================
+
+let guessItState = {
+    isDrawer: false,
+    currentWord: null,
+    roundNumber: 0,
+    totalRounds: 5,
+    scores: {},
+    streamInterval: null
+};
+
+function handleGuessItPhase(data) {
+    const currentDrawer = data.guessIt?.currentDrawer;
+    
+    if (currentDrawer === state.playerName) {
+        // Sono il disegnatore
+        guessItState.isDrawer = true;
+        guessItState.currentWord = data.guessIt.currentWord;
+        showGuessItDrawer(data);
+    } else {
+        // Sono un indovinatore
+        guessItState.isDrawer = false;
+        showGuessItGuesser(data);
+    }
+}
+
+function showGuessItDrawer(data) {
+    showScreen('guessit-drawer-screen');
+    showHomeButton();
+    
+    const canvas = document.getElementById('guessitCanvas');
+    const ctx = canvas.getContext('2d');
+    setupCanvas(canvas);
+    
+    document.getElementById('guessit-theme-badge').textContent = 
+        `DISEGNA: ${guessItState.currentWord}`;
+    
+    // Avvia streaming del canvas
+    startCanvasStreaming(canvas);
+    
+    // Timer
+    startGuessItTimer(data.settings?.timePerRound || 60);
+    
+    showBanner({
+        icon: '✏️',
+        title: `DISEGNA: ${guessItState.currentWord}`,
+        subtitle: 'Gli altri devono indovinare!',
+        color: '#e94560'
+    });
+}
+
+function showGuessItGuesser(data) {
+    showScreen('guessit-guesser-screen');
+    showHomeButton();
+    
+    const drawer = data.guessIt?.currentDrawer;
+    
+    showBanner({
+        icon: '🔮',
+        title: 'INDOVINA!',
+        subtitle: `${drawer} sta disegnando...`,
+        color: '#9b59b6'
+    });
+    
+    // Ascolta streaming canvas
+    listenToCanvasStream();
+    
+    // Focus sull'input
+    document.getElementById('guess-input').focus();
+    
+    // Listener per Enter
+    document.getElementById('guess-input').onkeypress = (e) => {
+        if (e.key === 'Enter') submitGuess();
+    };
+}
+
+function startCanvasStreaming(canvas) {
+    // Invia lo stato del canvas ogni 500ms
+    guessItState.streamInterval = setInterval(async () => {
+        const dataUrl = canvas.toDataURL('image/png', 0.5);
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'guessIt.canvasData': dataUrl,
+            'guessIt.lastUpdate': Date.now()
+        });
+    }, 500);
+}
+
+function listenToCanvasStream() {
+    // Il listener principale già gestisce gli update
+}
+
+async function submitGuess() {
+    const input = document.getElementById('guess-input');
+    const guess = input.value.trim().toUpperCase();
+    
+    if (!guess) return;
+    
+    input.value = '';
+    
+    // Invia la risposta
+    await db.collection("pictionary_rooms").doc(state.roomId).update({
+        [`guessIt.guesses.${Date.now()}`]: {
+            player: state.playerName,
+            guess: guess,
+            timestamp: Date.now()
+        }
+    });
+}
+
+function startGuessItTimer(seconds) {
+    let remaining = seconds;
+    const timerEl = document.getElementById('guessit-timer');
+    
+    const interval = setInterval(() => {
+        remaining--;
+        if (timerEl) timerEl.textContent = remaining;
+        
+        if (remaining <= 10) timerEl?.classList.add('warning');
+        
+        if (remaining <= 0) {
+            clearInterval(interval);
+            endGuessItRound();
+        }
+    }, 1000);
+}
+
+async function endGuessItRound() {
+    if (guessItState.streamInterval) {
+        clearInterval(guessItState.streamInterval);
+    }
+    
+    if (state.isHost) {
+        // Passa al prossimo round o termina
+        const data = state.roomData;
+        const nextRound = (data.guessIt?.round || 0) + 1;
+        
+        if (nextRound >= guessItState.totalRounds) {
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                stato: 'results',
+                scores: guessItState.scores
+            });
+        } else {
+            // Prossimo disegnatore
+            const players = data.players;
+            const nextDrawerIdx = nextRound % players.length;
+            const nextDrawer = players[nextDrawerIdx];
+            const nextWord = THEMES[Math.floor(Math.random() * THEMES.length)];
+            
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                'guessIt.round': nextRound,
+                'guessIt.currentDrawer': nextDrawer,
+                'guessIt.currentWord': nextWord,
+                'guessIt.canvasData': null,
+                'guessIt.guesses': {}
+            });
+        }
+    }
 }
 </script>
 
