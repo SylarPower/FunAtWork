@@ -1,1696 +1,1624 @@
 <!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#121212">
-    <meta name="description" content="Portale giochi Fun at Work">
-    <link rel="icon" href="data:image/svg+xml,
-							<svg
-								xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-								<text y='.9em' font-size='90'>🐷</text>
-							</svg>">
-    <!-- ✅ PRECONNECT per velocità -->
-    <link rel="preconnect" href="https://www.gstatic.com">
-    <link rel="preconnect" href="https://firestore.googleapis.com">
-    <title>Portale FaW</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <!-- <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script> -->
-    <style>
-      /* ✅ RESET E BASE */
-      * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      html {
-        scroll-behavior: smooth;
-      }
-
-      body {
-        font-family: 'Segoe UI', sans-serif;
-        background: #121212;
-        color: #eee;
-        padding: 20px;
-        margin: 0;
-        min-height: 100vh;
-      }
-
-      .container {
-        max-width: 800px;
-        margin: auto;
-      }
-
-      .box {
-        background: #1e1e1e;
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        border: 1px solid #333;
-      }
-
-      h1,
-      h3 {
-        color: #03dac6;
-        margin-top: 0;
-      }
-
-      /* ========================================
-   🎮 PULSANTI - STILE RUZZLE (Semplici e Leggeri)
-   ======================================== */
-      button {
-        padding: 10px 20px;
-        border-radius: 6px;
-        border: 1px solid #555;
-        background: #1e1e1e;
-        color: #eee;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: background 0.15s ease, transform 0.1s ease;
-      }
-
-      button:hover {
-        background: #2d2d2d;
-      }
-
-      button:active {
-        transform: scale(0.97);
-      }
-
-      /* Pulsante primario (verde acqua) */
-      .btn-primary {
-        background: #03dac6 !important;
-        color: #000 !important;
-        border-color: #018786 !important;
-        font-weight: bold;
-      }
-
-      .btn-primary:hover {
-        background: #00c4b0 !important;
-      }
-
-      /* Pulsante pericolo (rosso) */
-      .btn-danger {
-        background: #cf6679 !important;
-        color: white !important;
-        border-color: #b00020 !important;
-      }
-
-      /* Pulsante secondario (grigio) */
-      .btn-secondary {
-        background: #444 !important;
-        color: #eee !important;
-      }
-
-      @keyframes fadeInOut {
-        0% {
-          opacity: 0;
-          transform: translateX(-50%) translateY(20px);
-        }
-
-        15% {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-        }
-
-        85% {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-        }
-
-        100% {
-          opacity: 0;
-          transform: translateX(-50%) translateY(-20px);
-        }
-      }
-
-      /* ========================================
-   📝 INPUT E SELECT
-   ======================================== */
-      input,
-      select {
-        width: 100%;
-        padding: 12px;
-        margin: 10px 0;
-        background: #2c2c2c;
-        color: white;
-        border: 1px solid #444;
-        border-radius: 6px;
-        font-size: 1rem;
-      }
-
-      input:focus,
-      select:focus {
-        outline: none;
-        border-color: #03dac6;
-      }
-
-      /* ========================================
-   👤 LISTA UTENTI/AMICI
-   ======================================== */
-      .user-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #252525;
-        padding: 12px;
-        margin: 8px 0;
-        border-radius: 8px;
-        cursor: pointer;
-        border: 1px solid transparent;
-        transition: all 0.2s;
-      }
-
-      .user-item:hover {
-        border-color: #444;
-        background: #2a2a2a;
-      }
-
-      .user-item.selected {
-        background: #03dac6 !important;
-        color: #000 !important;
-        border-color: white;
-      }
-
-      /* ✅ Forza tutti i testi interni a nero quando selezionato */
-      .user-item.selected * {
-        color: #000 !important;
-      }
-
-      /* Pulsante sfida multipla */
-      .btn-sfida-multi {
-        background: #f1c40f !important;
-        color: #000 !important;
-        border: none !important;
-        width: 100%;
-        height: 50px;
-        font-size: 1.1rem;
-        margin-bottom: 15px;
-        display: none;
-        font-weight: bold;
-      }
-
-      /* Pulsante elimina piccolo */
-      .btn-del {
-        background: #cf6679 !important;
-        color: white !important;
-        padding: 5px 10px;
-        font-size: 0.8rem;
-        border: none !important;
-      }
-
-      /* ========================================
-   🎮 PARTITE LIVE E STORICO
-   ======================================== */
-      .live-match {
-        border-left: 5px solid #f1c40f;
-      }
-
-      .history-item {
-        font-size: 0.85rem;
-        border-bottom: 1px solid #333;
-        padding: 8px 0;
-        display: flex;
-        justify-content: space-between;
-      }
-
-      /* ========================================
-   👤 USER DISPLAY
-   ======================================== */
-      #user-display {
-        background: #03dac6;
-        color: #000;
-        padding: 5px 15px;
-        border-radius: 20px;
-        display: inline-block;
-        font-weight: bold;
-      }
-
-      /* ========================================
-   🎮 GAME CARDS
-   ======================================== */
-      .game-card {
-        min-width: 100px;
-        padding: 15px;
-        background: #252525;
-        border-radius: 10px;
-        text-align: center;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: 0.3s;
-      }
-
-      .game-card:hover {
-        border-color: #444;
-      }
-
-      .game-card.selected {
-        border-color: #03dac6;
-        background: #1a3a3a;
-      }
-
-      /* ========================================
-   🎯 MODAL
-   ======================================== */
-      .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        z-index: 10000;
-        justify-content: center;
-        align-items: center;
-      }
-
-      .modal-content {
-        background: #1e1e1e;
-        padding: 30px;
-        border-radius: 15px;
-        width: 90%;
-        max-width: 450px;
-        border: 2px solid #333;
-      }
-
-      .modal-content h2 {
-        color: #03dac6;
-        margin-top: 0;
-        text-align: center;
-      }
-
-      /* ========================================
-   🎮 PULSANTI MODALITÀ GIOCO (Come Ruzzle)
-   ======================================== */
-      .mode-buttons {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-        flex-wrap: wrap;
-        margin-top: 15px;
-      }
-
-      .btn-mode {
-        flex: 1;
-        min-width: 80px;
-        padding: 12px 15px;
-        border: 1px solid #555;
-        border-radius: 6px;
-        background: #1e1e1e;
-        color: #eee;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.85rem;
-        transition: all 0.15s ease;
-      }
-
-      .btn-mode:hover {
-        background: #2d2d2d;
-        border-color: #777;
-      }
-
-      .btn-mode:active {
-        transform: scale(0.97);
-      }
-
-      /* Annulla nel modal */
-      .btn-cancel {
-        background: none !important;
-        border: none !important;
-        color: #777 !important;
-        margin-top: 15px;
-        font-size: 0.9rem;
-      }
-
-      .btn-cancel:hover {
-        color: #aaa !important;
-      }
-
-      /* ========================================
-   📊 STATISTICHE HOMEPAGE
-   ======================================== */
-      .stats-tabs {
-        display: flex;
-        gap: 5px;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #333;
-        padding-bottom: 10px;
-      }
-
-      .stats-tab {
-        flex: 1;
-        padding: 8px 12px;
-        background: #2c2c2c;
-        border: 1px solid #444;
-        border-radius: 6px 6px 0 0;
-        color: #888;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.2s;
-      }
-
-      .stats-tab.active {
-        background: #03dac6;
-        color: #000;
-        border-color: #03dac6;
-      }
-
-      .stats-tab:hover:not(.active) {
-        background: #3c3c3c;
-        color: #fff;
-      }
-
-      .stats-grid-home {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-      }
-
-      @media (min-width: 500px) {
-        .stats-grid-home {
-          grid-template-columns: repeat(4, 1fr);
-        }
-      }
-
-      .stat-box {
-        background: #252525;
-        padding: 15px 10px;
-        border-radius: 10px;
-        text-align: center;
-        border: 1px solid #333;
-        transition: transform 0.2s;
-      }
-
-      .stat-box:hover {
-        transform: scale(1.03);
-      }
-
-      .stat-box.highlight {
-        background: linear-gradient(135deg, #1a3a3a 0%, #0d2626 100%);
-        border-color: #03dac6;
-      }
-
-      .stat-number {
-        font-size: 1.8rem;
-        font-weight: 900;
-        color: #03dac6;
-        line-height: 1.2;
-      }
-
-      .stat-desc {
-        font-size: 0.75rem;
-        color: #888;
-        margin-top: 5px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      /* Grafico settimanale */
-      .weekly-bars {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        height: 100px;
-        padding: 10px;
-        background: #1a1a1a;
-        border-radius: 8px;
-        gap: 5px;
-      }
-
-      .day-bar {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .day-bar .bar {
-        width: 100%;
-        max-width: 30px;
-        background: linear-gradient(to top, #03dac6, #018786);
-        border-radius: 4px 4px 0 0;
-        min-height: 5px;
-        transition: height 0.5s ease;
-      }
-
-      .day-bar .bar.today {
-        background: linear-gradient(to top, #f1c40f, #e67e22);
-        box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
-      }
-
-      .day-bar .label {
-        font-size: 0.65rem;
-        color: #666;
-        text-transform: uppercase;
-      }
-
-      .day-bar .count {
-        font-size: 0.7rem;
-        color: #03dac6;
-        font-weight: bold;
-      }
-
-      /* ========================================
-   📱 RESPONSIVE
-   ======================================== */
-      @media (max-width: 400px) {
-        .mode-buttons {
-          flex-direction: column;
-        }
-
-        .btn-mode {
-          width: 100%;
-        }
-      }
-
-      /* Nascondi badge reCAPTCHA (opzionale) */
-      .grecaptcha-badge {
-        visibility: hidden;
-      }
-
-      /* ========================================
-   🎮 GAME BANNER (come in Ruzzle)
-   ======================================== */
-      .game-banner {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        padding: 15px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 99999;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        animation: slideDown 0.3s ease;
-        color: white;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      @keyframes slideDown {
-        from {
-          transform: translateY(-100%);
-        }
-
-        to {
-          transform: translateY(0);
-        }
-      }
-
-      .game-banner .banner-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .game-banner .banner-right {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .game-banner select {
-        padding: 6px 10px;
-        border-radius: 4px;
-        border: none;
-        font-size: 0.85rem;
-        background: white;
-        color: #333;
-        margin: 0;
-        width: auto;
-      }
-
-      .game-banner .btn-banner {
-        padding: 8px 14px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 0.85rem;
-        transition: transform 0.1s;
-      }
-
-      .game-banner .btn-banner:active {
-        transform: scale(0.95);
-      }
-
-      .game-banner .btn-cancel-banner {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-
-      .game-banner .btn-cancel-banner:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-
-      @media (max-width: 600px) {
-        .game-banner {
-          flex-direction: column;
-          text-align: center;
-          padding: 15px;
-        }
-
-        .game-banner .banner-left,
-        .game-banner .banner-right {
-          justify-content: center;
-          width: 100%;
-        }
-
-        .game-banner .banner-right {
-          margin-top: 10px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <!-- LOGIN -->
-      <div id="login-div" class="box">
-        <h1>Login dei 🐷</h1>
-        <input type="text" id="username" placeholder="IL TUO NOME">
-        <input type="password" id="password" placeholder="PASSWORD">
-        <button onclick="entra()" class="btn-primary" style="width:100%; height:50px; font-size:1rem;">ENTRA / REGISTRATI</button>
-      </div>
-      <!-- DASHBOARD -->
-      <div id="main-app" style="display:none;">
-        <div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
-          <div id="user-display"></div>
-          <button id="btn-disponibilita" onclick="toggleDisponibilita()" style="padding:8px 15px; border-radius:20px; border:none; cursor:pointer; font-weight:bold; font-size:0.85rem;"></button>
-        </div>
-        <div class="box">
-          <h3>🎮 Partite In Corso</h3>
-          <div id="lista-partite"></div>
-        </div>
-        <div class="box">
-          <h3>🎮 Scegli il Gioco</h3>
-          <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:10px;">
-            <div class="game-card selected" onclick="selezionaGioco('ruzzle', this)" id="game-ruzzle">
-              <span style="font-size:2rem;">🔠</span>
-              <br>Ruzzle
-            </div>
-            <div class="game-card" style="opacity:0.3; cursor:not-allowed; pointer-events:none;">
-              <span style="font-size:2rem;">❌</span>
-              <br>Prossimamente
-            </div>
-            <!-- Aggiungerai qui i futuri giochi -->
-          </div>
-        </div>
-        <div class="box">
-          <h3>⭐ I tuoi Amici</h3>
-          <p style="font-size:0.8rem; opacity:0.6;">Clicca sui nomi per selezionare più amici e sfidarli insieme!</p>
-          <button id="btn-sfida-multipla" class="btn-sfida-multi" onclick="apriModalSfida()">SFIDA IL GRUPPO ⚔️</button>
-          <div id="lista-amici"></div>
-        </div>
-        <div class="box">
-          <h3>🌍 Altri Colleghi Online</h3>
-          <div id="lista-global"></div>
-        </div>
-        <!-- BOX STATISTICHE GIORNALIERE -->
-        <div class="box">
-          <h3>📊 Le Tue Statistiche</h3>
-          <!-- Tab per cambiare vista -->
-          <div class="stats-tabs">
-            <button class="stats-tab active" onclick="showStatsTab('oggi')">Oggi</button>
-            <button class="stats-tab" onclick="showStatsTab('settimana')">Settimana</button>
-            <button class="stats-tab" onclick="showStatsTab('sempre')">Sempre</button>
-          </div>
-          <!-- Contenuto statistiche -->
-          <div id="stats-content">
-            <div class="stats-grid-home">
-              <div class="stat-box">
-                <div class="stat-number" id="stat-oggi-totale">0</div>
-                <div class="stat-desc">Partite Oggi</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-number" id="stat-oggi-ruzzle">0</div>
-                <div class="stat-desc">🎲 Ruzzle</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-number" id="stat-media">0</div>
-                <div class="stat-desc">Media/Giorno</div>
-              </div>
-              <div class="stat-box highlight">
-                <div class="stat-number" id="stat-top-day">-</div>
-                <div class="stat-desc">🏆 Giorno Top</div>
-              </div>
-            </div>
-            <!-- Dettaglio ultimi 7 giorni -->
-            <div id="stats-weekly-chart" style="margin-top:15px; display:none;">
-              <div class="weekly-bars" id="weekly-bars"></div>
-            </div>
-            <!-- Statistiche totali -->
-            <div id="stats-sempre" style="display:none;">
-              <div class="stats-grid-home">
-                <div class="stat-box">
-                  <div class="stat-number" id="stat-totale-partite">0</div>
-                  <div class="stat-desc">Partite Totali</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-number" id="stat-giorni-attivi">0</div>
-                  <div class="stat-desc">Giorni Attivi</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-number" id="stat-streak">0</div>
-                  <div class="stat-desc">🔥 Streak Attuale</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-number" id="stat-best-streak">0</div>
-                  <div class="stat-desc">⚡ Best Streak</div>
-                </div>
-              </div>
-            </div>
-            <div style="margin-top:20px; text-align:center; border-top:1px solid #333; padding-top:15px;">
-              <button onclick="resetTutteLeStatistiche()" class="btn-danger" style="font-size:0.8rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7"> 🗑️ Azzera Statistiche </button>
-            </div>
-          </div>
-        </div>
-        <div class="box">
-          <h3>📜 Storico Partite</h3>
-          <div id="lista-storico"></div>
-        </div>
-        <button onclick="logout()" class="btn-secondary" style="width:100%; margin-top:20px;">ESCI (LOGOUT)</button>
-      </div>
-    </div>
-    <script>
-      // --- 1. CONFIGURAZIONE FIREBASE ---
-      const firebaseConfig = {
-        apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
-        authDomain: "funatwork-cd237.firebaseapp.com",
-        projectId: "funatwork-cd237",
-        storageBucket: "funatwork-cd237.firebasestorage.app",
-        messagingSenderId: "798226885203",
-        appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
-      };
-      firebase.initializeApp(firebaseConfig);
-      /*const appCheck = firebase.appCheck();
-      appCheck.activate(
-          '6Lcm8XcsAAAAAM0hTFXbGRLHYZAW9ZPcZkKbxGIR', // 👈 LA TUA CHIAVE
-          true
-      );*/
-      const db = firebase.firestore();
-      // Debug: verifica che App Check sia attivo
-      /*console.log('✅ Firebase inizializzato');
-      console.log('✅ App Check attivato');*/
-      let mioNome = localStorage.getItem('mioNome') || "";
-      let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
-      let amiciSelezionati = new Set();
-      let giocoSelezionato = "ruzzle";
-      // ✅ CONFIGURAZIONE GIOCHI (aggiungi qui nuovi giochi)
-      const GIOCHI_CONFIG = {
-        ruzzle: {
-          nome: "Ruzzle",
-          icona: "🔠",
-          opzioni: [{
-            id: "tempo",
-            label: "Durata",
-            default: "60",
-            valori: [{
-              value: "45",
-              label: "45s"
-            }, {
-              value: "60",
-              label: "60s"
-            }, {
-              value: "90",
-              label: "90s"
-            }, {
-              value: "180",
-              label: "180s"
-            }, {
-              value: "300",
-              label: "300s"
-            }]
-          }, {
-            id: "griglia",
-            label: "Griglia",
-            default: "5",
-            valori: [{
-              value: "4",
-              label: "4x4"
-            }, {
-              value: "5",
-              label: "5x5"
-            }, {
-              value: "6",
-              label: "6x6"
-            }, {
-              value: "7",
-              label: "7x7"
-            }, {
-              value: "10",
-              label: "10x10"
-            }]
-          }],
-          modalita: [{
-            id: "classic",
-            label: "CLASSICA",
-            colore: "white",
-            testo: "#333"
-          }, {
-            id: "bonus",
-            label: "BONUS ⭐",
-            colore: "#f1c40f",
-            testo: "#333"
-          }, {
-            id: "crazy",
-            label: "CRAZY 🤪",
-            colore: "#e74c3c",
-            testo: "white"
-          }, {
-            id: "biatch",
-            label: "BIATCH 💅",
-            colore: "#ff00ff",
-            testo: "white"
-          }],
-          minGiocatori: 1,
-          maxGiocatori: 10
-        }
-        // Aggiungerai qui altri giochi in futuro
-      };
-      // Debug helper
-      function debugLog(msg) {
-        console.log(msg);
-      }
-      if (mioNome && passwordHashSalvato) {
-        window.onload = async () => {
-          try {
-            const userRef = db.collection("utenti").doc(mioNome);
-            const doc = await userRef.get();
-            if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
-              document.getElementById('login-div').style.display = 'none';
-              document.getElementById('main-app').style.display = 'block';
-              document.getElementById('user-display').textContent = "👤 " + mioNome;
-              aggiornaUIDisponibilita();
-              aggiornaPresenza();
-              setInterval(aggiornaPresenza, 20000);
-              listen();
-              caricaStorico();
-            } else {
-              // Hash non valido, richiedi login
-              localStorage.removeItem('passwordHash');
-              debugLog('❌ Hash non valido');
-            }
-          } catch (e) {
-            console.error("Errore auto-login:", e);
-            debugLog('❌ Errore: ' + e.message);
-          }
-        };
-      }
-      // Funzione per creare hash SHA-256 (sicuro lato client)
-      async function hashPassword(password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      }
-      async function entra(isAuto = false) {
-        const n = document.getElementById('username').value.trim().toUpperCase();
-        const p = document.getElementById('password').value.trim();
-        if (n.length < 2 || p.length < 3) {
-          if (!isAuto) alert("Nome minimo 2 caratteri, password minimo 3");
-          return;
-        }
-        const btn = document.querySelector('#login-div button');
-        const originalText = btn.textContent;
-        btn.textContent = '⏳ Caricamento...';
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-        btn.style.cursor = 'not-allowed';
-        try {
-          const passwordHash = await hashPassword(p);
-          const userRef = db.collection("utenti").doc(n);
-          const doc = await userRef.get();
-          if (doc.exists) {
-            if (doc.data().passwordHash !== passwordHash) {
-              if (!isAuto) alert("❌ Password Errata!");
-              return;
-            }
-          } else {
-            if (confirm("👋 Nuovo utente? Registrati con questa password.")) {
-              await userRef.set({
-                nome: n,
-                passwordHash: passwordHash
-              });
-            } else return;
-          }
-          mioNome = n;
-          localStorage.setItem('mioNome', n);
-          localStorage.setItem('passwordHash', passwordHash);
-          document.getElementById('login-div').style.display = 'none';
-          document.getElementById('main-app').style.display = 'block';
-          document.getElementById('user-display').textContent = "👤 " + mioNome;
-          aggiornaUIDisponibilita();
-          aggiornaPresenza();
-          setInterval(aggiornaPresenza, 20000);
-          listen();
-          caricaStorico();
-        } catch (e) {
-          console.error("❌ Errore login:", e);
-          alert("❌ Errore di connessione. Verifica le regole Firestore:\n" + e.message);
-        } finally {
-          // ✅ RIPRISTINA IL PULSANTE (anche in caso di errore)
-          btn.textContent = originalText;
-          btn.disabled = false;
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        }
-      }
-      async function aggiornaPresenza() {
-        let inPartita = false;
-        let partitaId = null;
-        try {
-          const snap = await db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato", "in", ["attesa", "in_corso"]).get();
-          // ✅ Controlla ogni partita trovata
-          snap.forEach(doc => {
-            const p = doc.data();
-            const rifiutanti = p.rivincitaRifiutataDa || [];
-            // ✅ Considera "in partita" SOLO se:
-            // 1. Nessuno ha rifiutato
-            // 2. La partita è effettivamente attiva (in_corso) o tutti hanno accettato
-            if (rifiutanti.length === 0) {
-              // Nessun rifiuto - controlla se è in corso o se tutti hanno accettato
-              if (p.stato === "in_corso") {
-                inPartita = true;
-                partitaId = doc.id;
-              } else if (p.stato === "attesa") {
-                // In attesa: sono "in partita" solo se ho accettato o sono il creatore
-                const accettanti = p.rivincitaAccettataDa || [];
-                const sonoCreatore = p.partecipanti[0] === mioNome;
-                const hoAccettato = accettanti.includes(mioNome);
-                if (sonoCreatore || hoAccettato) {
-                  inPartita = true;
-                  partitaId = doc.id;
-                }
-              }
-            }
-            // Se qualcuno ha rifiutato, NON è considerata partita attiva
-          });
-        } catch (e) {
-          console.error("Errore aggiornaPresenza:", e);
-        }
-        db.collection("presenze").doc(mioNome).set({
-          nome: mioNome,
-          last: Date.now(),
-          inPartita: inPartita,
-          partitaId: partitaId,
-          disponibile: localStorage.getItem('disponibile') !== 'false'
-        });
-      }
-
-      function listen() {
-        // ✅ VARIABILE CONDIVISA tra i due listener
-        let presenzeData = {};
-        let amicizieSnapshot = null;
-        // LISTENER 1: Presenze (si aggiorna ogni 20 secondi quando aggiorni presenza)
-        db.collection("presenze").onSnapshot(presSnap => {
-          // Aggiorna cache presenze
-          presenzeData = {};
-          presSnap.forEach(doc => {
-            const u = doc.data();
-            if (u.last > Date.now() - 60000) {
-              presenzeData[u.nome] = u;
-            }
-          });
-          // Se abbiamo già i dati amicizie, aggiorna la vista
-          if (amicizieSnapshot) {
-            aggiornaListaAmici(amicizieSnapshot, presenzeData);
-          }
-          // Aggiorna lista globale
-          aggiornaListaGlobale(presenzeData);
-        });
-        // LISTENER 2: Amicizie (si aggiorna solo quando aggiungi/rimuovi amici)
-        db.collection("amicizie").onSnapshot(snap => {
-          amicizieSnapshot = snap;
-          aggiornaListaAmici(snap, presenzeData);
-        });
-        // LISTENER 3: Partite
-        db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
-          const div = document.getElementById('lista-partite');
-          div.innerHTML = `
-														<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'">
-															<span>🎯 Allenamento Solo</span>
-															<button>GIOCA</button>
-														</div>`;
-          snap.forEach(doc => {
-            const p = doc.data();
-            const partitaId = doc.id;
-            // ✅ Salta partite concluse
-            if (p.stato === "conclusa") return;
-            // ✅ GESTIONE RIFIUTI (stile rivincita)
-            const rifiutanti = p.rivincitaRifiutataDa || [];
-            const accettanti = p.rivincitaAccettataDa || [];
-            const creatore = p.partecipanti[0];
-            const altriGiocatori = p.partecipanti.filter(x => x !== creatore);
-            // Se qualcuno ha rifiutato, mostra notifica
-            if (rifiutanti.length > 0) {
-              const ioHoRifiutato = rifiutanti.includes(mioNome);
-              if (ioHoRifiutato) {
-                div.innerHTML += `
-														<div class="user-item" style="background:#7f8c8d; color:white; opacity:0.7;">
-															<span>👋 Hai rifiutato la sfida di ${creatore}</span>
-															<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
-														</div>`;
-              } else {
-                div.innerHTML += `
-														<div class="user-item" style="background:#cf6679; color:white;">
-															<span>😔 Sfida annullata: ${rifiutanti.join(', ')} ha rifiutato</span>
-															<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
-														</div>`;
-              }
-              return;
-            }
-            // ✅ STATO: ATTESA
-            if (p.stato === "attesa") {
-              // Sono il creatore?
-              if (creatore === mioNome) {
-                // Ho già accettato di default (sono io che ho creato)
-                const numAccettanti = accettanti.length + 1; // +1 per me
-                const totale = p.partecipanti.length;
-                if (numAccettanti < totale) {
-                  // Attendo che altri accettino
-                  div.innerHTML += `
-														<div class="user-item" style="background:#9b59b6; color:white;">
-															<span>⏳ Sfida creata: in attesa (${numAccettanti}/${totale})</span>
-															<div>
-																<button onclick="event.stopPropagation(); window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-																<button onclick="event.stopPropagation(); annullaSfida('${partitaId}')" style="background:#cf6679; margin-left:5px;">🚫 ANNULLA</button>
-															</div>
-														</div>`;
-                } else {
-                  // Tutti hanno accettato
-                  div.innerHTML += `
-														<div class="user-item live-match">
-															<span>✅ Sfida vs ${altriGiocatori.join(', ')} (${p.gioco})</span>
-															<div>
-																<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-																<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
-															</div>
-														</div>`;
-                }
-              } else {
-                // Sono stato sfidato
-                if (accettanti.includes(mioNome)) {
-                  // Ho già accettato
-                  const numAccettanti = accettanti.length + 1; // +1 per il creatore
-                  const totale = p.partecipanti.length;
-                  div.innerHTML += `
-														<div class="user-item" style="background:#2ecc71; color:white;">
-															<span>✅ Hai accettato: attesa altri (${numAccettanti}/${totale})</span>
-															<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#fff; color:#000;">ENTRA</button>
-														</div>`;
-                } else {
-                  // Devo ancora accettare/rifiutare
-                  div.innerHTML += `
-														<div class="user-item" style="background:#f1c40f; color:black; border:3px solid #e67e22;">
-															<span style="font-weight:bold;">⚔️ SFIDA DA ${creatore}</span>
-															<div>
-																<button onclick="event.stopPropagation(); accettaSfida('${partitaId}')" style="background:#2ecc71; color:white;">✅ ACCETTA</button>
-																<button onclick="event.stopPropagation(); rifiutaSfida('${partitaId}')" style="background:#cf6679; color:white; margin-left:5px;">❌ RIFIUTA</button>
-															</div>
-														</div>`;
-                }
-              }
-            } else {
-              // ✅ STATO: IN_CORSO o VERIFICA
-              const altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
-              div.innerHTML += `
-														<div class="user-item live-match">
-															<span>vs ${altri} (${p.gioco})</span>
-															<div>
-																<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
-																<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
-															</div>
-														</div>`;
-            }
-          });
-        });
-      }
-      // FUNZIONE 1: Aggiorna lista amici
-      function aggiornaListaAmici(amicizieSnap, presenzeData) {
-        const div = document.getElementById('lista-amici');
-        div.innerHTML = "";
-        const amiciSet = new Set();
-        amicizieSnap.forEach(doc => {
-          const d = doc.data();
-          // Richieste pendenti
-          if (d.a === mioNome && d.stato === 'pendente') {
-            div.innerHTML += `
-														<div class="user-item" style="background:#3700b3; color:white;">
-															<span>🤝 Richiesta da: ${d.da}</span>
-															<button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
-														</div>`;
-            return;
-          }
-          // Lista amici
-          const nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
-          if (!nomeAmico || d.stato !== 'amici') return;
-          amiciSet.add(nomeAmico);
-          const presenza = presenzeData[nomeAmico] || {};
-          const isOnline = !!presenza.nome;
-          const inPartita = presenza.inPartita || false;
-          const disponibile = presenza.disponibile !== false;
-          // ✅ NUOVO: Determina se è selezionabile
-          const isSelezionabile = isOnline && disponibile && !inPartita;
-          let statoIcon, statoColor, statoText;
-          if (!isOnline) {
-            statoIcon = '⚫';
-            statoColor = '#555';
-            statoText = 'Offline';
-          } else if (!disponibile) {
-            statoIcon = '🔴';
-            statoColor = '#e74c3c';
-            statoText = 'Non disponibile';
-          } else if (inPartita) {
-            statoIcon = '🎮';
-            statoColor = '#f39c12';
-            statoText = 'In partita';
-          } else {
-            statoIcon = '🟢';
-            statoColor = '#2ecc71';
-            statoText = 'Disponibile';
-          }
-          const isSel = amiciSelezionati.has(nomeAmico);
-          // ✅ NUOVO: Se non selezionabile e era selezionato, rimuovilo
-          if (!isSelezionabile && amiciSelezionati.has(nomeAmico)) {
-            amiciSelezionati.delete(nomeAmico);
-            aggiornaBottoneSfida();
-          }
-          div.innerHTML += `
-            
-														<div class="user-item ${isSel ? 'selected' : ''}" 
-                 onclick="${isSelezionabile ? `toggleAmico('${nomeAmico}', this)` : 'mostraMessaggioNonDisponibile()'}" 
-                 style="opacity: ${isSelezionabile ? 1 : 0.5}; cursor: ${isSelezionabile ? 'pointer' : 'not-allowed'};">
-															<div style="display:flex; align-items:center; gap:10px;">
-																<span style="font-size:1.2rem;">${statoIcon}</span>
-																<div>
-																	<span style="font-weight:bold;">${nomeAmico}</span>
-																	<div style="font-size:0.7rem; color:${statoColor};">${statoText}</div>
-																</div>
-															</div>
-															<button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
-														</div>`;
-        });
-        // Salva per uso in aggiornaListaGlobale
-        window.amiciSetGlobal = amiciSet;
-      }
-      // FUNZIONE 2: Aggiorna lista globale
-      function aggiornaListaGlobale(presenzeData) {
-        const div = document.getElementById('lista-global');
-        div.innerHTML = "";
-        const amiciSet = window.amiciSetGlobal || new Set();
-        Object.values(presenzeData).forEach(u => {
-          if (u.nome !== mioNome && !amiciSet.has(u.nome) && u.last > Date.now() - 3600000) {
-            div.innerHTML += `
-														<div class="user-item">
-															<span>${u.nome}</span>
-															<button onclick="addFriend('${u.nome}')">+AMICO</button>
-														</div>`;
-          }
-        });
-      }
-
-      function toggleAmico(nome, el) {
-        if (amiciSelezionati.has(nome)) {
-          amiciSelezionati.delete(nome);
-          el.classList.remove('selected');
-        } else {
-          amiciSelezionati.add(nome);
-          el.classList.add('selected');
-        }
-        aggiornaBottoneSfida();
-      }
-      // ✅ NUOVA FUNZIONE: Aggiorna il bottone sfida
-      function aggiornaBottoneSfida() {
-        const btn = document.getElementById('btn-sfida-multipla');
-        if (amiciSelezionati.size > 0) {
-          btn.style.display = 'block';
-          btn.textContent = `SFIDA ${amiciSelezionati.size} AMICI ⚔️`;
-        } else {
-          btn.style.display = 'none';
-        }
-      }
-      // ✅ NUOVA FUNZIONE: Messaggio quando clicchi su giocatore non disponibile
-      function mostraMessaggioNonDisponibile() {
-        // Toast leggero invece di alert fastidioso
-        const toast = document.createElement('div');
-        toast.textContent = '❌ Giocatore non disponibile';
-        toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #cf6679;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 25px;
-        font-weight: bold;
-        z-index: 99999;
-        animation: fadeInOut 2s ease;
-    `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2000);
-      }
-
-      function selezionaGioco(g, el) {
-        giocoSelezionato = g;
-        document.querySelectorAll('.game-card').forEach(c => c.classList.remove('selected'));
-        el.classList.add('selected');
-      }
-
-      function apriModalSfida() {
-        const config = GIOCHI_CONFIG[giocoSelezionato];
-        if (!config) {
-          mostraToast('❌ Gioco non configurato');
-          return;
-        }
-        const nomiSelezionati = Array.from(amiciSelezionati).join(', ');
-        removeGameBanner();
-        // Genera HTML opzioni dinamicamente
-        let opzioniHtml = '';
-        config.opzioni.forEach(opt => {
-          const salvato = localStorage.getItem(`ultimo_${giocoSelezionato}_${opt.id}`) || opt.default;
-          let selectHtml = `
-														<select id="opt-${opt.id}-banner">`;
-          opt.valori.forEach(v => {
-            selectHtml += `
-															<option value="${v.value}" ${salvato === v.value ? 'selected' : ''}>${v.label}</option>`;
-          });
-          selectHtml += ' < /select>';
-          opzioniHtml += selectHtml;
-        });
-        // Genera HTML modalità dinamicamente
-        let modalitaHtml = '';
-        config.modalita.forEach(m => {
-          modalitaHtml += `
-														<button class="btn-banner" style="background:${m.colore}; color:${m.testo};" onclick="creaPartitaDaBanner('${m.id}')">${m.label}</button>`;
-        });
-        const banner = document.createElement('div');
-        banner.id = 'game-banner';
-        banner.className = 'game-banner';
-        banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
-        banner.innerHTML = `
-        
-														<div class="banner-left">
-															<span style="font-size:1.5rem;">${config.icona}</span>
-															<div>
-																<div style="font-weight:bold;">SFIDA ${config.nome.toUpperCase()}: ${nomiSelezionati}</div>
-																<div style="font-size:0.8rem; opacity:0.9;">Scegli opzioni e modalità</div>
-															</div>
-														</div>
-														<div class="banner-right">
-            ${opzioniHtml}
-            ${modalitaHtml}
-            
-															<button class="btn-banner btn-cancel-banner" onclick="chiudiBannerSfida()">✖️</button>
-														</div>
-    `;
-        document.body.appendChild(banner);
-      }
-
-      function removeGameBanner() {
-        const existing = document.getElementById('game-banner');
-        if (existing) existing.remove();
-      }
-
-      function chiudiBannerSfida() {
-        removeGameBanner();
-        amiciSelezionati.clear();
-        document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-        aggiornaBottoneSfida();
-      }
-
-      function chiudiBannerSfida() {
-        removeGameBanner();
-        // ✅ Deseleziona tutti gli amici
-        amiciSelezionati.clear();
-        document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-        aggiornaBottoneSfida();
-      }
-      async function creaPartitaDaBanner(modalitaId) {
-        const config = GIOCHI_CONFIG[giocoSelezionato];
-        if (!config) return;
-        // Raccogli opzioni dinamicamente
-        const opzioni = {
-          mode: modalitaId
-        };
-        config.opzioni.forEach(opt => {
-          const el = document.getElementById(`opt-${opt.id}-banner`);
-          if (el) {
-            opzioni[opt.id] = el.value;
-            localStorage.setItem(`ultimo_${giocoSelezionato}_${opt.id}`, el.value);
-          }
-        });
-        // Aggiungi seed
-        opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
-        const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
-        // Validazione
-        if (partecipanti.length < config.minGiocatori) {
-          mostraToast(`❌ Servono almeno ${config.minGiocatori} giocatori`);
-          return;
-        }
-        if (partecipanti.length > config.maxGiocatori) {
-          mostraToast(`❌ Massimo ${config.maxGiocatori} giocatori`);
-          return;
-        }
-        let pIniziali = {};
-        let paroleIniziali = {};
-        partecipanti.forEach(p => {
-          pIniziali[p] = 0;
-          paroleIniziali[p] = [];
-        });
-        // Mostra loading
-        showLoadingBanner('Creazione sfida...');
-        try {
-          const doc = await db.collection("partite").add({
-            gioco: giocoSelezionato,
-            partecipanti: partecipanti,
-            punteggi: pIniziali,
-            parole: paroleIniziali,
-            pronti: [],
-            finito: [],
-            confermaVerifica: [],
-            stato: "attesa",
-            rivincitaAccettataDa: [],
-            rivincitaRifiutataDa: [],
-            dataOra: new Date().toLocaleString('it-IT', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            timestamp: Date.now(),
-            opzioni: opzioni
-          });
-          // Deseleziona amici
-          amiciSelezionati.clear();
-          document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-          aggiornaBottoneSfida();
-          // Mostra conferma
-          showSuccessBanner(doc.id);
-        } catch (e) {
-          console.error("Errore creazione partita:", e);
-          removeGameBanner();
-          mostraToast('❌ Errore creazione sfida');
-        }
-      }
-
-      function showLoadingBanner(messaggio) {
-        removeGameBanner();
-        // Aggiungi animazione spin se non esiste
-        if (!document.getElementById('spin-style-index')) {
-          const style = document.createElement('style');
-          style.id = 'spin-style-index';
-          style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
-          document.head.appendChild(style);
-        }
-        const banner = document.createElement('div');
-        banner.id = 'game-banner';
-        banner.className = 'game-banner';
-        banner.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
-        banner.innerHTML = `
-        
-														<div class="banner-left">
-															<span style="font-size:1.5rem;">⏳</span>
-															<div>
-																<div style="font-weight:bold;">${messaggio}</div>
-																<div style="font-size:0.8rem; opacity:0.9;">Attendi un momento</div>
-															</div>
-														</div>
-														<div class="banner-right">
-															<div style="width:20px; height:20px; border:3px solid white; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
-														</div>
-    `;
-        document.body.appendChild(banner);
-      }
-
-      function showSuccessBanner(partitaId) {
-        removeGameBanner();
-        const banner = document.createElement('div');
-        banner.id = 'game-banner';
-        banner.className = 'game-banner';
-        banner.style.background = 'linear-gradient(135deg, #27ae60 0%, #1e8449 100%)';
-        banner.innerHTML = `
-        
-														<div class="banner-left">
-															<span style="font-size:1.5rem;">✅</span>
-															<div>
-																<div style="font-weight:bold;">Sfida creata!</div>
-																<div style="font-size:0.8rem; opacity:0.9;">In attesa che gli altri accettino</div>
-															</div>
-														</div>
-														<div class="banner-right">
-															<button class="btn-banner" style="background:white; color:#333;" onclick="window.location.href='${giocoSelezionato}.html?matchId=${partitaId}'">ENTRA SUBITO</button>
-															<button class="btn-banner btn-cancel-banner" onclick="removeGameBanner()">OK</button>
-														</div>
-    `;
-        document.body.appendChild(banner);
-        setTimeout(() => {
-          const b = document.getElementById('game-banner');
-          if (b && b.innerHTML.includes('Sfida creata')) removeGameBanner();
-        }, 5000);
-      }
-
-      function caricaStorico() {
-        // Carico le partite e le ordino in JavaScript (evita errore indici Firebase)
-        db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato", "==", "conclusa").onSnapshot(snap => {
-          const div = document.getElementById('lista-storico');
-          div.innerHTML = "";
-          let partite = [];
-          snap.forEach(doc => partite.push(doc.data()));
-          // Ordinamento JS per tempo decrescente
-          partite.sort((a, b) => b.timestamp - a.timestamp);
-          partite.slice(0, 10).forEach(p => {
-            let classif = Object.entries(p.punteggi).sort((a, b) => b[1] - a[1]);
-            let vincitore = classif[0][0];
-            div.innerHTML += `
-														<div class="history-item">
-															<span>${p.dataOra} - ${p.gioco.toUpperCase()}</span>
-															<span>Vinto da: 
-																<b>${vincitore}</b>
-															</span>
-														</div>`;
-          });
-        });
-      }
-
-      function addFriend(n) {
-        db.collection("amicizie").doc(mioNome + "_" + n).set({
-          da: mioNome,
-          a: n,
-          stato: 'pendente'
-        });
-        alert("Richiesta inviata!");
-      }
-      async function accettaSfida(partitaId) {
-        await db.collection("partite").doc(partitaId).update({
-          rivincitaAccettataDa: firebase.firestore.FieldValue.arrayUnion(mioNome)
-        });
-        // Toast di conferma
-        mostraToast('✅ Sfida accettata!');
-      }
-      async function rifiutaSfida(partitaId) {
-        if (!confirm('Sicuro di rifiutare la sfida?')) return;
-        await db.collection("partite").doc(partitaId).update({
-          rivincitaRifiutataDa: firebase.firestore.FieldValue.arrayUnion(mioNome)
-        });
-        mostraToast('❌ Sfida rifiutata');
-      }
-      async function annullaSfida(partitaId) {
-        if (!confirm('Sicuro di annullare la sfida?')) return;
-        try {
-          await db.collection("partite").doc(partitaId).delete();
-          mostraToast('🗑️ Sfida annullata');
-        } catch (e) {
-          console.error("Errore annullamento:", e);
-        }
-      }
-
-      function mostraToast(messaggio) {
-        const toast = document.createElement('div');
-        toast.textContent = messaggio;
-        toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #03dac6;
-        color: #000;
-        padding: 12px 24px;
-        border-radius: 25px;
-        font-weight: bold;
-        z-index: 99999;
-        animation: fadeInOut 2s ease;
-    `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2000);
-      }
-
-      function logout() {
-        localStorage.clear();
-        window.location.reload();
-      }
-      // ==========================================
-      // 📊 SISTEMA STATISTICHE GIORNALIERE
-      // ==========================================
-      const STATS_KEY = 'funatwork_daily_stats';
-      // Funzione per ottenere la data in formato YYYY-MM-DD
-      function getTodayKey() {
-        return new Date().toISOString().split('T')[0];
-      }
-      // Funzione per ottenere le statistiche salvate
-      function getDailyStats() {
-        const saved = localStorage.getItem(STATS_KEY);
-        return saved ? JSON.parse(saved) : {
-          days: {},
-          totals: {}
-        };
-      }
-      // Funzione per salvare le statistiche
-      function saveDailyStats(stats) {
-        localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-      }
-      // 🎮 REGISTRA UNA PARTITA (da chiamare quando finisce una partita)
-      function registraPartita(gioco) {
-        const stats = getDailyStats();
-        const oggi = getTodayKey();
-        // Inizializza il giorno se non esiste
-        if (!stats.days[oggi]) {
-          stats.days[oggi] = {};
-        }
-        // Incrementa contatore giornaliero per questo gioco
-        stats.days[oggi][gioco] = (stats.days[oggi][gioco] || 0) + 1;
-        // Incrementa totale per questo gioco
-        stats.totals[gioco] = (stats.totals[gioco] || 0) + 1;
-        saveDailyStats(stats);
-        // Aggiorna UI se siamo nella homepage
-        if (typeof aggiornaStatsUI === 'function') {
-          aggiornaStatsUI();
-        }
-        console.log(`📊 Partita registrata: ${gioco} (${stats.days[oggi][gioco]} oggi)`);
-      }
-      // Calcola statistiche
-      function calcolaStatistiche() {
-        const stats = getDailyStats();
-        const oggi = getTodayKey();
-        const giorni = Object.keys(stats.days).sort();
-        // Partite oggi
-        const partiteOggi = stats.days[oggi] || {};
-        const totaleOggi = Object.values(partiteOggi).reduce((a, b) => a + b, 0);
-        // Partite per gioco oggi
-        const ruzzleOggi = partiteOggi.ruzzle || 0;
-        // Media giornaliera
-        const giorniAttivi = giorni.length;
-        const partiteTotali = Object.values(stats.totals).reduce((a, b) => a + b, 0);
-        const media = giorniAttivi > 0 ? (partiteTotali / giorniAttivi).toFixed(1) : 0;
-        // Giorno top
-        let giornoTop = '-';
-        let maxPartite = 0;
-        giorni.forEach(giorno => {
-          const tot = Object.values(stats.days[giorno]).reduce((a, b) => a + b, 0);
-          if (tot > maxPartite) {
-            maxPartite = tot;
-            const d = new Date(giorno);
-            giornoTop = `${d.getDate()}/${d.getMonth() + 1}`;
-          }
-        });
-        if (maxPartite > 0) {
-          giornoTop += ` (${maxPartite})`;
-        }
-        // Streak
-        let streak = 0;
-        let bestStreak = 0;
-        let currentStreak = 0;
-        const sortedDays = [...giorni].sort().reverse();
-        const ieri = new Date();
-        ieri.setDate(ieri.getDate() - 1);
-        const ieriKey = ieri.toISOString().split('T')[0];
-        if (stats.days[oggi]) {
-          currentStreak = 1;
-          let checkDate = new Date(oggi);
-          while (true) {
-            checkDate.setDate(checkDate.getDate() - 1);
-            const checkKey = checkDate.toISOString().split('T')[0];
-            if (stats.days[checkKey]) {
-              currentStreak++;
-            } else {
-              break;
-            }
-          }
-        } else if (stats.days[ieriKey]) {
-          currentStreak = 0;
-        }
-        streak = currentStreak;
-        let tempStreak = 0;
-        for (let i = 0; i < sortedDays.length; i++) {
-          const currentDay = new Date(sortedDays[i]);
-          const prevDay = i > 0 ? new Date(sortedDays[i - 1]) : null;
-          if (!prevDay) {
-            tempStreak = 1;
-          } else {
-            const diff = (prevDay - currentDay) / (1000 * 60 * 60 * 24);
-            if (diff === 1) {
-              tempStreak++;
-            } else {
-              if (tempStreak > bestStreak) bestStreak = tempStreak;
-              tempStreak = 1;
-            }
-          }
-        }
-        if (tempStreak > bestStreak) bestStreak = tempStreak;
-        // 🔧 FIX: Settimana da LUNEDÌ a DOMENICA con giorni fissi
-        const settimanaCorrente = [];
-        const oggi_date = new Date();
-        // Trova il lunedì di questa settimana
-        const dayOfWeek = oggi_date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
-        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domenica, torna indietro di 6 giorni
-        const lunedi = new Date(oggi_date);
-        lunedi.setDate(oggi_date.getDate() + diffToMonday);
-        // Genera i 7 giorni da LUN a DOM
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(lunedi);
-          d.setDate(lunedi.getDate() + i);
-          const key = d.toISOString().split('T')[0];
-          const dayName = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'][i];
-          const count = stats.days[key] ? Object.values(stats.days[key]).reduce((a, b) => a + b, 0) : 0;
-          settimanaCorrente.push({
-            key,
-            dayName,
-            count,
-            isToday: key === oggi
-          });
-        }
-        return {
-          totaleOggi,
-          ruzzleOggi,
-          media,
-          giornoTop,
-          partiteTotali,
-          giorniAttivi,
-          streak,
-          bestStreak,
-          ultimi7Giorni: settimanaCorrente, // 👈 Ora parte da Lunedì
-          totals: stats.totals
-        };
-      }
-      // Aggiorna l'interfaccia delle statistiche
-      function aggiornaStatsUI() {
-        const s = calcolaStatistiche();
-        // ✅ Feedback caricamento
-        const statsContent = document.getElementById('stats-content');
-        if (statsContent) {
-          statsContent.style.opacity = '0.5';
-          setTimeout(() => statsContent.style.opacity = '1', 200);
-        }
-        // Valori oggi
-        const elOggiTotale = document.getElementById('stat-oggi-totale');
-        const elOggiRuzzle = document.getElementById('stat-oggi-ruzzle');
-        const elMedia = document.getElementById('stat-media');
-        const elTopDay = document.getElementById('stat-top-day');
-        if (elOggiTotale) elOggiTotale.textContent = s.totaleOggi;
-        if (elOggiRuzzle) elOggiRuzzle.textContent = s.ruzzleOggi;
-        if (elMedia) elMedia.textContent = s.media;
-        if (elTopDay) elTopDay.textContent = s.giornoTop;
-        // Valori totali
-        const elTotalePartite = document.getElementById('stat-totale-partite');
-        const elGiorniAttivi = document.getElementById('stat-giorni-attivi');
-        const elStreak = document.getElementById('stat-streak');
-        const elBestStreak = document.getElementById('stat-best-streak');
-        if (elTotalePartite) elTotalePartite.textContent = s.partiteTotali;
-        if (elGiorniAttivi) elGiorniAttivi.textContent = s.giorniAttivi;
-        if (elStreak) elStreak.textContent = s.streak + ' 🔥';
-        if (elBestStreak) elBestStreak.textContent = s.bestStreak;
-        // Grafico settimanale
-        renderWeeklyChart(s.ultimi7Giorni);
-      }
-      // Renderizza il grafico settimanale
-      function renderWeeklyChart(data) {
-        const container = document.getElementById('weekly-bars');
-        if (!container) return;
-        const maxCount = Math.max(...data.map(d => d.count), 1);
-        container.innerHTML = data.map(day => {
-          const heightPercent = (day.count / maxCount) * 100;
-          const barClass = day.isToday ? 'bar today' : 'bar';
-          return `
-            
-														<div class="day-bar">
-															<div class="count">${day.count}</div>
-															<div class="${barClass}" style="height: ${Math.max(heightPercent, 5)}%;"></div>
-															<div class="label">${day.dayName}</div>
-														</div>
-        `;
-        }).join('');
-      }
-      // Gestione tab statistiche
-      function showStatsTab(tab) {
-        // Aggiorna tab attivo
-        document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
-        // Mostra/nascondi contenuti
-        const statsOggi = document.querySelector('.stats-grid-home');
-        const statsSempre = document.getElementById('stats-sempre');
-        const statsWeekly = document.getElementById('stats-weekly-chart');
-        if (tab === 'oggi') {
-          if (statsOggi) statsOggi.style.display = 'grid';
-          if (statsSempre) statsSempre.style.display = 'none';
-          if (statsWeekly) statsWeekly.style.display = 'none';
-        } else if (tab === 'settimana') {
-          if (statsOggi) statsOggi.style.display = 'none';
-          if (statsSempre) statsSempre.style.display = 'none';
-          if (statsWeekly) statsWeekly.style.display = 'block';
-        } else if (tab === 'sempre') {
-          if (statsOggi) statsOggi.style.display = 'none';
-          if (statsSempre) statsSempre.style.display = 'block';
-          if (statsWeekly) statsWeekly.style.display = 'none';
-        }
-      }
-      // Carica statistiche all'avvio
-      document.addEventListener('DOMContentLoaded', () => {
-        aggiornaStatsUI();
-      });
-      // Aggiorna ogni minuto (per aggiornare "oggi" se cambia giorno)
-      setInterval(aggiornaStatsUI, 60000);
-
-      function resetTutteLeStatistiche() {
-        if (!confirm("⚠️ ATTENZIONE!\n\nQuesta azione cancellerà TUTTE le statistiche:\n- Partite giocate\n- Punteggi\n- Achievement\n- Storico\n\nSei sicuro?")) return;
-        // Cancella statistiche Ruzzle
-        localStorage.removeItem('paroliere_data');
-        // Cancella statistiche giornaliere
-        localStorage.removeItem('funatwork_daily_stats');
-        alert("✅ Statistiche azzerate!");
-        location.reload();
-      }
-
-      function toggleDisponibilita() {
-        const attuale = localStorage.getItem('disponibile') !== 'false';
-        const nuovo = !attuale;
-        localStorage.setItem('disponibile', nuovo);
-        aggiornaUIDisponibilita();
-        aggiornaPresenza(); // Aggiorna Firebase
-      }
-
-      function aggiornaUIDisponibilita() {
-        const disponibile = localStorage.getItem('disponibile') !== 'false';
-        const btn = document.getElementById('btn-disponibilita');
-        if (btn) {
-          if (disponibile) {
-            btn.textContent = '🟢 Disponibile';
-            btn.style.background = '#2ecc71';
-            btn.style.color = 'white';
-          } else {
-            btn.textContent = '🔴 Non disturbare';
-            btn.style.background = '#e74c3c';
-            btn.style.color = 'white';
-          }
-        }
-      }
-    </script>
-  </body>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="theme-color" content="#121212">
+		<meta name="description" content="Portale giochi Fun at Work">
+		<link rel="icon" href="data:image/svg+xml,
+			<svg
+			xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+			<text y='.9em' font-size='90'>🐷</text>
+			</svg>">
+		<!-- ✅ PRECONNECT per velocità -->
+		<link rel="preconnect" href="https://www.gstatic.com">
+		<link rel="preconnect" href="https://firestore.googleapis.com">
+		<title>Portale FaW</title>
+		<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+		<!-- <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script> -->
+		<style>
+			/* ✅ RESET E BASE */
+			* {
+			box-sizing: border-box;
+			-webkit-tap-highlight-color: transparent;
+			}
+			html {
+			scroll-behavior: smooth;
+			}
+			body {
+			font-family: 'Segoe UI', sans-serif;
+			background: #121212;
+			color: #eee;
+			padding: 20px;
+			margin: 0;
+			min-height: 100vh;
+			}
+			.container {
+			max-width: 800px;
+			margin: auto;
+			}
+			.box {
+			background: #1e1e1e;
+			padding: 20px;
+			border-radius: 12px;
+			margin-bottom: 20px;
+			border: 1px solid #333;
+			}
+			h1,
+			h3 {
+			color: #03dac6;
+			margin-top: 0;
+			}
+			/* ========================================
+			🎮 PULSANTI - STILE RUZZLE (Semplici e Leggeri)
+			======================================== */
+			button {
+			padding: 10px 20px;
+			border-radius: 6px;
+			border: 1px solid #555;
+			background: #1e1e1e;
+			color: #eee;
+			cursor: pointer;
+			font-weight: 500;
+			font-size: 0.9rem;
+			transition: background 0.15s ease, transform 0.1s ease;
+			}
+			button:hover {
+			background: #2d2d2d;
+			}
+			button:active {
+			transform: scale(0.97);
+			}
+			/* Pulsante primario (verde acqua) */
+			.btn-primary {
+			background: #03dac6 !important;
+			color: #000 !important;
+			border-color: #018786 !important;
+			font-weight: bold;
+			}
+			.btn-primary:hover {
+			background: #00c4b0 !important;
+			}
+			/* Pulsante pericolo (rosso) */
+			.btn-danger {
+			background: #cf6679 !important;
+			color: white !important;
+			border-color: #b00020 !important;
+			}
+			/* Pulsante secondario (grigio) */
+			.btn-secondary {
+			background: #444 !important;
+			color: #eee !important;
+			}
+			@keyframes fadeInOut {
+			0% {
+			opacity: 0;
+			transform: translateX(-50%) translateY(20px);
+			}
+			15% {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+			}
+			85% {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+			}
+			100% {
+			opacity: 0;
+			transform: translateX(-50%) translateY(-20px);
+			}
+			}
+			/* ========================================
+			📝 INPUT E SELECT
+			======================================== */
+			input,
+			select {
+			width: 100%;
+			padding: 12px;
+			margin: 10px 0;
+			background: #2c2c2c;
+			color: white;
+			border: 1px solid #444;
+			border-radius: 6px;
+			font-size: 1rem;
+			}
+			input:focus,
+			select:focus {
+			outline: none;
+			border-color: #03dac6;
+			}
+			/* ========================================
+			👤 LISTA UTENTI/AMICI
+			======================================== */
+			.user-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background: #252525;
+			padding: 12px;
+			margin: 8px 0;
+			border-radius: 8px;
+			cursor: pointer;
+			border: 1px solid transparent;
+			transition: all 0.2s;
+			}
+			.user-item:hover {
+			border-color: #444;
+			background: #2a2a2a;
+			}
+			.user-item.selected {
+			background: #03dac6 !important;
+			color: #000 !important;
+			border-color: white;
+			}
+			/* ✅ Forza tutti i testi interni a nero quando selezionato */
+			.user-item.selected * {
+			color: #000 !important;
+			}
+			/* Pulsante sfida multipla */
+			.btn-sfida-multi {
+			background: #f1c40f !important;
+			color: #000 !important;
+			border: none !important;
+			width: 100%;
+			height: 50px;
+			font-size: 1.1rem;
+			margin-bottom: 15px;
+			display: none;
+			font-weight: bold;
+			}
+			/* Pulsante elimina piccolo */
+			.btn-del {
+			background: #cf6679 !important;
+			color: white !important;
+			padding: 5px 10px;
+			font-size: 0.8rem;
+			border: none !important;
+			}
+			/* ========================================
+			🎮 PARTITE LIVE E STORICO
+			======================================== */
+			.live-match {
+			border-left: 5px solid #f1c40f;
+			}
+			.history-item {
+			font-size: 0.85rem;
+			border-bottom: 1px solid #333;
+			padding: 8px 0;
+			display: flex;
+			justify-content: space-between;
+			}
+			/* ========================================
+			👤 USER DISPLAY
+			======================================== */
+			#user-display {
+			background: #03dac6;
+			color: #000;
+			padding: 5px 15px;
+			border-radius: 20px;
+			display: inline-block;
+			font-weight: bold;
+			}
+			/* ========================================
+			🎮 GAME CARDS
+			======================================== */
+			.game-card {
+			min-width: 100px;
+			padding: 15px;
+			background: #252525;
+			border-radius: 10px;
+			text-align: center;
+			cursor: pointer;
+			border: 2px solid transparent;
+			transition: 0.3s;
+			}
+			.game-card:hover {
+			border-color: #444;
+			}
+			.game-card.selected {
+			border-color: #03dac6;
+			background: #1a3a3a;
+			}
+			/* ========================================
+			🎯 MODAL
+			======================================== */
+			.modal {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.9);
+			z-index: 10000;
+			justify-content: center;
+			align-items: center;
+			}
+			.modal-content {
+			background: #1e1e1e;
+			padding: 30px;
+			border-radius: 15px;
+			width: 90%;
+			max-width: 450px;
+			border: 2px solid #333;
+			}
+			.modal-content h2 {
+			color: #03dac6;
+			margin-top: 0;
+			text-align: center;
+			}
+			/* ========================================
+			🎮 PULSANTI MODALITÀ GIOCO (Come Ruzzle)
+			======================================== */
+			.mode-buttons {
+			display: flex;
+			gap: 8px;
+			justify-content: center;
+			flex-wrap: wrap;
+			margin-top: 15px;
+			}
+			.btn-mode {
+			flex: 1;
+			min-width: 80px;
+			padding: 12px 15px;
+			border: 1px solid #555;
+			border-radius: 6px;
+			background: #1e1e1e;
+			color: #eee;
+			cursor: pointer;
+			font-weight: 500;
+			font-size: 0.85rem;
+			transition: all 0.15s ease;
+			}
+			.btn-mode:hover {
+			background: #2d2d2d;
+			border-color: #777;
+			}
+			.btn-mode:active {
+			transform: scale(0.97);
+			}
+			/* Annulla nel modal */
+			.btn-cancel {
+			background: none !important;
+			border: none !important;
+			color: #777 !important;
+			margin-top: 15px;
+			font-size: 0.9rem;
+			}
+			.btn-cancel:hover {
+			color: #aaa !important;
+			}
+			/* ========================================
+			📊 STATISTICHE HOMEPAGE
+			======================================== */
+			.stats-tabs {
+			display: flex;
+			gap: 5px;
+			margin-bottom: 15px;
+			border-bottom: 2px solid #333;
+			padding-bottom: 10px;
+			}
+			.stats-tab {
+			flex: 1;
+			padding: 8px 12px;
+			background: #2c2c2c;
+			border: 1px solid #444;
+			border-radius: 6px 6px 0 0;
+			color: #888;
+			cursor: pointer;
+			font-weight: bold;
+			transition: all 0.2s;
+			}
+			.stats-tab.active {
+			background: #03dac6;
+			color: #000;
+			border-color: #03dac6;
+			}
+			.stats-tab:hover:not(.active) {
+			background: #3c3c3c;
+			color: #fff;
+			}
+			.stats-grid-home {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 10px;
+			}
+			@media (min-width: 500px) {
+			.stats-grid-home {
+			grid-template-columns: repeat(4, 1fr);
+			}
+			}
+			.stat-box {
+			background: #252525;
+			padding: 15px 10px;
+			border-radius: 10px;
+			text-align: center;
+			border: 1px solid #333;
+			transition: transform 0.2s;
+			}
+			.stat-box:hover {
+			transform: scale(1.03);
+			}
+			.stat-box.highlight {
+			background: linear-gradient(135deg, #1a3a3a 0%, #0d2626 100%);
+			border-color: #03dac6;
+			}
+			.stat-number {
+			font-size: 1.8rem;
+			font-weight: 900;
+			color: #03dac6;
+			line-height: 1.2;
+			}
+			.stat-desc {
+			font-size: 0.75rem;
+			color: #888;
+			margin-top: 5px;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			}
+			/* Grafico settimanale */
+			.weekly-bars {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-end;
+			height: 100px;
+			padding: 10px;
+			background: #1a1a1a;
+			border-radius: 8px;
+			gap: 5px;
+			}
+			.day-bar {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 5px;
+			}
+			.day-bar .bar {
+			width: 100%;
+			max-width: 30px;
+			background: linear-gradient(to top, #03dac6, #018786);
+			border-radius: 4px 4px 0 0;
+			min-height: 5px;
+			transition: height 0.5s ease;
+			}
+			.day-bar .bar.today {
+			background: linear-gradient(to top, #f1c40f, #e67e22);
+			box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+			}
+			.day-bar .label {
+			font-size: 0.65rem;
+			color: #666;
+			text-transform: uppercase;
+			}
+			.day-bar .count {
+			font-size: 0.7rem;
+			color: #03dac6;
+			font-weight: bold;
+			}
+			/* ========================================
+			📱 RESPONSIVE
+			======================================== */
+			@media (max-width: 400px) {
+			.mode-buttons {
+			flex-direction: column;
+			}
+			.btn-mode {
+			width: 100%;
+			}
+			}
+			/* Nascondi badge reCAPTCHA (opzionale) */
+			.grecaptcha-badge {
+			visibility: hidden;
+			}
+			/* ========================================
+			🎮 GAME BANNER (come in Ruzzle)
+			======================================== */
+			.game-banner {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			padding: 15px 20px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			z-index: 99999;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+			animation: slideDown 0.3s ease;
+			color: white;
+			flex-wrap: wrap;
+			gap: 10px;
+			}
+			@keyframes slideDown {
+			from {
+			transform: translateY(-100%);
+			}
+			to {
+			transform: translateY(0);
+			}
+			}
+			.game-banner .banner-left {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			}
+			.game-banner .banner-right {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+			}
+			.game-banner select {
+			padding: 6px 10px;
+			border-radius: 4px;
+			border: none;
+			font-size: 0.85rem;
+			background: white;
+			color: #333;
+			margin: 0;
+			width: auto;
+			}
+			.game-banner .btn-banner {
+			padding: 8px 14px;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			font-weight: bold;
+			font-size: 0.85rem;
+			transition: transform 0.1s;
+			}
+			.game-banner .btn-banner:active {
+			transform: scale(0.95);
+			}
+			.game-banner .btn-cancel-banner {
+			background: rgba(255, 255, 255, 0.2);
+			color: white;
+			border: 1px solid rgba(255, 255, 255, 0.3);
+			}
+			.game-banner .btn-cancel-banner:hover {
+			background: rgba(255, 255, 255, 0.3);
+			}
+			@media (max-width: 600px) {
+			.game-banner {
+			flex-direction: column;
+			text-align: center;
+			padding: 15px;
+			}
+			.game-banner .banner-left,
+			.game-banner .banner-right {
+			justify-content: center;
+			width: 100%;
+			}
+			.game-banner .banner-right {
+			margin-top: 10px;
+			}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<!-- LOGIN -->
+			<div id="login-div" class="box">
+				<h1>Login dei 🐷</h1>
+				<input type="text" id="username" placeholder="IL TUO NOME">
+				<input type="password" id="password" placeholder="PASSWORD">
+				<button onclick="entra()" class="btn-primary" style="width:100%; height:50px; font-size:1rem;">ENTRA / REGISTRATI</button>
+			</div>
+			<!-- DASHBOARD -->
+			<div id="main-app" style="display:none;">
+				<div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+					<div id="user-display"></div>
+					<button id="btn-disponibilita" onclick="toggleDisponibilita()" style="padding:8px 15px; border-radius:20px; border:none; cursor:pointer; font-weight:bold; font-size:0.85rem;"></button>
+				</div>
+				<div class="box">
+					<h3>🎮 Partite In Corso</h3>
+					<div id="lista-partite"></div>
+				</div>
+				<div class="box">
+					<h3>🎮 Scegli il Gioco</h3>
+					<div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:10px;">
+						<div class="game-card selected" onclick="selezionaGioco('ruzzle', this)" id="game-ruzzle">
+							<span style="font-size:2rem;">🔠</span>
+							<br>Ruzzle
+						</div>
+						<div class="game-card" style="opacity:0.3; cursor:not-allowed; pointer-events:none;">
+							<span style="font-size:2rem;">❌</span>
+							<br>Prossimamente
+						</div>
+						<!-- Aggiungerai qui i futuri giochi -->
+					</div>
+				</div>
+				<div class="box">
+					<h3>⭐ I tuoi Amici</h3>
+					<p style="font-size:0.8rem; opacity:0.6;">Clicca sui nomi per selezionare più amici e sfidarli insieme!</p>
+					<button id="btn-sfida-multipla" class="btn-sfida-multi" onclick="apriModalSfida()">SFIDA IL GRUPPO ⚔️</button>
+					<div id="lista-amici"></div>
+				</div>
+				<div class="box">
+					<h3>🌍 Altri Colleghi Online</h3>
+					<div id="lista-global"></div>
+				</div>
+				<!-- BOX STATISTICHE GIORNALIERE -->
+				<div class="box">
+					<h3>📊 Le Tue Statistiche</h3>
+					<!-- Tab per cambiare vista -->
+					<div class="stats-tabs">
+						<button class="stats-tab active" onclick="showStatsTab('oggi')">Oggi</button>
+						<button class="stats-tab" onclick="showStatsTab('settimana')">Settimana</button>
+						<button class="stats-tab" onclick="showStatsTab('sempre')">Sempre</button>
+					</div>
+					<!-- Contenuto statistiche -->
+					<div id="stats-content">
+						<div class="stats-grid-home">
+							<div class="stat-box">
+								<div class="stat-number" id="stat-oggi-totale">0</div>
+								<div class="stat-desc">Partite Oggi</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-number" id="stat-oggi-ruzzle">0</div>
+								<div class="stat-desc">🎲 Ruzzle</div>
+							</div>
+							<div class="stat-box">
+								<div class="stat-number" id="stat-media">0</div>
+								<div class="stat-desc">Media/Giorno</div>
+							</div>
+							<div class="stat-box highlight">
+								<div class="stat-number" id="stat-top-day">-</div>
+								<div class="stat-desc">🏆 Giorno Top</div>
+							</div>
+						</div>
+						<!-- Dettaglio ultimi 7 giorni -->
+						<div id="stats-weekly-chart" style="margin-top:15px; display:none;">
+							<div class="weekly-bars" id="weekly-bars"></div>
+						</div>
+						<!-- Statistiche totali -->
+						<div id="stats-sempre" style="display:none;">
+							<div class="stats-grid-home">
+								<div class="stat-box">
+									<div class="stat-number" id="stat-totale-partite">0</div>
+									<div class="stat-desc">Partite Totali</div>
+								</div>
+								<div class="stat-box">
+									<div class="stat-number" id="stat-giorni-attivi">0</div>
+									<div class="stat-desc">Giorni Attivi</div>
+								</div>
+								<div class="stat-box">
+									<div class="stat-number" id="stat-streak">0</div>
+									<div class="stat-desc">🔥 Streak Attuale</div>
+								</div>
+								<div class="stat-box">
+									<div class="stat-number" id="stat-best-streak">0</div>
+									<div class="stat-desc">⚡ Best Streak</div>
+								</div>
+							</div>
+						</div>
+						<div style="margin-top:20px; text-align:center; border-top:1px solid #333; padding-top:15px;">
+							<button onclick="resetTutteLeStatistiche()" class="btn-danger" style="font-size:0.8rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7"> 🗑️ Azzera Statistiche </button>
+						</div>
+					</div>
+				</div>
+				<div class="box">
+					<h3>📜 Storico Partite</h3>
+					<div id="lista-storico"></div>
+				</div>
+				<button onclick="logout()" class="btn-secondary" style="width:100%; margin-top:20px;">ESCI (LOGOUT)</button>
+			</div>
+		</div>
+		<script>
+			// --- 1. CONFIGURAZIONE FIREBASE ---
+			const firebaseConfig = {
+			  apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
+			  authDomain: "funatwork-cd237.firebaseapp.com",
+			  projectId: "funatwork-cd237",
+			  storageBucket: "funatwork-cd237.firebasestorage.app",
+			  messagingSenderId: "798226885203",
+			  appId: "1:798226885203:web:ce83f4d9e96b82266274a6"
+			};
+			firebase.initializeApp(firebaseConfig);
+			/*const appCheck = firebase.appCheck();
+			appCheck.activate(
+			    '6Lcm8XcsAAAAAM0hTFXbGRLHYZAW9ZPcZkKbxGIR', // 👈 LA TUA CHIAVE
+			    true
+			);*/
+			const db = firebase.firestore();
+			// Debug: verifica che App Check sia attivo
+			/*console.log('✅ Firebase inizializzato');
+			console.log('✅ App Check attivato');*/
+			let mioNome = localStorage.getItem('mioNome') || "";
+			let passwordHashSalvato = localStorage.getItem('passwordHash') || "";
+			let amiciSelezionati = new Set();
+			let giocoSelezionato = "ruzzle";
+			// ✅ CONFIGURAZIONE GIOCHI (aggiungi qui nuovi giochi)
+			const GIOCHI_CONFIG = {
+			  ruzzle: {
+			    nome: "Ruzzle",
+			    icona: "🔠",
+			    opzioni: [{
+			      id: "tempo",
+			      label: "Durata",
+			      default: "60",
+			      valori: [{
+			        value: "45",
+			        label: "45s"
+			      }, {
+			        value: "60",
+			        label: "60s"
+			      }, {
+			        value: "90",
+			        label: "90s"
+			      }, {
+			        value: "180",
+			        label: "180s"
+			      }, {
+			        value: "300",
+			        label: "300s"
+			      }]
+			    }, {
+			      id: "griglia",
+			      label: "Griglia",
+			      default: "5",
+			      valori: [{
+			        value: "4",
+			        label: "4x4"
+			      }, {
+			        value: "5",
+			        label: "5x5"
+			      }, {
+			        value: "6",
+			        label: "6x6"
+			      }, {
+			        value: "7",
+			        label: "7x7"
+			      }, {
+			        value: "10",
+			        label: "10x10"
+			      }]
+			    }],
+			    modalita: [{
+			      id: "classic",
+			      label: "CLASSICA",
+			      colore: "white",
+			      testo: "#333"
+			    }, {
+			      id: "bonus",
+			      label: "BONUS ⭐",
+			      colore: "#f1c40f",
+			      testo: "#333"
+			    }, {
+			      id: "crazy",
+			      label: "CRAZY 🤪",
+			      colore: "#e74c3c",
+			      testo: "white"
+			    }, {
+			      id: "biatch",
+			      label: "BIATCH 💅",
+			      colore: "#ff00ff",
+			      testo: "white"
+			    }],
+			    minGiocatori: 1,
+			    maxGiocatori: 10
+			  }
+			  // Aggiungerai qui altri giochi in futuro
+			};
+			// Debug helper
+			function debugLog(msg) {
+			  console.log(msg);
+			}
+			if (mioNome && passwordHashSalvato) {
+			  window.onload = async () => {
+			    try {
+			      const userRef = db.collection("utenti").doc(mioNome);
+			      const doc = await userRef.get();
+			      if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
+			        document.getElementById('login-div').style.display = 'none';
+			        document.getElementById('main-app').style.display = 'block';
+			        document.getElementById('user-display').textContent = "👤 " + mioNome;
+			        aggiornaUIDisponibilita();
+			        aggiornaPresenza();
+			        setInterval(aggiornaPresenza, 20000);
+			        listen();
+			        caricaStorico();
+			      } else {
+			        // Hash non valido, richiedi login
+			        localStorage.removeItem('passwordHash');
+			        debugLog('❌ Hash non valido');
+			      }
+			    } catch (e) {
+			      console.error("Errore auto-login:", e);
+			      debugLog('❌ Errore: ' + e.message);
+			    }
+			  };
+			}
+			// Funzione per creare hash SHA-256 (sicuro lato client)
+			async function hashPassword(password) {
+			  const encoder = new TextEncoder();
+			  const data = encoder.encode(password);
+			  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+			  const hashArray = Array.from(new Uint8Array(hashBuffer));
+			  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+			}
+			async function entra(isAuto = false) {
+			  const n = document.getElementById('username').value.trim().toUpperCase();
+			  const p = document.getElementById('password').value.trim();
+			  if (n.length < 2 || p.length < 3) {
+			    if (!isAuto) alert("Nome minimo 2 caratteri, password minimo 3");
+			    return;
+			  }
+			  const btn = document.querySelector('#login-div button');
+			  const originalText = btn.textContent;
+			  btn.textContent = '⏳ Caricamento...';
+			  btn.disabled = true;
+			  btn.style.opacity = '0.6';
+			  btn.style.cursor = 'not-allowed';
+			  try {
+			    const passwordHash = await hashPassword(p);
+			    const userRef = db.collection("utenti").doc(n);
+			    const doc = await userRef.get();
+			    if (doc.exists) {
+			      if (doc.data().passwordHash !== passwordHash) {
+			        if (!isAuto) alert("❌ Password Errata!");
+			        return;
+			      }
+			    } else {
+			      if (confirm("👋 Nuovo utente? Registrati con questa password.")) {
+			        await userRef.set({
+			          nome: n,
+			          passwordHash: passwordHash
+			        });
+			      } else return;
+			    }
+			    mioNome = n;
+			    localStorage.setItem('mioNome', n);
+			    localStorage.setItem('passwordHash', passwordHash);
+			    document.getElementById('login-div').style.display = 'none';
+			    document.getElementById('main-app').style.display = 'block';
+			    document.getElementById('user-display').textContent = "👤 " + mioNome;
+			    aggiornaUIDisponibilita();
+			    aggiornaPresenza();
+			    setInterval(aggiornaPresenza, 20000);
+			    listen();
+			    caricaStorico();
+			  } catch (e) {
+			    console.error("❌ Errore login:", e);
+			    alert("❌ Errore di connessione. Verifica le regole Firestore:\n" + e.message);
+			  } finally {
+			    // ✅ RIPRISTINA IL PULSANTE (anche in caso di errore)
+			    btn.textContent = originalText;
+			    btn.disabled = false;
+			    btn.style.opacity = '1';
+			    btn.style.cursor = 'pointer';
+			  }
+			}
+			async function aggiornaPresenza() {
+			  let inPartita = false;
+			  let partitaId = null;
+			  try {
+			    const snap = await db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato", "in", ["attesa", "in_corso"]).get();
+			    // ✅ Controlla ogni partita trovata
+			    snap.forEach(doc => {
+			      const p = doc.data();
+			      const rifiutanti = p.rivincitaRifiutataDa || [];
+			      // ✅ Considera "in partita" SOLO se:
+			      // 1. Nessuno ha rifiutato
+			      // 2. La partita è effettivamente attiva (in_corso) o tutti hanno accettato
+			      if (rifiutanti.length === 0) {
+			        // Nessun rifiuto - controlla se è in corso o se tutti hanno accettato
+			        if (p.stato === "in_corso") {
+			          inPartita = true;
+			          partitaId = doc.id;
+			        } else if (p.stato === "attesa") {
+			          // In attesa: sono "in partita" solo se ho accettato o sono il creatore
+			          const accettanti = p.rivincitaAccettataDa || [];
+			          const sonoCreatore = p.partecipanti[0] === mioNome;
+			          const hoAccettato = accettanti.includes(mioNome);
+			          if (sonoCreatore || hoAccettato) {
+			            inPartita = true;
+			            partitaId = doc.id;
+			          }
+			        }
+			      }
+			      // Se qualcuno ha rifiutato, NON è considerata partita attiva
+			    });
+			  } catch (e) {
+			    console.error("Errore aggiornaPresenza:", e);
+			  }
+			  db.collection("presenze").doc(mioNome).set({
+			    nome: mioNome,
+			    last: Date.now(),
+			    inPartita: inPartita,
+			    partitaId: partitaId,
+			    disponibile: localStorage.getItem('disponibile') !== 'false'
+			  });
+			}
+			
+			function listen() {
+			  // ✅ VARIABILE CONDIVISA tra i due listener
+			  let presenzeData = {};
+			  let amicizieSnapshot = null;
+			  // LISTENER 1: Presenze (si aggiorna ogni 20 secondi quando aggiorni presenza)
+			  db.collection("presenze").onSnapshot(presSnap => {
+			    // Aggiorna cache presenze
+			    presenzeData = {};
+			    presSnap.forEach(doc => {
+			      const u = doc.data();
+			      if (u.last > Date.now() - 60000) {
+			        presenzeData[u.nome] = u;
+			      }
+			    });
+			    // Se abbiamo già i dati amicizie, aggiorna la vista
+			    if (amicizieSnapshot) {
+			      aggiornaListaAmici(amicizieSnapshot, presenzeData);
+			    }
+			    // Aggiorna lista globale
+			    aggiornaListaGlobale(presenzeData);
+			  });
+			  // LISTENER 2: Amicizie (si aggiorna solo quando aggiungi/rimuovi amici)
+			  db.collection("amicizie").onSnapshot(snap => {
+			    amicizieSnapshot = snap;
+			    aggiornaListaAmici(snap, presenzeData);
+			  });
+			  // LISTENER 3: Partite
+			  db.collection("partite").where("partecipanti", "array-contains", mioNome).onSnapshot(snap => {
+			    const div = document.getElementById('lista-partite');
+			    div.innerHTML = `
+											<div class="user-item" style="background:#34495e;" onclick="window.location.href='ruzzle.html'">
+												<span>🎯 Allenamento Solo</span>
+												<button>GIOCA</button>
+											</div>`;
+			    snap.forEach(doc => {
+			      const p = doc.data();
+			      const partitaId = doc.id;
+			      // ✅ Salta partite concluse
+			      if (p.stato === "conclusa") return;
+			      // ✅ GESTIONE RIFIUTI (stile rivincita)
+			      const rifiutanti = p.rivincitaRifiutataDa || [];
+			      const accettanti = p.rivincitaAccettataDa || [];
+			      const creatore = p.partecipanti[0];
+			      const altriGiocatori = p.partecipanti.filter(x => x !== creatore);
+			      // Se qualcuno ha rifiutato, mostra notifica
+			      if (rifiutanti.length > 0) {
+			        const ioHoRifiutato = rifiutanti.includes(mioNome);
+			        if (ioHoRifiutato) {
+			          div.innerHTML += `
+											<div class="user-item" style="background:#7f8c8d; color:white; opacity:0.7;">
+												<span>👋 Hai rifiutato la sfida di ${creatore}</span>
+												<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
+											</div>`;
+			        } else {
+			          div.innerHTML += `
+											<div class="user-item" style="background:#cf6679; color:white;">
+												<span>😔 Sfida annullata: ${rifiutanti.join(', ')} ha rifiutato</span>
+												<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()">🗑️</button>
+											</div>`;
+			        }
+			        return;
+			      }
+			      // ✅ STATO: ATTESA
+			      if (p.stato === "attesa") {
+			        // Sono il creatore?
+			        if (creatore === mioNome) {
+			          // Ho già accettato di default (sono io che ho creato)
+			          const numAccettanti = accettanti.length + 1; // +1 per me
+			          const totale = p.partecipanti.length;
+			          if (numAccettanti < totale) {
+			            // Attendo che altri accettino
+			            div.innerHTML += `
+											<div class="user-item" style="background:#9b59b6; color:white;">
+												<span>⏳ Sfida creata: in attesa (${numAccettanti}/${totale})</span>
+												<div>
+													<button onclick="event.stopPropagation(); window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+													<button onclick="event.stopPropagation(); annullaSfida('${partitaId}')" style="background:#cf6679; margin-left:5px;">🚫 ANNULLA</button>
+												</div>
+											</div>`;
+			          } else {
+			            // Tutti hanno accettato
+			            div.innerHTML += `
+											<div class="user-item live-match">
+												<span>✅ Sfida vs ${altriGiocatori.join(', ')} (${p.gioco})</span>
+												<div>
+													<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+													<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+												</div>
+											</div>`;
+			          }
+			        } else {
+			          // Sono stato sfidato
+			          if (accettanti.includes(mioNome)) {
+			            // Ho già accettato
+			            const numAccettanti = accettanti.length + 1; // +1 per il creatore
+			            const totale = p.partecipanti.length;
+			            div.innerHTML += `
+											<div class="user-item" style="background:#2ecc71; color:white;">
+												<span>✅ Hai accettato: attesa altri (${numAccettanti}/${totale})</span>
+												<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#fff; color:#000;">ENTRA</button>
+											</div>`;
+			          } else {
+			            // Devo ancora accettare/rifiutare
+			            div.innerHTML += `
+											<div class="user-item" style="background:#f1c40f; color:black; border:3px solid #e67e22;">
+												<span style="font-weight:bold;">⚔️ SFIDA DA ${creatore}</span>
+												<div>
+													<button onclick="event.stopPropagation(); accettaSfida('${partitaId}')" style="background:#2ecc71; color:white;">✅ ACCETTA</button>
+													<button onclick="event.stopPropagation(); rifiutaSfida('${partitaId}')" style="background:#cf6679; color:white; margin-left:5px;">❌ RIFIUTA</button>
+												</div>
+											</div>`;
+			          }
+			        }
+			      } else {
+			        // ✅ STATO: IN_CORSO o VERIFICA
+			        const altri = p.partecipanti.filter(n => n !== mioNome).join(", ");
+			        div.innerHTML += `
+											<div class="user-item live-match">
+												<span>vs ${altri} (${p.gioco})</span>
+												<div>
+													<button onclick="window.location.href='${p.gioco}.html?matchId=${partitaId}'" style="background:#03dac6; color:#000;">ENTRA</button>
+													<button onclick="event.stopPropagation(); if(confirm('Eliminare?')) db.collection('partite').doc('${partitaId}').delete()" style="background:#cf6679; margin-left:5px;">🗑️</button>
+												</div>
+											</div>`;
+			      }
+			    });
+			  });
+			}
+			// FUNZIONE 1: Aggiorna lista amici
+			function aggiornaListaAmici(amicizieSnap, presenzeData) {
+			  const div = document.getElementById('lista-amici');
+			  div.innerHTML = "";
+			  const amiciSet = new Set();
+			  amicizieSnap.forEach(doc => {
+			    const d = doc.data();
+			    // Richieste pendenti
+			    if (d.a === mioNome && d.stato === 'pendente') {
+			      div.innerHTML += `
+											<div class="user-item" style="background:#3700b3; color:white;">
+												<span>🤝 Richiesta da: ${d.da}</span>
+												<button onclick="db.collection('amicizie').doc('${doc.id}').update({stato:'amici'})">ACCETTA</button>
+											</div>`;
+			      return;
+			    }
+			    // Lista amici
+			    const nomeAmico = (d.da === mioNome) ? d.a : (d.a === mioNome ? d.da : null);
+			    if (!nomeAmico || d.stato !== 'amici') return;
+			    amiciSet.add(nomeAmico);
+			    const presenza = presenzeData[nomeAmico] || {};
+			    const isOnline = !!presenza.nome;
+			    const inPartita = presenza.inPartita || false;
+			    const disponibile = presenza.disponibile !== false;
+			    // ✅ NUOVO: Determina se è selezionabile
+			    const isSelezionabile = isOnline && disponibile && !inPartita;
+			    let statoIcon, statoColor, statoText;
+			    if (!isOnline) {
+			      statoIcon = '⚫';
+			      statoColor = '#555';
+			      statoText = 'Offline';
+			    } else if (!disponibile) {
+			      statoIcon = '🔴';
+			      statoColor = '#e74c3c';
+			      statoText = 'Non disponibile';
+			    } else if (inPartita) {
+			      statoIcon = '🎮';
+			      statoColor = '#f39c12';
+			      statoText = 'In partita';
+			    } else {
+			      statoIcon = '🟢';
+			      statoColor = '#2ecc71';
+			      statoText = 'Disponibile';
+			    }
+			    const isSel = amiciSelezionati.has(nomeAmico);
+			    // ✅ NUOVO: Se non selezionabile e era selezionato, rimuovilo
+			    if (!isSelezionabile && amiciSelezionati.has(nomeAmico)) {
+			      amiciSelezionati.delete(nomeAmico);
+			      aggiornaBottoneSfida();
+			    }
+			    div.innerHTML += `
+			      
+											<div class="user-item ${isSel ? 'selected' : ''}" 
+			           onclick="${isSelezionabile ? `toggleAmico('${nomeAmico}', this)` : 'mostraMessaggioNonDisponibile()'}" 
+			           style="opacity: ${isSelezionabile ? 1 : 0.5}; cursor: ${isSelezionabile ? 'pointer' : 'not-allowed'};">
+												<div style="display:flex; align-items:center; gap:10px;">
+													<span style="font-size:1.2rem;">${statoIcon}</span>
+													<div>
+														<span style="font-weight:bold;">${nomeAmico}</span>
+														<div style="font-size:0.7rem; color:${statoColor};">${statoText}</div>
+													</div>
+												</div>
+												<button class="btn-del" onclick="event.stopPropagation(); if(confirm('Rimuovere?')) db.collection('amicizie').doc('${doc.id}').delete()">X</button>
+											</div>`;
+			  });
+			  // Salva per uso in aggiornaListaGlobale
+			  window.amiciSetGlobal = amiciSet;
+			}
+			// FUNZIONE 2: Aggiorna lista globale
+			function aggiornaListaGlobale(presenzeData) {
+			  const div = document.getElementById('lista-global');
+			  div.innerHTML = "";
+			  const amiciSet = window.amiciSetGlobal || new Set();
+			  Object.values(presenzeData).forEach(u => {
+			    if (u.nome !== mioNome && !amiciSet.has(u.nome) && u.last > Date.now() - 3600000) {
+			      div.innerHTML += `
+											<div class="user-item">
+												<span>${u.nome}</span>
+												<button onclick="addFriend('${u.nome}')">+AMICO</button>
+											</div>`;
+			    }
+			  });
+			}
+			
+			function toggleAmico(nome, el) {
+			  if (amiciSelezionati.has(nome)) {
+			    amiciSelezionati.delete(nome);
+			    el.classList.remove('selected');
+			  } else {
+			    amiciSelezionati.add(nome);
+			    el.classList.add('selected');
+			  }
+			  aggiornaBottoneSfida();
+			}
+			// ✅ NUOVA FUNZIONE: Aggiorna il bottone sfida
+			function aggiornaBottoneSfida() {
+			  const btn = document.getElementById('btn-sfida-multipla');
+			  if (amiciSelezionati.size > 0) {
+			    btn.style.display = 'block';
+			    btn.textContent = `SFIDA ${amiciSelezionati.size} AMICI ⚔️`;
+			  } else {
+			    btn.style.display = 'none';
+			  }
+			}
+			// ✅ NUOVA FUNZIONE: Messaggio quando clicchi su giocatore non disponibile
+			function mostraMessaggioNonDisponibile() {
+			  // Toast leggero invece di alert fastidioso
+			  const toast = document.createElement('div');
+			  toast.textContent = '❌ Giocatore non disponibile';
+			  toast.style.cssText = `
+			  position: fixed;
+			  bottom: 20px;
+			  left: 50%;
+			  transform: translateX(-50%);
+			  background: #cf6679;
+			  color: white;
+			  padding: 12px 24px;
+			  border-radius: 25px;
+			  font-weight: bold;
+			  z-index: 99999;
+			  animation: fadeInOut 2s ease;
+			`;
+			  document.body.appendChild(toast);
+			  setTimeout(() => toast.remove(), 2000);
+			}
+			
+			function selezionaGioco(g, el) {
+			  giocoSelezionato = g;
+			  document.querySelectorAll('.game-card').forEach(c => c.classList.remove('selected'));
+			  el.classList.add('selected');
+			}
+			
+			function apriModalSfida() {
+			  const config = GIOCHI_CONFIG[giocoSelezionato];
+			  if (!config) {
+			    mostraToast('❌ Gioco non configurato');
+			    return;
+			  }
+			  const nomiSelezionati = Array.from(amiciSelezionati).join(', ');
+			  removeGameBanner();
+			  // Genera HTML opzioni dinamicamente
+			  let opzioniHtml = '';
+			  config.opzioni.forEach(opt => {
+			    const salvato = localStorage.getItem(`ultimo_${giocoSelezionato}_${opt.id}`) || opt.default;
+			    let selectHtml = `
+											<select id="opt-${opt.id}-banner">`;
+			    opt.valori.forEach(v => {
+			      selectHtml += `
+												<option value="${v.value}" ${salvato === v.value ? 'selected' : ''}>${v.label}</option>`;
+			    });
+			    selectHtml += ' < /select>';
+			    opzioniHtml += selectHtml;
+			  });
+			  // Genera HTML modalità dinamicamente
+			  let modalitaHtml = '';
+			  config.modalita.forEach(m => {
+			    modalitaHtml += `
+											<button class="btn-banner" style="background:${m.colore}; color:${m.testo};" onclick="creaPartitaDaBanner('${m.id}')">${m.label}</button>`;
+			  });
+			  const banner = document.createElement('div');
+			  banner.id = 'game-banner';
+			  banner.className = 'game-banner';
+			  banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+			  banner.innerHTML = `
+			  
+											<div class="banner-left">
+												<span style="font-size:1.5rem;">${config.icona}</span>
+												<div>
+													<div style="font-weight:bold;">SFIDA ${config.nome.toUpperCase()}: ${nomiSelezionati}</div>
+													<div style="font-size:0.8rem; opacity:0.9;">Scegli opzioni e modalità</div>
+												</div>
+											</div>
+											<div class="banner-right">
+			      ${opzioniHtml}
+			      ${modalitaHtml}
+			      
+												<button class="btn-banner btn-cancel-banner" onclick="chiudiBannerSfida()">✖️</button>
+											</div>
+			`;
+			  document.body.appendChild(banner);
+			}
+			
+			function removeGameBanner() {
+			  const existing = document.getElementById('game-banner');
+			  if (existing) existing.remove();
+			}
+			
+			function chiudiBannerSfida() {
+			  removeGameBanner();
+			  amiciSelezionati.clear();
+			  document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+			  aggiornaBottoneSfida();
+			}
+			
+			function chiudiBannerSfida() {
+			  removeGameBanner();
+			  // ✅ Deseleziona tutti gli amici
+			  amiciSelezionati.clear();
+			  document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+			  aggiornaBottoneSfida();
+			}
+			async function creaPartitaDaBanner(modalitaId) {
+			  const config = GIOCHI_CONFIG[giocoSelezionato];
+			  if (!config) return;
+			  // Raccogli opzioni dinamicamente
+			  const opzioni = {
+			    mode: modalitaId
+			  };
+			  config.opzioni.forEach(opt => {
+			    const el = document.getElementById(`opt-${opt.id}-banner`);
+			    if (el) {
+			      opzioni[opt.id] = el.value;
+			      localStorage.setItem(`ultimo_${giocoSelezionato}_${opt.id}`, el.value);
+			    }
+			  });
+			  // Aggiungi seed
+			  opzioni.seed = Math.random().toString(36).substring(7).toUpperCase();
+			  const partecipanti = [mioNome, ...Array.from(amiciSelezionati)];
+			  // Validazione
+			  if (partecipanti.length < config.minGiocatori) {
+			    mostraToast(`❌ Servono almeno ${config.minGiocatori} giocatori`);
+			    return;
+			  }
+			  if (partecipanti.length > config.maxGiocatori) {
+			    mostraToast(`❌ Massimo ${config.maxGiocatori} giocatori`);
+			    return;
+			  }
+			  let pIniziali = {};
+			  let paroleIniziali = {};
+			  partecipanti.forEach(p => {
+			    pIniziali[p] = 0;
+			    paroleIniziali[p] = [];
+			  });
+			  // Mostra loading
+			  showLoadingBanner('Creazione sfida...');
+			  try {
+			    const doc = await db.collection("partite").add({
+			      gioco: giocoSelezionato,
+			      partecipanti: partecipanti,
+			      punteggi: pIniziali,
+			      parole: paroleIniziali,
+			      pronti: [],
+			      finito: [],
+			      confermaVerifica: [],
+			      stato: "attesa",
+			      rivincitaAccettataDa: [],
+			      rivincitaRifiutataDa: [],
+			      dataOra: new Date().toLocaleString('it-IT', {
+			        day: '2-digit',
+			        month: '2-digit',
+			        hour: '2-digit',
+			        minute: '2-digit'
+			      }),
+			      timestamp: Date.now(),
+			      opzioni: opzioni
+			    });
+			    // Deseleziona amici
+			    amiciSelezionati.clear();
+			    document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+			    aggiornaBottoneSfida();
+			    // Mostra conferma
+			    showSuccessBanner(doc.id);
+			  } catch (e) {
+			    console.error("Errore creazione partita:", e);
+			    removeGameBanner();
+			    mostraToast('❌ Errore creazione sfida');
+			  }
+			}
+			
+			function showLoadingBanner(messaggio) {
+			  removeGameBanner();
+			  // Aggiungi animazione spin se non esiste
+			  if (!document.getElementById('spin-style-index')) {
+			    const style = document.createElement('style');
+			    style.id = 'spin-style-index';
+			    style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+			    document.head.appendChild(style);
+			  }
+			  const banner = document.createElement('div');
+			  banner.id = 'game-banner';
+			  banner.className = 'game-banner';
+			  banner.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
+			  banner.innerHTML = `
+			  
+											<div class="banner-left">
+												<span style="font-size:1.5rem;">⏳</span>
+												<div>
+													<div style="font-weight:bold;">${messaggio}</div>
+													<div style="font-size:0.8rem; opacity:0.9;">Attendi un momento</div>
+												</div>
+											</div>
+											<div class="banner-right">
+												<div style="width:20px; height:20px; border:3px solid white; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
+											</div>
+			`;
+			  document.body.appendChild(banner);
+			}
+			
+			function showSuccessBanner(partitaId) {
+			  removeGameBanner();
+			  const banner = document.createElement('div');
+			  banner.id = 'game-banner';
+			  banner.className = 'game-banner';
+			  banner.style.background = 'linear-gradient(135deg, #27ae60 0%, #1e8449 100%)';
+			  banner.innerHTML = `
+			  
+											<div class="banner-left">
+												<span style="font-size:1.5rem;">✅</span>
+												<div>
+													<div style="font-weight:bold;">Sfida creata!</div>
+													<div style="font-size:0.8rem; opacity:0.9;">In attesa che gli altri accettino</div>
+												</div>
+											</div>
+											<div class="banner-right">
+												<button class="btn-banner" style="background:white; color:#333;" onclick="window.location.href='${giocoSelezionato}.html?matchId=${partitaId}'">ENTRA SUBITO</button>
+												<button class="btn-banner btn-cancel-banner" onclick="removeGameBanner()">OK</button>
+											</div>
+			`;
+			  document.body.appendChild(banner);
+			  setTimeout(() => {
+			    const b = document.getElementById('game-banner');
+			    if (b && b.innerHTML.includes('Sfida creata')) removeGameBanner();
+			  }, 5000);
+			}
+			
+			function caricaStorico() {
+			  // Carico le partite e le ordino in JavaScript (evita errore indici Firebase)
+			  db.collection("partite").where("partecipanti", "array-contains", mioNome).where("stato", "==", "conclusa").onSnapshot(snap => {
+			    const div = document.getElementById('lista-storico');
+			    div.innerHTML = "";
+			    let partite = [];
+			    snap.forEach(doc => partite.push(doc.data()));
+			    // Ordinamento JS per tempo decrescente
+			    partite.sort((a, b) => b.timestamp - a.timestamp);
+			    partite.slice(0, 10).forEach(p => {
+			      let classif = Object.entries(p.punteggi).sort((a, b) => b[1] - a[1]);
+			      let vincitore = classif[0][0];
+			      div.innerHTML += `
+											<div class="history-item">
+												<span>${p.dataOra} - ${p.gioco.toUpperCase()}</span>
+												<span>Vinto da: 
+													<b>${vincitore}</b>
+												</span>
+											</div>`;
+			    });
+			  });
+			}
+			
+			function addFriend(n) {
+			  db.collection("amicizie").doc(mioNome + "_" + n).set({
+			    da: mioNome,
+			    a: n,
+			    stato: 'pendente'
+			  });
+			  alert("Richiesta inviata!");
+			}
+			async function accettaSfida(partitaId) {
+			  await db.collection("partite").doc(partitaId).update({
+			    rivincitaAccettataDa: firebase.firestore.FieldValue.arrayUnion(mioNome)
+			  });
+			  // Toast di conferma
+			  mostraToast('✅ Sfida accettata!');
+			}
+			async function rifiutaSfida(partitaId) {
+			  if (!confirm('Sicuro di rifiutare la sfida?')) return;
+			  await db.collection("partite").doc(partitaId).update({
+			    rivincitaRifiutataDa: firebase.firestore.FieldValue.arrayUnion(mioNome)
+			  });
+			  mostraToast('❌ Sfida rifiutata');
+			}
+			async function annullaSfida(partitaId) {
+			  if (!confirm('Sicuro di annullare la sfida?')) return;
+			  try {
+			    await db.collection("partite").doc(partitaId).delete();
+			    mostraToast('🗑️ Sfida annullata');
+			  } catch (e) {
+			    console.error("Errore annullamento:", e);
+			  }
+			}
+			
+			function mostraToast(messaggio) {
+			  const toast = document.createElement('div');
+			  toast.textContent = messaggio;
+			  toast.style.cssText = `
+			  position: fixed;
+			  bottom: 20px;
+			  left: 50%;
+			  transform: translateX(-50%);
+			  background: #03dac6;
+			  color: #000;
+			  padding: 12px 24px;
+			  border-radius: 25px;
+			  font-weight: bold;
+			  z-index: 99999;
+			  animation: fadeInOut 2s ease;
+			`;
+			  document.body.appendChild(toast);
+			  setTimeout(() => toast.remove(), 2000);
+			}
+			
+			function logout() {
+			  localStorage.clear();
+			  window.location.reload();
+			}
+			// ==========================================
+			// 📊 SISTEMA STATISTICHE GIORNALIERE
+			// ==========================================
+			const STATS_KEY = 'funatwork_daily_stats';
+			// Funzione per ottenere la data in formato YYYY-MM-DD
+			function getTodayKey() {
+			  return new Date().toISOString().split('T')[0];
+			}
+			// Funzione per ottenere le statistiche salvate
+			function getDailyStats() {
+			  const saved = localStorage.getItem(STATS_KEY);
+			  return saved ? JSON.parse(saved) : {
+			    days: {},
+			    totals: {}
+			  };
+			}
+			// Funzione per salvare le statistiche
+			function saveDailyStats(stats) {
+			  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+			}
+			// 🎮 REGISTRA UNA PARTITA (da chiamare quando finisce una partita)
+			function registraPartita(gioco) {
+			  const stats = getDailyStats();
+			  const oggi = getTodayKey();
+			  // Inizializza il giorno se non esiste
+			  if (!stats.days[oggi]) {
+			    stats.days[oggi] = {};
+			  }
+			  // Incrementa contatore giornaliero per questo gioco
+			  stats.days[oggi][gioco] = (stats.days[oggi][gioco] || 0) + 1;
+			  // Incrementa totale per questo gioco
+			  stats.totals[gioco] = (stats.totals[gioco] || 0) + 1;
+			  saveDailyStats(stats);
+			  // Aggiorna UI se siamo nella homepage
+			  if (typeof aggiornaStatsUI === 'function') {
+			    aggiornaStatsUI();
+			  }
+			  console.log(`📊 Partita registrata: ${gioco} (${stats.days[oggi][gioco]} oggi)`);
+			}
+			// Calcola statistiche
+			function calcolaStatistiche() {
+			  const stats = getDailyStats();
+			  const oggi = getTodayKey();
+			  const giorni = Object.keys(stats.days).sort();
+			  // Partite oggi
+			  const partiteOggi = stats.days[oggi] || {};
+			  const totaleOggi = Object.values(partiteOggi).reduce((a, b) => a + b, 0);
+			  // Partite per gioco oggi
+			  const ruzzleOggi = partiteOggi.ruzzle || 0;
+			  // Media giornaliera
+			  const giorniAttivi = giorni.length;
+			  const partiteTotali = Object.values(stats.totals).reduce((a, b) => a + b, 0);
+			  const media = giorniAttivi > 0 ? (partiteTotali / giorniAttivi).toFixed(1) : 0;
+			  // Giorno top
+			  let giornoTop = '-';
+			  let maxPartite = 0;
+			  giorni.forEach(giorno => {
+			    const tot = Object.values(stats.days[giorno]).reduce((a, b) => a + b, 0);
+			    if (tot > maxPartite) {
+			      maxPartite = tot;
+			      const d = new Date(giorno);
+			      giornoTop = `${d.getDate()}/${d.getMonth() + 1}`;
+			    }
+			  });
+			  if (maxPartite > 0) {
+			    giornoTop += ` (${maxPartite})`;
+			  }
+			  // Streak
+			  let streak = 0;
+			  let bestStreak = 0;
+			  let currentStreak = 0;
+			  const sortedDays = [...giorni].sort().reverse();
+			  const ieri = new Date();
+			  ieri.setDate(ieri.getDate() - 1);
+			  const ieriKey = ieri.toISOString().split('T')[0];
+			  if (stats.days[oggi]) {
+			    currentStreak = 1;
+			    let checkDate = new Date(oggi);
+			    while (true) {
+			      checkDate.setDate(checkDate.getDate() - 1);
+			      const checkKey = checkDate.toISOString().split('T')[0];
+			      if (stats.days[checkKey]) {
+			        currentStreak++;
+			      } else {
+			        break;
+			      }
+			    }
+			  } else if (stats.days[ieriKey]) {
+			    currentStreak = 0;
+			  }
+			  streak = currentStreak;
+			  let tempStreak = 0;
+			  for (let i = 0; i < sortedDays.length; i++) {
+			    const currentDay = new Date(sortedDays[i]);
+			    const prevDay = i > 0 ? new Date(sortedDays[i - 1]) : null;
+			    if (!prevDay) {
+			      tempStreak = 1;
+			    } else {
+			      const diff = (prevDay - currentDay) / (1000 * 60 * 60 * 24);
+			      if (diff === 1) {
+			        tempStreak++;
+			      } else {
+			        if (tempStreak > bestStreak) bestStreak = tempStreak;
+			        tempStreak = 1;
+			      }
+			    }
+			  }
+			  if (tempStreak > bestStreak) bestStreak = tempStreak;
+			  // 🔧 FIX: Settimana da LUNEDÌ a DOMENICA con giorni fissi
+			  const settimanaCorrente = [];
+			  const oggi_date = new Date();
+			  // Trova il lunedì di questa settimana
+			  const dayOfWeek = oggi_date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+			  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domenica, torna indietro di 6 giorni
+			  const lunedi = new Date(oggi_date);
+			  lunedi.setDate(oggi_date.getDate() + diffToMonday);
+			  // Genera i 7 giorni da LUN a DOM
+			  for (let i = 0; i < 7; i++) {
+			    const d = new Date(lunedi);
+			    d.setDate(lunedi.getDate() + i);
+			    const key = d.toISOString().split('T')[0];
+			    const dayName = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'][i];
+			    const count = stats.days[key] ? Object.values(stats.days[key]).reduce((a, b) => a + b, 0) : 0;
+			    settimanaCorrente.push({
+			      key,
+			      dayName,
+			      count,
+			      isToday: key === oggi
+			    });
+			  }
+			  return {
+			    totaleOggi,
+			    ruzzleOggi,
+			    media,
+			    giornoTop,
+			    partiteTotali,
+			    giorniAttivi,
+			    streak,
+			    bestStreak,
+			    ultimi7Giorni: settimanaCorrente, // 👈 Ora parte da Lunedì
+			    totals: stats.totals
+			  };
+			}
+			// Aggiorna l'interfaccia delle statistiche
+			function aggiornaStatsUI() {
+			  const s = calcolaStatistiche();
+			  // ✅ Feedback caricamento
+			  const statsContent = document.getElementById('stats-content');
+			  if (statsContent) {
+			    statsContent.style.opacity = '0.5';
+			    setTimeout(() => statsContent.style.opacity = '1', 200);
+			  }
+			  // Valori oggi
+			  const elOggiTotale = document.getElementById('stat-oggi-totale');
+			  const elOggiRuzzle = document.getElementById('stat-oggi-ruzzle');
+			  const elMedia = document.getElementById('stat-media');
+			  const elTopDay = document.getElementById('stat-top-day');
+			  if (elOggiTotale) elOggiTotale.textContent = s.totaleOggi;
+			  if (elOggiRuzzle) elOggiRuzzle.textContent = s.ruzzleOggi;
+			  if (elMedia) elMedia.textContent = s.media;
+			  if (elTopDay) elTopDay.textContent = s.giornoTop;
+			  // Valori totali
+			  const elTotalePartite = document.getElementById('stat-totale-partite');
+			  const elGiorniAttivi = document.getElementById('stat-giorni-attivi');
+			  const elStreak = document.getElementById('stat-streak');
+			  const elBestStreak = document.getElementById('stat-best-streak');
+			  if (elTotalePartite) elTotalePartite.textContent = s.partiteTotali;
+			  if (elGiorniAttivi) elGiorniAttivi.textContent = s.giorniAttivi;
+			  if (elStreak) elStreak.textContent = s.streak + ' 🔥';
+			  if (elBestStreak) elBestStreak.textContent = s.bestStreak;
+			  // Grafico settimanale
+			  renderWeeklyChart(s.ultimi7Giorni);
+			}
+			// Renderizza il grafico settimanale
+			function renderWeeklyChart(data) {
+			  const container = document.getElementById('weekly-bars');
+			  if (!container) return;
+			  const maxCount = Math.max(...data.map(d => d.count), 1);
+			  container.innerHTML = data.map(day => {
+			    const heightPercent = (day.count / maxCount) * 100;
+			    const barClass = day.isToday ? 'bar today' : 'bar';
+			    return `
+			      
+											<div class="day-bar">
+												<div class="count">${day.count}</div>
+												<div class="${barClass}" style="height: ${Math.max(heightPercent, 5)}%;"></div>
+												<div class="label">${day.dayName}</div>
+											</div>
+			  `;
+			  }).join('');
+			}
+			// Gestione tab statistiche
+			function showStatsTab(tab) {
+			  // Aggiorna tab attivo
+			  document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+			  event.target.classList.add('active');
+			  // Mostra/nascondi contenuti
+			  const statsOggi = document.querySelector('.stats-grid-home');
+			  const statsSempre = document.getElementById('stats-sempre');
+			  const statsWeekly = document.getElementById('stats-weekly-chart');
+			  if (tab === 'oggi') {
+			    if (statsOggi) statsOggi.style.display = 'grid';
+			    if (statsSempre) statsSempre.style.display = 'none';
+			    if (statsWeekly) statsWeekly.style.display = 'none';
+			  } else if (tab === 'settimana') {
+			    if (statsOggi) statsOggi.style.display = 'none';
+			    if (statsSempre) statsSempre.style.display = 'none';
+			    if (statsWeekly) statsWeekly.style.display = 'block';
+			  } else if (tab === 'sempre') {
+			    if (statsOggi) statsOggi.style.display = 'none';
+			    if (statsSempre) statsSempre.style.display = 'block';
+			    if (statsWeekly) statsWeekly.style.display = 'none';
+			  }
+			}
+			// Carica statistiche all'avvio
+			document.addEventListener('DOMContentLoaded', () => {
+			  aggiornaStatsUI();
+			});
+			// Aggiorna ogni minuto (per aggiornare "oggi" se cambia giorno)
+			setInterval(aggiornaStatsUI, 60000);
+			
+			function resetTutteLeStatistiche() {
+			  if (!confirm("⚠️ ATTENZIONE!\n\nQuesta azione cancellerà TUTTE le statistiche:\n- Partite giocate\n- Punteggi\n- Achievement\n- Storico\n\nSei sicuro?")) return;
+			  // Cancella statistiche Ruzzle
+			  localStorage.removeItem('paroliere_data');
+			  // Cancella statistiche giornaliere
+			  localStorage.removeItem('funatwork_daily_stats');
+			  alert("✅ Statistiche azzerate!");
+			  location.reload();
+			}
+			
+			function toggleDisponibilita() {
+			  const attuale = localStorage.getItem('disponibile') !== 'false';
+			  const nuovo = !attuale;
+			  localStorage.setItem('disponibile', nuovo);
+			  aggiornaUIDisponibilita();
+			  aggiornaPresenza(); // Aggiorna Firebase
+			}
+			
+			function aggiornaUIDisponibilita() {
+			  const disponibile = localStorage.getItem('disponibile') !== 'false';
+			  const btn = document.getElementById('btn-disponibilita');
+			  if (btn) {
+			    if (disponibile) {
+			      btn.textContent = '🟢 Disponibile';
+			      btn.style.background = '#2ecc71';
+			      btn.style.color = 'white';
+			    } else {
+			      btn.textContent = '🔴 Non disturbare';
+			      btn.style.background = '#e74c3c';
+			      btn.style.color = 'white';
+			    }
+			  }
+			}
+		</script>
+	</body>
 </html>
