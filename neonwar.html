@@ -349,6 +349,7 @@
 			    isPaused = true;
 			    document.body.classList.remove('gaming');
 			    document.getElementById('pause-screen').style.display = 'flex';
+   				document.getElementById('fixed-home-btn').style.display = 'block'; // ✅ MOSTRA
 			    if (timerInterval) clearInterval(timerInterval);
 			}
 			
@@ -357,7 +358,8 @@
 			    isPaused = false;
 			    document.body.classList.add('gaming');
 			    document.getElementById('pause-screen').style.display = 'none';
-			    if (isMultiplayer) startTimer();
+			    document.getElementById('fixed-home-btn').style.display = 'none'; // ✅ NASCONDI
+				if (isMultiplayer) startTimer();
 			    loop();
 			}
 			
@@ -504,10 +506,8 @@
 			    document.getElementById('start-screen').style.display = 'none';
 			    document.getElementById('game-over-screen').style.display = 'none';
 			    document.getElementById('shop-screen').style.display = 'none';
-			    // ✅ MOSTRA PULSANTE HOME
-			    if (!isMultiplayer) {
-			        document.getElementById('fixed-home-btn').style.display = 'block';
-			    }
+			    // ✅ NASCONDI HOME DURANTE IL GIOCO
+			    document.getElementById('fixed-home-btn').style.display = 'none';
 			    score = 0; frameCount = 0;
 			    player.x = canvas.width/2; player.y = canvas.height/2;
 			    
@@ -921,6 +921,8 @@
 			        requestAnimationFrame(loop); 
 			    }
 			}
+			// ✅ MOSTRA HOME NEL MENU INIZIALE
+			document.getElementById('fixed-home-btn').style.display = 'block';
 		</script>
 	</body>
 </html>
