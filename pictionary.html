@@ -1901,13 +1901,20 @@ function handleRoomUpdate(doc) {
     state.roomData = data;
     state.isHost = data.host === state.playerName;
     
-    // ✅ GUESS IT: Gestito internamente da handleGuessItPhase
-    if (data.stato === 'guessit') {
-        handleGuessItPhase(data);
-        return; // ← Non eseguire altro
+    // ✅ PROTEZIONE: Valida dati critici
+    if (!data.settings) {
+        console.warn('⚠️ settings mancante, ricarico...');
+        location.reload();
+        return;
     }
     
-    // ✅ Ignora se sto disegnando (modalità classica)
+    // ✅ GUESS IT: Gestito internamente
+    if (data.stato === 'guessit') {
+        handleGuessItPhase(data);
+        return;
+    }
+    
+    // ✅ Ignora se sto disegnando
     if (state.isDrawing) {
         console.log("📝 Sto disegnando, ignoro update");
         return;
