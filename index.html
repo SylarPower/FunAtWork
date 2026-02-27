@@ -983,46 +983,65 @@ function listen() {
             renderTutteLePartite();
         });
 
-// ✅ LISTENER 4: Pictionary (CORRETTO - evita loop)
-let lastPictionaryUpdate = 0;
-const PICTIONARY_THROTTLE = 1000; // Max 1 update al secondo
-
-db.collection("pictionary_rooms")
-    .where("players", "array-contains", mioNome)
-    .onSnapshot(
-        snap => {
-            const now = Date.now();
-            
-            // ✅ Throttle per evitare troppi render
-            if (now - lastPictionaryUpdate < PICTIONARY_THROTTLE) {
-                console.log('⏳ Pictionary update throttled');
-                return;
-            }
-            lastPictionaryUpdate = now;
-            
-            partiteCache.pictionary = [];
-            
-            snap.forEach(doc => {
-                const data = doc.data();
-                
-                // ✅ Valida dati + ignora partite concluse
-                if (data && 
-                    data.players && 
-                    Array.isArray(data.players) &&
-                    data.stato !== 'results') {
-                    
-                    partiteCache.pictionary.push({ id: doc.id, ...data });
-                }
-            });
-            
-            renderTutteLePartite();
-        },
-        error => {
-            console.warn("⚠️ Errore listener Pictionary:", error.message);
-            renderTutteLePartite();
-        }
-    );
+    // ✅ PICTIONARY: Caricamento manuale invece di listener (evita loop)
+    caricaPartitePictionary();
+    setInterval(caricaPartitePictionary, 5000);
 }
+
+// ✅ NUOVA FUNZIONE
+async function caricaPartitePictionary() {
+    if (!mioNome) return;
+    
+    try {
+        const snap = await db.collection("pictionary_rooms")
+            .where("players", "array-contains", mioNome)
+            .get();
+        
+        partiteCache.pictionary = [];
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data && data.players && data.stato !== 'results') {
+                partiteCache.pictionary.push({ id: doc.id, ...data });
+            }
+        });
+        
+        renderTutteLePartite();
+    } catch (e) {
+        console.warn("Pictionary load error:", e.message);
+    }
+}
+
+// ✅ NUOVA FUNZIONE: Carica Pictionary senza listener real-time
+async function caricaPartitePictionary() {
+    if (!mioNome) return;
+    
+    try {
+        const snap = await db.collection("pictionary_rooms")
+            .where("players", "array-contains", mioNome)
+            .get();
+        
+        partiteCache.pictionary = [];
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data && data.players && Array.isArray(data.players) && data.stato !== 'results') {
+                partiteCache.pictionary.push({ id: doc.id, ...data });
+            }
+        });
+        
+        renderTutteLePartite();
+    } catch (e) {
+        console.warn("⚠️ Errore caricamento Pictionary:", e.message);
+    }
+}
+
+// ✅ Ricarica Pictionary ogni 5 secondi (invece di listener real-time)
+setInterval(() => {
+    if (mioNome && document.getElementById('main-app').style.display !== 'none') {
+        caricaPartitePictionary();
+    }
+}, 5000);
 // ========================================
 // ✅ RENDER UNIFICATO
 // ========================================
@@ -1914,3 +1933,4 @@ if (giocoSelezionato === 'pictionary') {
 		</script>
 	</body>
 </html>
+
