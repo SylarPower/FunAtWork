@@ -916,9 +916,7 @@ function listen() {
         aggiornaListaAmici(snap, presenzeData);
     });
 
-    // ========================================
-    // ✅ LISTENER 3: Partite Ruzzle/NeonWar
-    // ========================================
+    // LISTENER 3: Partite Ruzzle/NeonWar
     db.collection("partite")
         .where("partecipanti", "array-contains", mioNome)
         .onSnapshot(snap => {
@@ -937,20 +935,30 @@ function listen() {
             renderTutteLePartite();
         });
 
-    // ========================================
-    // ✅ LISTENER 4: Pictionary
-    // ========================================
+    // ✅ LISTENER 4: Pictionary (CON PROTEZIONE LOOP)
     db.collection("pictionary_rooms")
         .where("players", "array-contains", mioNome)
-        .onSnapshot(snap => {
-            partiteCache.pictionary = [];
-            
-            snap.forEach(doc => {
-                partiteCache.pictionary.push({ id: doc.id, ...doc.data() });
-            });
-            
-            renderTutteLePartite();
-        });
+        .onSnapshot(
+            snap => {
+                partiteCache.pictionary = [];
+                
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    // ✅ VALIDA che i dati siano completi
+                    if (data && data.players && Array.isArray(data.players)) {
+                        partiteCache.pictionary.push({ id: doc.id, ...data });
+                    }
+                });
+                
+                renderTutteLePartite();
+            },
+            error => {
+                // ✅ GESTISCI ERRORI (es. regole Firestore)
+                console.warn("⚠️ Errore listener Pictionary:", error.message);
+                // Non bloccare l'app, mostra solo partite Ruzzle/NeonWar
+                renderTutteLePartite();
+            }
+        );
 }
 // ========================================
 // ✅ RENDER UNIFICATO
@@ -1070,6 +1078,12 @@ function renderPartitaRuzzle(p, div) {
 // 🎨 RENDER PICTIONARY
 // ========================================
 function renderPartitaPictionary(p, div) {
+    // ✅ VALIDA I DATI PRIMA DI RENDERIZZARE
+    if (!p || !p.id || !p.players || !Array.isArray(p.players)) {
+        console.warn('⚠️ Dati Pictionary incompleti:', p);
+        return;
+    }
+    
     const roomId = p.id;
     
     if (p.stato === 'results') return;
@@ -1830,6 +1844,7 @@ if (giocoSelezionato === 'pictionary') {
 		</script>
 	</body>
 </html>
+
 
 
 
