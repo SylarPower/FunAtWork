@@ -3604,16 +3604,11 @@ function showRoundWinnerBanner(winner, word, drawer, data) {
     
     const isMe = winner === state.playerName;
     const iAmDrawer = drawer === state.playerName;
-    
     const gi = data.guessIt;
     
-    // ✅ Prendiamo i punti dinamici da Firebase
     const guesserPts = gi?.roundWinnerPoints || 0;
     const drawerPts = gi?.roundDrawerPoints || 0;
-    
-    const totalTime = gi?.timePerRound || 60;
-    const startedAt = gi?.roundStartedAt || Date.now();
-    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
+    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - (gi?.roundStartedAt || Date.now())) / 1000));
 
     let pointsMsg = '';
     let pointsBadge = '';
@@ -3637,11 +3632,15 @@ function showRoundWinnerBanner(winner, word, drawer, data) {
     banner.className = 'game-banner';
     banner.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
 
-    const advanceButton = state.isHost 
-        ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" style="padding: 12px 24px; font-weight: 900; font-size: 1.05rem;">
+    // ✅ Mostra il pulsante "PROSSIMO ROUND" solo al disegnatore corrente
+    const showAdvanceButton = iAmDrawer || state.isHost;
+
+    const advanceButton = showAdvanceButton 
+        ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" 
+                   style="padding: 14px 28px; font-weight: 900; font-size: 1.1rem;">
                ▶️ PROSSIMO ROUND
            </button>`
-        : `<div class="spinner"></div><span style="color:rgba(255,255,255,0.85)">Attendi l'host...</span>`;
+        : `<div class="spinner"></div><span style="color:rgba(255,255,255,0.9)">Attendi il disegnatore...</span>`;
 
     banner.innerHTML = `
         <div class="banner-left">
@@ -3652,7 +3651,7 @@ function showRoundWinnerBanner(winner, word, drawer, data) {
             </div>
         </div>
         <div class="banner-right" style="display:flex; align-items:center; gap:16px;">
-            <div style="background:rgba(255,215,0,0.25); border:2px solid #ffd700; border-radius:12px; padding:8px 16px; text-align:center; min-width:110px;">
+            <div style="background:rgba(255,215,0,0.25); border:2px solid #ffd700; border-radius:12px; padding:8px 16px; text-align:center; min-width:120px;">
                 <div style="font-size:0.75rem; opacity:0.9;">⚡ ${elapsedSeconds}s</div>
                 <div style="font-size:1.15rem; font-weight:900; color:#ffd700;">${pointsBadge}</div>
             </div>
@@ -3662,15 +3661,16 @@ function showRoundWinnerBanner(winner, word, drawer, data) {
 
     document.body.appendChild(banner);
 }
-
+    
 function showTimeUpBanner(word, drawer, data) {
-    // Ferma tutto
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
     if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
     
     const gi = data.guessIt;
     const totalTime = gi?.timePerRound || 60;
-    
+    const iAmDrawer = drawer === state.playerName;
+    const showAdvanceButton = iAmDrawer || state.isHost;
+
     removeBanner();
     document.getElementById('winner-overlay')?.remove();
 
@@ -3679,14 +3679,14 @@ function showTimeUpBanner(word, drawer, data) {
     banner.className = 'game-banner';
     banner.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
 
-    const advanceButton = state.isHost 
+    const advanceButton = showAdvanceButton 
         ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" 
-                   style="padding: 12px 24px; font-weight: 900; font-size: 1.05rem;">
+                   style="padding: 14px 28px; font-weight: 900; font-size: 1.1rem;">
                ▶️ PROSSIMO ROUND
            </button>`
         : `<div class="spinner"></div>
-           <span style="color:rgba(255,255,255,0.85); font-size: 0.95rem;">
-               Attendi l'host...
+           <span style="color:rgba(255,255,255,0.9); font-size: 0.95rem;">
+               Attendi il disegnatore...
            </span>`;
 
     banner.innerHTML = `
@@ -3707,7 +3707,7 @@ function showTimeUpBanner(word, drawer, data) {
                 border-radius:12px; 
                 padding:8px 16px; 
                 text-align:center;
-                min-width:100px;
+                min-width:110px;
             ">
                 <div style="font-size:0.75rem; opacity:0.9;">Durata round</div>
                 <div style="font-size:1.2rem; font-weight:900; color:white;">
@@ -3972,30 +3972,37 @@ function redrawGuessItCanvas() {
 // STREAMING E TIMER
 // ========================================
 let lastCanvasHash = '';
+let lastStreamTime = 0;
 
 function startGuessItStreaming() {
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
     lastCanvasHash = '';
+    lastStreamTime = Date.now();
 
     guessIt.streamInterval = setInterval(async () => {
         if (!guessIt.isDrawer || !guessIt.canvas) return;
 
         try {
-            const dataUrl = guessIt.canvas.toDataURL('image/jpeg', 0.65);
+            const now = Date.now();
+            const dataUrl = guessIt.canvas.toDataURL('image/jpeg', 0.68);
             const currentHash = simpleCanvasHash(dataUrl);
 
-            // ✅ Scrivi SOLO se il disegno è cambiato
-            if (currentHash === lastCanvasHash) return;
+            // Aggiorna più frequentemente se c'è stato un cambiamento recente
+            const shouldForceUpdate = (now - lastStreamTime > 800); // ogni 800ms forza comunque
+
+            if (currentHash === lastCanvasHash && !shouldForceUpdate) return;
             
             lastCanvasHash = currentHash;
+            lastStreamTime = now;
 
             await db.collection("pictionary_rooms").doc(state.roomId).update({
-                'guessIt.canvasData': dataUrl
+                'guessIt.canvasData': dataUrl,
+                'guessIt.lastUpdate': Date.now()   // aiuta il sync
             });
         } catch (e) {
             console.error('Errore streaming canvas:', e);
         }
-    }, 450); // 450ms invece di 350ms → più stabile
+    }, 320); // Ridotto a 320ms per maggiore reattività
 }
 
 function startGuessItTimer(seconds) {
@@ -4051,11 +4058,16 @@ async function submitGuessItAnswer() {
     
     const gi = state.roomData?.guessIt;
     if (!gi) return;
+
+    // ✅ Protezione: non fare nulla se il round è già finito
+    if (gi.roundWinner || guessIt.roundEndedLocally) {
+        console.log("⏭️ Round già terminato, ignoro risposta");
+        return;
+    }
     
     const correctWord = gi.currentWord.toUpperCase().trim();
     const userAnswer = answer.toUpperCase().trim();
     
-    // Normalizza per confronto
     const normalize = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
     const isCorrect = normalize(userAnswer) === normalize(correctWord);
     
@@ -4074,6 +4086,12 @@ async function submitGuessItAnswer() {
     
     if (isCorrect) {
         await markAsWinner(state.playerName, gi.currentDrawer);
+        
+        // Trigger locale immediato
+        if (!guessIt.roundEndedLocally) {
+            guessIt.roundEndedLocally = true;
+            showRoundWinnerBanner(state.playerName, gi.currentWord, gi.currentDrawer, state.roomData);
+        }
     }
 }
 
@@ -4143,20 +4161,35 @@ async function advanceGuessItRound() {
         });
     } else {
         // Prossimo round
-        const nextDrawerIdx = nextRound % data.players.length;
-        const nextDrawer = data.players[nextDrawerIdx];
-const theme = getRandomTheme(); // ✅ Usa la nuova funzione
+        const nextRound = (gi.round || 0) + 1;
+        const totalRounds = gi.totalRounds || data.players.length * 2;
+        
+        // ✅ Rotazione equa + casuale: prima mischiamo l'ordine una volta sola
+        if (!data.guessIt.playerOrder || data.guessIt.playerOrder.length === 0) {
+            // Mischia i giocatori una sola volta all'inizio della partita
+            const shuffled = [...data.players].sort(() => Math.random() - 0.5);
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                'guessIt.playerOrder': shuffled
+            });
+            return; // Aspetta il prossimo snapshot
+        }
+        
+        const playerOrder = data.guessIt.playerOrder || data.players;
+        const nextDrawerIdx = nextRound % playerOrder.length;
+        const nextDrawer = playerOrder[nextDrawerIdx];
+        
+        const theme = getRandomTheme();
 
-await db.collection("pictionary_rooms").doc(state.roomId).update({
-    'guessIt.round': nextRound,
-    'guessIt.currentDrawer': nextDrawer,
-    'guessIt.currentWord': theme.word,
-    'guessIt.currentCategory': theme.category,
-    'guessIt.canvasData': null,
-    'guessIt.guesses': {},
-    'guessIt.roundWinner': null,
-    'guessIt.roundStartedAt': Date.now()     // ← AGGIUNTO
-});
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'guessIt.round': nextRound,
+            'guessIt.currentDrawer': nextDrawer,
+            'guessIt.currentWord': theme.word,
+            'guessIt.currentCategory': theme.category,
+            'guessIt.canvasData': null,
+            'guessIt.guesses': {},
+            'guessIt.roundWinner': null,
+            'guessIt.roundStartedAt': Date.now()
+        });
     }
 }
 
