@@ -1907,6 +1907,15 @@ function fireConfetti() {
     }
 }
 
+// Helper per confrontare canvas (evita scritture inutili)
+function simpleCanvasHash(dataUrl) {
+    let hash = 0;
+    for (let i = 0; i < dataUrl.length; i += 80) {   // Campionamento
+        hash = ((hash << 5) - hash) + dataUrl.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
+}    
 // ========================================
 // LOBBY
 // ========================================
@@ -1920,7 +1929,7 @@ function enterLobby() {
 }
 
 let lastUpdateTime = 0;
-let isHandlingUpdate = false;  // ✅ Nuova variabile
+let isHandlingUpdate = false;
 
 function handleRoomUpdate(doc) {
     if (isHandlingUpdate) {
@@ -1929,29 +1938,54 @@ function handleRoomUpdate(doc) {
     }
 
     if (!doc.exists) {
-        // ... gestione room eliminata (codice esistente) ...
+        // Gestione room eliminata (lascia il tuo codice attuale)
+        if (unsubscribeRoom) {
+            unsubscribeRoom();
+            unsubscribeRoom = null;
+        }
+        showScreen('loading-screen');
+        document.getElementById('loading-screen').innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h2 style="color: #f39c12;">⚠️ Room Eliminata</h2>
+                <button onclick="window.location.href='index.html'" 
+                        style="padding: 15px 30px; background: #e94560; color: white; 
+                               border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                    🏠 Torna alla Home
+                </button>
+            </div>
+        `;
         return;
     }
 
     const data = doc.data();
     if (!data || !data.stato) return;
 
-    // ✅ Rileva se lo stato è cambiato
-    const statoChanged = data.stato !== state.roomData?.stato;
+    const prevStato = state.roomData?.stato;
+    const statoChanged = prevStato !== data.stato;
 
-    // ✅ Throttle SOLO per aggiornamenti NON critici (stesso stato)
+    // ✅ Throttle intelligente: bypassa il limite solo se cambia stato
     const now = Date.now();
-    if (!statoChanged && now - lastUpdateTime < 500) return;
-    lastUpdateTime = now;
+    if (!statoChanged && now - lastUpdateTime < 400) {
+        return;
+    }
 
+    lastUpdateTime = now;
     isHandlingUpdate = true;
 
     try {
-        const prevStato = state.roomData?.stato;
         state.roomData = data;
+// Safety: se l'host non è più nella stanza → riassegna
+if (data.stato !== 'lobby' && data.players.length > 0 && !data.players.includes(data.host)) {
+    const newHost = data.players[0];
+    if (newHost === state.playerName) {
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            host: newHost
+        });
+    }
+}
         state.isHost = data.host === state.playerName;
 
-        console.log(`🔄 ${prevStato} → ${data.stato}`);
+        console.log(`🔄 Stato: ${prevStato || '-'} → ${data.stato}`);
 
         if (data.stato === 'guessit') {
             handleGuessItPhase(data);
@@ -1961,9 +1995,9 @@ function handleRoomUpdate(doc) {
         if (state.isDrawing) return;
 
         switch(data.stato) {
-            case 'lobby': renderLobby(data); break;
+            case 'lobby':   renderLobby(data); break;
             case 'drawing': handleDrawingPhase(data); break;
-            case 'voting': handleVotingPhase(data); break;
+            case 'voting':  handleVotingPhase(data); break;
             case 'results': handleResultsPhase(data); break;
         }
     } catch (e) {
@@ -1971,82 +2005,69 @@ function handleRoomUpdate(doc) {
     } finally {
         setTimeout(() => {
             isHandlingUpdate = false;
-        }, 100);
+        }, 80);
     }
 }
 
 function renderLobby(data) {
     showScreen('lobby-screen');
     showHomeButton();
-    
-    // ✅ Aggiorna display giocatori (codice esistente, va bene)
+
+    // Aggiorna lista giocatori
     const playersDisplay = document.getElementById('lobby-players-display');
     if (playersDisplay) {
         playersDisplay.innerHTML = data.players.map(p => `
-            <div style="
-                background: ${data.ready.includes(p) ? 'var(--success)' : 'var(--accent)'};
-                color: white; padding: 10px 20px; border-radius: 25px;
-                font-weight: bold; display: flex; align-items: center; gap: 8px;
-            ">
+            <div style="background: ${data.ready.includes(p) ? 'var(--success)' : 'var(--accent)'}; 
+                        color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; 
+                        display: flex; align-items: center; gap: 8px;">
                 ${p === data.host ? '👑' : ''} ${p}
                 ${data.ready.includes(p) ? '✅' : '⏳'}
             </div>
         `).join('');
     }
-    
+
+    // Aggiorna numero round
     const autoRoundsDisplay = document.getElementById('auto-rounds-display');
-    if (autoRoundsDisplay) {
-        autoRoundsDisplay.textContent = data.players.length;
-    }
-    
-    // ✅ BANNER: Aggiorna contenuto se esiste, crea solo se non esiste
-    const existingBanner = document.getElementById('game-banner');
+    if (autoRoundsDisplay) autoRoundsDisplay.textContent = data.players.length;
+
     const isReady = data.ready.includes(state.playerName);
-    
     const subtitleText = `${data.ready.length}/${data.players.length} pronti • ${data.players.length} round`;
-    
-    if (existingBanner && existingBanner.dataset.type === 'lobby') {
-        // ✅ Banner esiste → aggiorna solo testo e pulsanti
-        const subtitleEl = existingBanner.querySelector('.banner-subtitle');
+
+    // ✅ Banner ottimizzato: aggiorna se esiste, altrimenti crea
+    let banner = document.getElementById('game-banner');
+
+    if (banner && banner.dataset.type === 'lobby') {
+        // Aggiorna solo il contenuto
+        const subtitleEl = banner.querySelector('.banner-subtitle');
         if (subtitleEl) subtitleEl.textContent = subtitleText;
-        
-        // Aggiorna stato pulsante ready
-        const readyBtn = existingBanner.querySelector('.ready-toggle-btn');
+
+        const readyBtn = banner.querySelector('.ready-toggle-btn');
         if (readyBtn) {
             readyBtn.className = `btn ${isReady ? 'btn-secondary' : 'btn-primary'} ready-toggle-btn`;
-            readyBtn.innerHTML = isReady ? '⏸️ ANNULLA' : '🚀 SONO PRONTO!';
-        }
-        
-        // Aggiorna time select se esiste
-        const timeSelect = existingBanner.querySelector('#banner-time-select');
-        if (timeSelect && data.settings?.timePerRound) {
-            timeSelect.value = data.settings.timePerRound;
+            readyBtn.textContent = isReady ? '⏸️ ANNULLA' : '🚀 SONO PRONTO!';
         }
     } else {
-        // ✅ Banner non esiste → crea
+        // Crea banner la prima volta
         removeBanner();
-        const banner = document.createElement('div');
+        banner = document.createElement('div');
         banner.id = 'game-banner';
         banner.className = 'game-banner';
         banner.dataset.type = 'lobby';
         banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
-        
+
         let timeSelector = '';
         if (state.isHost && !data.sfidaDiretta) {
             const currentTime = data.settings?.timePerRound || 60;
             timeSelector = `
-                <select onchange="updateSettings()" id="banner-time-select" style="
-                    padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer;
-                ">
-                    <option value="30" ${currentTime == 30 ? 'selected' : ''}>30s</option>
-                    <option value="45" ${currentTime == 45 ? 'selected' : ''}>45s</option>
-                    <option value="60" ${currentTime == 60 ? 'selected' : ''}>60s</option>
-                    <option value="90" ${currentTime == 90 ? 'selected' : ''}>90s</option>
-                    <option value="120" ${currentTime == 120 ? 'selected' : ''}>120s</option>
-                </select>
-            `;
+                <select onchange="updateSettings()" id="banner-time-select" style="padding:8px 12px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">
+                    <option value="30" ${currentTime==30?'selected':''}>30s</option>
+                    <option value="45" ${currentTime==45?'selected':''}>45s</option>
+                    <option value="60" ${currentTime==60?'selected':''}>60s</option>
+                    <option value="90" ${currentTime==90?'selected':''}>90s</option>
+                    <option value="120" ${currentTime==120?'selected':''}>120s</option>
+                </select>`;
         }
-        
+
         banner.innerHTML = `
             <div class="banner-left">
                 <span class="banner-icon">🎨</span>
@@ -2058,21 +2079,20 @@ function renderLobby(data) {
             <div class="banner-right">
                 ${timeSelector}
                 <button class="btn ${isReady ? 'btn-secondary' : 'btn-primary'} ready-toggle-btn" 
-                        onclick="toggleReady()" style="padding: 10px 20px;">
+                        onclick="toggleReady()" style="padding:10px 20px;">
                     ${isReady ? '⏸️ ANNULLA' : '🚀 SONO PRONTO!'}
                 </button>
-                <button class="btn btn-danger" onclick="leaveRoom()" style="padding: 10px 20px;">
+                <button class="btn btn-danger" onclick="leaveRoom()" style="padding:10px 20px;">
                     🚪 ESCI
                 </button>
             </div>
         `;
-        
         document.body.appendChild(banner);
     }
-    
-    // ✅ Auto-start fuori dal contesto handler
+
+    // Auto-start con piccolo delay
     if (data.ready.length >= data.players.length && data.players.length >= 2 && state.isHost) {
-        setTimeout(() => startGame(), 50);
+        setTimeout(() => startGame(), 80);
     }
 }
 
@@ -2098,45 +2118,52 @@ async function toggleReady() {
 }
 
 async function leaveRoom() {
-    if (!confirm("Sicuro di voler uscire?")) return;
-    
+    if (!confirm("Sicuro di voler uscire dalla stanza?")) return;
+
     if (unsubscribeRoom) {
         unsubscribeRoom();
         unsubscribeRoom = null;
     }
     clearInterval(timerInterval);
-    
-    const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
-    const data = doc.data();
-    
-    if (!data) {
-        location.reload();
-        return;
+
+    try {
+        const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+        const data = doc.data();
+
+        if (!data) {
+            location.reload();
+            return;
+        }
+
+        const remainingPlayers = data.players.filter(p => p !== state.playerName);
+
+        if (remainingPlayers.length === 0) {
+            // Ultimo giocatore → elimina stanza
+            await db.collection("pictionary_rooms").doc(state.roomId).delete();
+        } 
+        else if (state.isHost) {
+            // Host esce → assegna nuovo host random
+            const newHost = remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)];
+            
+            console.log(`👑 Host trasferito: ${state.playerName} → ${newHost}`);
+
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                host: newHost,
+                players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
+                ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
+            });
+        } 
+        else {
+            // Giocatore normale esce
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
+                ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
+            });
+        }
+    } catch (e) {
+        console.error("Errore leaveRoom:", e);
     }
-    
-    const remainingPlayers = data.players.filter(p => p !== state.playerName);
-    
-    if (remainingPlayers.length === 0) {
-        // ✅ Ultimo giocatore → elimina room
-        await db.collection("pictionary_rooms").doc(state.roomId).delete();
-    } else if (state.isHost) {
-        // ✅ Host esce → trasferisci a giocatore random
-        const newHost = remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)];
-        console.log(`👑 Trasferimento host: ${state.playerName} → ${newHost}`);
-        
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            host: newHost,
-            players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
-            ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
-        });
-    } else {
-        // ✅ Non-host esce → rimuovi solo se stesso
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
-            ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
-        });
-    }
-    
+
     location.reload();
 }
 
@@ -3466,6 +3493,11 @@ function handleGuessItPhase(data) {
     // ✅ GESTIONE VINCITORE ROUND
     if (gi.roundWinner && !guessIt.roundEndedLocally) {
         guessIt.roundEndedLocally = true;
+     // Rimuovi eventuale banner di timeout
+    if (document.getElementById('game-banner') && 
+        document.getElementById('game-banner').style.background.includes('#e74c3c')) {
+        removeBanner();
+    }
         showRoundWinnerBanner(gi.roundWinner, gi.currentWord, gi.currentDrawer, data);
     }
 }
@@ -3633,38 +3665,60 @@ function showRoundWinnerBanner(winner, word, drawer, data) {
 }
 
 function showTimeUpBanner(word, drawer, data) {
+    // Ferma tutto
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
     if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
     
+    const gi = data.guessIt;
+    const totalTime = gi?.timePerRound || 60;
+    
     removeBanner();
     document.getElementById('winner-overlay')?.remove();
-    
+
     const banner = document.createElement('div');
     banner.id = 'game-banner';
     banner.className = 'game-banner';
     banner.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
-    
-    const advanceButton = state.isHost
+
+    const advanceButton = state.isHost 
         ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" 
-                   style="padding: 12px 24px; font-weight: 900;">
+                   style="padding: 12px 24px; font-weight: 900; font-size: 1.05rem;">
                ▶️ PROSSIMO ROUND
            </button>`
         : `<div class="spinner"></div>
-           <span style="color: rgba(255,255,255,0.8);">Attendi l'host...</span>`;
-    
+           <span style="color:rgba(255,255,255,0.85); font-size: 0.95rem;">
+               Attendi l'host...
+           </span>`;
+
     banner.innerHTML = `
         <div class="banner-left">
             <span class="banner-icon">⏰</span>
             <div>
                 <div class="banner-title">TEMPO SCADUTO!</div>
-                <div class="banner-subtitle">La parola era: "${word}" • Nessun punto assegnato</div>
+                <div class="banner-subtitle">
+                    La parola era: <strong>"${word}"</strong><br>
+                    <span style="opacity:0.9;">Nessun punto assegnato questo round</span>
+                </div>
             </div>
         </div>
-        <div class="banner-right">
+        <div class="banner-right" style="display:flex; align-items:center; gap:16px;">
+            <div style="
+                background:rgba(255,255,255,0.15); 
+                border:2px solid rgba(255,255,255,0.4); 
+                border-radius:12px; 
+                padding:8px 16px; 
+                text-align:center;
+                min-width:100px;
+            ">
+                <div style="font-size:0.75rem; opacity:0.9;">Durata round</div>
+                <div style="font-size:1.2rem; font-weight:900; color:white;">
+                    ${totalTime}s
+                </div>
+            </div>
             ${advanceButton}
         </div>
     `;
-    
+
     document.body.appendChild(banner);
 }
 
@@ -3919,28 +3973,30 @@ function redrawGuessItCanvas() {
 // STREAMING E TIMER
 // ========================================
 let lastCanvasHash = '';
+
 function startGuessItStreaming() {
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
     lastCanvasHash = '';
-    
+
     guessIt.streamInterval = setInterval(async () => {
         if (!guessIt.isDrawer || !guessIt.canvas) return;
-        
+
         try {
-            const dataUrl = guessIt.canvas.toDataURL('image/jpeg', 0.6);
+            const dataUrl = guessIt.canvas.toDataURL('image/jpeg', 0.65);
+            const currentHash = simpleCanvasHash(dataUrl);
+
+            // ✅ Scrivi SOLO se il disegno è cambiato
+            if (currentHash === lastCanvasHash) return;
             
-            // ✅ Diff check: scrivi SOLO se il canvas è cambiato
-            const newHash = simpleHash(dataUrl);
-            if (newHash === lastCanvasHash) return;
-            lastCanvasHash = newHash;
-            
+            lastCanvasHash = currentHash;
+
             await db.collection("pictionary_rooms").doc(state.roomId).update({
                 'guessIt.canvasData': dataUrl
             });
         } catch (e) {
-            console.error('Errore streaming:', e);
+            console.error('Errore streaming canvas:', e);
         }
-    }, 500);  // ✅ Anche aumentato a 500ms (era 350)
+    }, 450); // 450ms invece di 350ms → più stabile
 }
 
 // Hash veloce per confronto
@@ -4049,7 +4105,7 @@ async function approveAnswer(guessId, playerName) {
 
 async function markAsWinner(guesser, drawer) {
     const gi = state.roomData?.guessIt;
-    if (!gi) return;
+    if (!gi || gi.roundWinner) return;
 
     const totalTime = gi.timePerRound || 60;
     const startedAt = gi.roundStartedAt || Date.now();
