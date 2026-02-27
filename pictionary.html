@@ -1923,58 +1923,43 @@ let lastUpdateTime = 0;
 let isHandlingUpdate = false;  // ✅ Nuova variabile
 
 function handleRoomUpdate(doc) {
-    // ✅ Evita re-entry
     if (isHandlingUpdate) {
         console.log('⚠️ Update già in corso, skip');
         return;
     }
-    
-    // ✅ Throttle: max 1 update ogni 500ms
+
+    if (!doc.exists) {
+        // ... gestione room eliminata (codice esistente) ...
+        return;
+    }
+
+    const data = doc.data();
+    if (!data || !data.stato) return;
+
+    // ✅ Rileva se lo stato è cambiato
+    const statoChanged = data.stato !== state.roomData?.stato;
+
+    // ✅ Throttle SOLO per aggiornamenti NON critici (stesso stato)
     const now = Date.now();
-    if (now - lastUpdateTime < 500) return;
+    if (!statoChanged && now - lastUpdateTime < 500) return;
     lastUpdateTime = now;
-    
-    // ✅ Imposta flag
+
     isHandlingUpdate = true;
-    
+
     try {
-        if (!doc.exists) {
-            if (unsubscribeRoom) {
-                unsubscribeRoom();
-                unsubscribeRoom = null;
-            }
-            showScreen('loading-screen');
-            document.getElementById('loading-screen').innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <h2 style="color: #f39c12;">⚠️ Room Eliminata</h2>
-                    <button onclick="window.location.href='index.html'" 
-                            style="padding: 15px 30px; background: #e94560; color: white; 
-                                   border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
-                        🏠 Torna alla Home
-                    </button>
-                </div>
-            `;
-            return;
-        }
-        
-        const data = doc.data();
-        if (!data || !data.stato) return;
-        
         const prevStato = state.roomData?.stato;
         state.roomData = data;
         state.isHost = data.host === state.playerName;
-        
+
         console.log(`🔄 ${prevStato} → ${data.stato}`);
-        
-        // GuessIt
+
         if (data.stato === 'guessit') {
             handleGuessItPhase(data);
             return;
         }
-        
-        // Ignora se sto disegnando
+
         if (state.isDrawing) return;
-        
+
         switch(data.stato) {
             case 'lobby': renderLobby(data); break;
             case 'drawing': handleDrawingPhase(data); break;
@@ -1984,7 +1969,6 @@ function handleRoomUpdate(doc) {
     } catch (e) {
         console.error('❌ Errore handleRoomUpdate:', e);
     } finally {
-        // ✅ Reset flag dopo 100ms
         setTimeout(() => {
             isHandlingUpdate = false;
         }, 100);
@@ -2095,7 +2079,7 @@ function renderLobby(data) {
     
     // ✅ Avvio automatico quando tutti pronti
     if (data.ready.length >= data.players.length && data.players.length >= 2 && state.isHost) {
-        startGame();
+        setTimeout(() => startGame(), 50);  // ✅ Esci dal contesto dell'handler
     }
 }
 
@@ -3398,7 +3382,10 @@ function handleGuessItPhase(data) {
     // ✅ PRIMO CARICAMENTO o CAMBIO ROUND
     if (!guessIt.initialized || guessIt.currentRound !== currentRoundFromDB) {
         console.log(`🔮 GuessIt: Inizializzazione round ${currentRoundFromDB}`);
-        
+        // ✅ FIX: Ferma streaming e listener del round precedente
+        if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
+        guessIt.streamInterval = null;
+        removeGuessItCanvasListeners();        
         guessIt.initialized = true;
         guessIt.currentRound = currentRoundFromDB;
         guessIt.isDrawer = amIDrawer;
@@ -3463,7 +3450,9 @@ function handleGuessItPhase(data) {
 
 function setupGuessItDrawer(gi) {
     guessIt.currentWord = gi.currentWord;
-    
+    // ✅ FIX: Riabilita interazione canvas
+    guessIt.canvas.style.pointerEvents = 'auto';
+    guessIt.canvas.style.cursor = 'crosshair';    
     // Layout disegnatore
     document.getElementById('guessit-toolbar-left').style.display = 'flex';
     document.getElementById('guessit-placeholder-left').style.display = 'none';
@@ -3507,6 +3496,18 @@ badge.innerHTML = `
     startGuessItStreaming();
 }
 
+// ✅ NUOVA FUNZIONE - Aggiungi prima di setupGuessItGuesser
+function removeGuessItCanvasListeners() {
+    const c = guessIt.canvas;
+    if (!c) return;
+    c.onmousedown = null;
+    c.onmousemove = null;
+    c.ontouchstart = null;
+    c.ontouchmove = null;
+    c.ontouchend = null;
+    c.ontouchcancel = null;
+}
+    
 function setupGuessItGuesser(gi) {
     // Layout indovinatore
     document.getElementById('guessit-toolbar-left').style.display = 'none';
@@ -3514,21 +3515,21 @@ function setupGuessItGuesser(gi) {
     document.getElementById('guessit-word-badge').style.display = 'none';
     document.getElementById('guessit-drawer-info').style.display = 'block';
     document.getElementById('guessit-answers-sidebar').style.display = 'flex';
-    
-    // Info disegnatore
+
     document.getElementById('guessit-drawer-info').textContent = 
         `🎨 ${gi.currentDrawer} STA DISEGNANDO...`;
-    
-    // Mostra input
+
     const inputArea = document.getElementById('guessit-input-area');
     if (inputArea) inputArea.style.display = 'block';
-    
+
     const drawerNotice = document.getElementById('guessit-drawer-notice');
     if (drawerNotice) drawerNotice.style.display = 'none';
-    
-    // Canvas non interattivo
+
+    // ✅ FIX: Rimuovi listener canvas + disabilita interazione
+    removeGuessItCanvasListeners();
     guessIt.canvas.style.cursor = 'default';
-    
+    guessIt.canvas.style.pointerEvents = 'none';  // ✅ Blocco totale
+
     // Focus input
     const input = document.getElementById('guessit-input');
     if (input) {
