@@ -1920,8 +1920,6 @@ function enterLobby() {
 }
 
 let lastUpdateTime = 0;
-
-let lastUpdateTime = 0;
 let isHandlingUpdate = false;  // ✅ Nuova variabile
 
 function handleRoomUpdate(doc) {
@@ -2314,7 +2312,7 @@ if (themeBadge) {
         </div>
     `;
     }
-    
+    }
     document.getElementById('ui-round-info').textContent = 
         `ROUND ${data.currentRound + 1}/${data.totalRounds}`;
     document.getElementById('ui-player').textContent = state.playerName;
@@ -3173,15 +3171,6 @@ function getPixel(d, x, y) {
 function setPixel(d, x, y, c) {
     const i = (y * LOGICAL_SIZE + x) * 4;
     d.data[i] = c[0]; d.data[i+1] = c[1]; d.data[i+2] = c[2]; d.data[i+3] = 255;
-}
-
-function colorsMatch(a, b) {
-    return Math.abs(a[0]-b[0]) < 15 && Math.abs(a[1]-b[1]) < 15 && Math.abs(a[2]-b[2]) < 15;
-}
-
-function hexToRgb(h) {
-    const n = parseInt(h.slice(1), 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
 function setTool(t) {
