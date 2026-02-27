@@ -1978,7 +1978,7 @@ function handleRoomUpdate(doc) {
 if (data.stato !== 'lobby' && data.players.length > 0 && !data.players.includes(data.host)) {
     const newHost = data.players[0];
     if (newHost === state.playerName) {
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
+        db.collection("pictionary_rooms").doc(state.roomId).update({
             host: newHost
         });
     }
@@ -3423,81 +3423,80 @@ let guessIt = {
 
 function handleGuessItPhase(data) {
     const gi = data.guessIt;
-    if (!gi) return;
-    
+    if (!gi) {
+        console.error("❌ handleGuessItPhase: guessIt dati mancanti");
+        return;
+    }
+
     const currentRoundFromDB = gi.round || 0;
     const amIDrawer = gi.currentDrawer === state.playerName;
-    
-    // ✅ PRIMO CARICAMENTO o CAMBIO ROUND
+
+    console.log(`🔮 GuessIt Phase | Round ${currentRoundFromDB} | Disegnatore: ${gi.currentDrawer} | Io: ${amIDrawer ? 'DISEGNATORE' : 'INDOVINATORE'}`);
+
+    // ✅ FORZA sempre il cambio schermo quando siamo in guessit
+    showScreen('guessit-screen');
+    showHomeButton();
+    removeBanner();
+
+    // Inizializzazione nuovo round
     if (!guessIt.initialized || guessIt.currentRound !== currentRoundFromDB) {
-        console.log(`🔮 GuessIt: Inizializzazione round ${currentRoundFromDB}`);
-        // ✅ FIX: Ferma streaming e listener del round precedente
+        console.log(`🔄 Inizializzazione nuovo round ${currentRoundFromDB}`);
+
         if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
-        guessIt.streamInterval = null;
-        removeGuessItCanvasListeners();        
+        if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
+        
+        removeGuessItCanvasListeners();
+
         guessIt.initialized = true;
         guessIt.currentRound = currentRoundFromDB;
         guessIt.isDrawer = amIDrawer;
         guessIt.roundEndedLocally = false;
         guessIt.history = [];
-        
-        showScreen('guessit-screen');
-        showHomeButton();
-        removeBanner();
-        
-        // Setup canvas
+
+        // Setup Canvas
         guessIt.canvas = document.getElementById('guessitCanvas');
+        if (!guessIt.canvas) {
+            console.error("❌ ERRORE CRITICO: #guessitCanvas non trovato nel DOM!");
+            return;
+        }
+
         guessIt.ctx = guessIt.canvas.getContext('2d');
         guessIt.canvas.width = 500;
         guessIt.canvas.height = 500;
         guessIt.ctx.fillStyle = '#ffffff';
         guessIt.ctx.fillRect(0, 0, 500, 500);
-        
-        // Aggiorna UI
+
         document.getElementById('guessit-round-info').textContent = 
             `ROUND ${currentRoundFromDB + 1}/${gi.totalRounds || 5}`;
-    
+
         if (amIDrawer) {
             setupGuessItDrawer(gi);
         } else {
             setupGuessItGuesser(gi);
         }
-        
-        // Timer - avvia solo una volta per round
+
         startGuessItTimer(gi.timePerRound || 60);
     }
-    
-    // ✅ AGGIORNAMENTI CONTINUI (senza re-init)
-    
-    // Aggiorna punteggi
-    const myScore = gi.scores?.[state.playerName] || 0;
-    document.getElementById('guessit-my-score').textContent = myScore;
-    
-    const drawerScore = gi.scores?.[gi.currentDrawer] || 0;
-    document.getElementById('guessit-drawer-score').textContent = drawerScore;
-    
-    // Aggiorna feed risposte
+
+    // Aggiornamenti continui (punteggi, canvas, feed)
+    document.getElementById('guessit-my-score').textContent = gi.scores?.[state.playerName] || 0;
+    document.getElementById('guessit-drawer-score').textContent = gi.scores?.[gi.currentDrawer] || 0;
+
     updateGuessItFeed(gi.guesses || {}, gi.currentDrawer);
-    
-    // Se NON sono il disegnatore, aggiorna canvas
+
     if (!guessIt.isDrawer && gi.canvasData) {
         const img = new Image();
         img.onload = () => {
-            if (guessIt.canvas) {
-                guessIt.ctx.drawImage(img, 0, 0, guessIt.canvas.width, guessIt.canvas.height);
+            if (guessIt.canvas && guessIt.ctx) {
+                guessIt.ctx.drawImage(img, 0, 0, 500, 500);
             }
         };
         img.src = gi.canvasData;
     }
-    
-    // ✅ GESTIONE VINCITORE ROUND
+
+    // Vincitore round
     if (gi.roundWinner && !guessIt.roundEndedLocally) {
         guessIt.roundEndedLocally = true;
-     // Rimuovi eventuale banner di timeout
-    if (document.getElementById('game-banner') && 
-        document.getElementById('game-banner').style.background.includes('#e74c3c')) {
-        removeBanner();
-    }
         showRoundWinnerBanner(gi.roundWinner, gi.currentWord, gi.currentDrawer, data);
     }
 }
@@ -3997,16 +3996,6 @@ function startGuessItStreaming() {
             console.error('Errore streaming canvas:', e);
         }
     }, 450); // 450ms invece di 350ms → più stabile
-}
-
-// Hash veloce per confronto
-function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i += 100) {  // Campiona ogni 100 char
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash;
 }
 
 function startGuessItTimer(seconds) {
