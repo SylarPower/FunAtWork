@@ -1979,107 +1979,100 @@ function renderLobby(data) {
     showScreen('lobby-screen');
     showHomeButton();
     
-    // ✅ Aggiorna display giocatori
+    // ✅ Aggiorna display giocatori (codice esistente, va bene)
     const playersDisplay = document.getElementById('lobby-players-display');
     if (playersDisplay) {
         playersDisplay.innerHTML = data.players.map(p => `
             <div style="
                 background: ${data.ready.includes(p) ? 'var(--success)' : 'var(--accent)'};
-                color: white;
-                padding: 10px 20px;
-                border-radius: 25px;
-                font-weight: bold;
-                display: flex;
-                align-items: center;
-                gap: 8px;
+                color: white; padding: 10px 20px; border-radius: 25px;
+                font-weight: bold; display: flex; align-items: center; gap: 8px;
             ">
-                ${p === data.host ? '👑' : ''}
-                ${p}
+                ${p === data.host ? '👑' : ''} ${p}
                 ${data.ready.includes(p) ? '✅' : '⏳'}
             </div>
         `).join('');
     }
     
-    // ✅ Aggiorna rounds display
     const autoRoundsDisplay = document.getElementById('auto-rounds-display');
     if (autoRoundsDisplay) {
         autoRoundsDisplay.textContent = data.players.length;
     }
     
-    // ✅ Costruisci bottoni per il banner
-    const buttons = [];
+    // ✅ BANNER: Aggiorna contenuto se esiste, crea solo se non esiste
+    const existingBanner = document.getElementById('game-banner');
+    const isReady = data.ready.includes(state.playerName);
     
-    if (data.ready.includes(state.playerName)) {
-        buttons.push({
-            text: '⏸️ ANNULLA',
-            onclick: 'toggleReady()',
-            class: 'btn-secondary'
-        });
+    const subtitleText = `${data.ready.length}/${data.players.length} pronti • ${data.players.length} round`;
+    
+    if (existingBanner && existingBanner.dataset.type === 'lobby') {
+        // ✅ Banner esiste → aggiorna solo testo e pulsanti
+        const subtitleEl = existingBanner.querySelector('.banner-subtitle');
+        if (subtitleEl) subtitleEl.textContent = subtitleText;
+        
+        // Aggiorna stato pulsante ready
+        const readyBtn = existingBanner.querySelector('.ready-toggle-btn');
+        if (readyBtn) {
+            readyBtn.className = `btn ${isReady ? 'btn-secondary' : 'btn-primary'} ready-toggle-btn`;
+            readyBtn.innerHTML = isReady ? '⏸️ ANNULLA' : '🚀 SONO PRONTO!';
+        }
+        
+        // Aggiorna time select se esiste
+        const timeSelect = existingBanner.querySelector('#banner-time-select');
+        if (timeSelect && data.settings?.timePerRound) {
+            timeSelect.value = data.settings.timePerRound;
+        }
     } else {
-        buttons.push({
-            text: '🚀 SONO PRONTO!',
-            onclick: 'toggleReady()',
-            class: 'btn-primary'
-        });
-    }
-    
-    // ✅ Selettore tempo (solo host)
-    let timeSelector = '';
-    if (state.isHost && !data.sfidaDiretta) {
-        const currentTime = data.settings?.timePerRound || 60;
-        timeSelector = `
-            <select onchange="updateSettings()" id="banner-time-select" style="
-                padding: 8px 12px;
-                border-radius: 8px;
-                border: none;
-                font-weight: bold;
-                cursor: pointer;
-            ">
-                <option value="30" ${currentTime == 30 ? 'selected' : ''}>30s</option>
-                <option value="45" ${currentTime == 45 ? 'selected' : ''}>45s</option>
-                <option value="60" ${currentTime == 60 ? 'selected' : ''}>60s</option>
-                <option value="90" ${currentTime == 90 ? 'selected' : ''}>90s</option>
-                <option value="120" ${currentTime == 120 ? 'selected' : ''}>120s</option>
-            </select>
-        `;
-    }
-    
-    buttons.push({
-        text: '🚪 ESCI',
-        onclick: 'leaveRoom()',
-        class: 'btn-danger'
-    });
-    
-    // ✅ Banner stile Ruzzle
-    removeBanner();
-    const banner = document.createElement('div');
-    banner.id = 'game-banner';
-    banner.className = 'game-banner';
-    banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
-    
-    banner.innerHTML = `
-        <div class="banner-left">
-            <span class="banner-icon">🎨</span>
-            <div>
-                <div class="banner-title">PICTIONARY - LOBBY</div>
-                <div class="banner-subtitle">${data.ready.length}/${data.players.length} pronti • ${data.players.length} round</div>
+        // ✅ Banner non esiste → crea
+        removeBanner();
+        const banner = document.createElement('div');
+        banner.id = 'game-banner';
+        banner.className = 'game-banner';
+        banner.dataset.type = 'lobby';
+        banner.style.background = 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+        
+        let timeSelector = '';
+        if (state.isHost && !data.sfidaDiretta) {
+            const currentTime = data.settings?.timePerRound || 60;
+            timeSelector = `
+                <select onchange="updateSettings()" id="banner-time-select" style="
+                    padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer;
+                ">
+                    <option value="30" ${currentTime == 30 ? 'selected' : ''}>30s</option>
+                    <option value="45" ${currentTime == 45 ? 'selected' : ''}>45s</option>
+                    <option value="60" ${currentTime == 60 ? 'selected' : ''}>60s</option>
+                    <option value="90" ${currentTime == 90 ? 'selected' : ''}>90s</option>
+                    <option value="120" ${currentTime == 120 ? 'selected' : ''}>120s</option>
+                </select>
+            `;
+        }
+        
+        banner.innerHTML = `
+            <div class="banner-left">
+                <span class="banner-icon">🎨</span>
+                <div>
+                    <div class="banner-title">PICTIONARY - LOBBY</div>
+                    <div class="banner-subtitle">${subtitleText}</div>
+                </div>
             </div>
-        </div>
-        <div class="banner-right">
-            ${timeSelector}
-            ${buttons.map(btn => `
-                <button class="btn ${btn.class}" onclick="${btn.onclick}" style="padding: 10px 20px;">
-                    ${btn.text}
+            <div class="banner-right">
+                ${timeSelector}
+                <button class="btn ${isReady ? 'btn-secondary' : 'btn-primary'} ready-toggle-btn" 
+                        onclick="toggleReady()" style="padding: 10px 20px;">
+                    ${isReady ? '⏸️ ANNULLA' : '🚀 SONO PRONTO!'}
                 </button>
-            `).join('')}
-        </div>
-    `;
+                <button class="btn btn-danger" onclick="leaveRoom()" style="padding: 10px 20px;">
+                    🚪 ESCI
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(banner);
+    }
     
-    document.body.appendChild(banner);
-    
-    // ✅ Avvio automatico quando tutti pronti
+    // ✅ Auto-start fuori dal contesto handler
     if (data.ready.length >= data.players.length && data.players.length >= 2 && state.isHost) {
-        setTimeout(() => startGame(), 50);  // ✅ Esci dal contesto dell'handler
+        setTimeout(() => startGame(), 50);
     }
 }
 
@@ -2107,9 +2100,37 @@ async function toggleReady() {
 async function leaveRoom() {
     if (!confirm("Sicuro di voler uscire?")) return;
     
-    if (state.isHost) {
+    if (unsubscribeRoom) {
+        unsubscribeRoom();
+        unsubscribeRoom = null;
+    }
+    clearInterval(timerInterval);
+    
+    const doc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+    const data = doc.data();
+    
+    if (!data) {
+        location.reload();
+        return;
+    }
+    
+    const remainingPlayers = data.players.filter(p => p !== state.playerName);
+    
+    if (remainingPlayers.length === 0) {
+        // ✅ Ultimo giocatore → elimina room
         await db.collection("pictionary_rooms").doc(state.roomId).delete();
+    } else if (state.isHost) {
+        // ✅ Host esce → trasferisci a giocatore random
+        const newHost = remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)];
+        console.log(`👑 Trasferimento host: ${state.playerName} → ${newHost}`);
+        
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            host: newHost,
+            players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
+            ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
+        });
     } else {
+        // ✅ Non-host esce → rimuovi solo se stesso
         await db.collection("pictionary_rooms").doc(state.roomId).update({
             players: firebase.firestore.FieldValue.arrayRemove(state.playerName),
             ready: firebase.firestore.FieldValue.arrayRemove(state.playerName)
@@ -2143,13 +2164,14 @@ if (gameMode === 'guessit') {
             round: 0,
             totalRounds: players.length * 2,
             currentDrawer: firstDrawer,
-            currentWord: theme.word,       // ✅ Parola
-            currentCategory: theme.category, // ✅ Categoria
+            currentWord: theme.word,
+            currentCategory: theme.category,
             canvasData: null,
             guesses: {},
             scores: initialScores,
             roundWinner: null,
-            timePerRound: data.settings?.timePerRound || 60
+            timePerRound: data.settings?.timePerRound || 60,
+            roundStartedAt: Date.now()        // ← AGGIUNTO
         }
     });
     return;
@@ -3546,84 +3568,68 @@ function setupGuessItGuesser(gi) {
 // ========================================
 
 function showRoundWinnerBanner(winner, word, drawer, data) {
-    // Ferma streaming e timer
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
     if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
     
     const isMe = winner === state.playerName;
     const iAmDrawer = drawer === state.playerName;
     
-    // Punti guadagnati
-    let pointsMsg = '';
-    if (isMe) {
-        pointsMsg = '+10 punti per aver indovinato!';
-    } else if (iAmDrawer) {
-        pointsMsg = '+5 punti perché hanno indovinato!';
-    }
+    const gi = data.guessIt;
     
-    // Banner verde grande
+    // ✅ Prendiamo i punti dinamici da Firebase
+    const guesserPts = gi?.roundWinnerPoints || 0;
+    const drawerPts = gi?.roundDrawerPoints || 0;
+    
+    const totalTime = gi?.timePerRound || 60;
+    const startedAt = gi?.roundStartedAt || Date.now();
+    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
+
+    let pointsMsg = '';
+    let pointsBadge = '';
+
+    if (isMe) {
+        pointsMsg = `Hai indovinato in ${elapsedSeconds} secondi!`;
+        pointsBadge = `+${guesserPts} punti`;
+    } else if (iAmDrawer) {
+        pointsMsg = `${winner} ha indovinato in ${elapsedSeconds}s!`;
+        pointsBadge = `+${drawerPts} punti per te`;
+    } else {
+        pointsMsg = `Indovinato in ${elapsedSeconds} secondi`;
+        pointsBadge = `${winner} +${guesserPts} • ${drawer} +${drawerPts}`;
+    }
+
     removeBanner();
+    document.getElementById('winner-overlay')?.remove();
+
     const banner = document.createElement('div');
     banner.id = 'game-banner';
     banner.className = 'game-banner';
-    banner.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
-        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-        padding: 20px; text-align: center; animation: slideDown 0.3s ease;
-        box-shadow: 0 5px 30px rgba(39, 174, 96, 0.5);
-    `;
+    banner.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+
+    const advanceButton = state.isHost 
+        ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" style="padding: 12px 24px; font-weight: 900; font-size: 1.05rem;">
+               ▶️ PROSSIMO ROUND
+           </button>`
+        : `<div class="spinner"></div><span style="color:rgba(255,255,255,0.85)">Attendi l'host...</span>`;
+
     banner.innerHTML = `
-        <div style="font-size: 2.5rem; margin-bottom: 10px;">🎉</div>
-        <div style="font-size: 1.5rem; font-weight: 900; color: white;">
-            ${winner} HA INDOVINATO!
-        </div>
-        <div style="font-size: 1.2rem; color: rgba(255,255,255,0.9); margin-top: 5px;">
-            La parola era: <strong>"${word}"</strong>
-        </div>
-        ${pointsMsg ? `<div style="font-size: 1rem; color: #ffd700; margin-top: 10px; font-weight: bold;">${pointsMsg}</div>` : ''}
-        <div id="countdown-text" style="font-size: 1.1rem; margin-top: 15px; color: rgba(255,255,255,0.8);">
-            Prossimo round tra <span id="countdown-num">3</span>...
-        </div>
-    `;
-    document.body.appendChild(banner);
-    
-    // Overlay centrale
-    const overlay = document.createElement('div');
-    overlay.id = 'winner-overlay';
-    overlay.style.cssText = `
-        position: fixed; inset: 0; z-index: 99998;
-        background: rgba(0,0,0,0.7); display: flex;
-        justify-content: center; align-items: center;
-        animation: fadeIn 0.3s ease;
-    `;
-    overlay.innerHTML = `
-        <div style="text-align: center; color: white;">
-            <div style="font-size: 8rem; animation: bounce 0.5s infinite;">🏆</div>
-            <div style="font-size: 2rem; font-weight: 900; margin-top: 20px;">
-                ${isMe ? 'HAI INDOVINATO!' : `${winner} ha indovinato!`}
+        <div class="banner-left">
+            <span class="banner-icon">🎉</span>
+            <div>
+                <div class="banner-title">${winner} HA INDOVINATO!</div>
+                <div class="banner-subtitle">"${word}" • ${pointsMsg}</div>
             </div>
         </div>
+        <div class="banner-right" style="display:flex; align-items:center; gap:16px;">
+            <div style="background:rgba(255,215,0,0.25); border:2px solid #ffd700; border-radius:12px; padding:8px 16px; text-align:center; min-width:110px;">
+                <div style="font-size:0.75rem; opacity:0.9;">⚡ ${elapsedSeconds}s</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#ffd700;">${pointsBadge}</div>
+            </div>
+            ${advanceButton}
+        </div>
     `;
-    document.body.appendChild(overlay);
-    
-    // Countdown 3, 2, 1
-    let count = 3;
-    const countdownEl = document.getElementById('countdown-num');
-    
-    const countdownInterval = setInterval(() => {
-        count--;
-        if (countdownEl) countdownEl.textContent = count;
-        
-        if (count <= 0) {
-            clearInterval(countdownInterval);
-            overlay.remove();
-            
-            // Avanza al prossimo round (solo host)
-            if (state.isHost) {
-                advanceGuessItRound();
-            }
-        }
-    }, 1000);
+
+    document.body.appendChild(banner);
 }
 
 function showTimeUpBanner(word, drawer, data) {
@@ -3631,40 +3637,49 @@ function showTimeUpBanner(word, drawer, data) {
     if (guessIt.timerInterval) clearInterval(guessIt.timerInterval);
     
     removeBanner();
+    document.getElementById('winner-overlay')?.remove();
+    
     const banner = document.createElement('div');
     banner.id = 'game-banner';
     banner.className = 'game-banner';
-    banner.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        padding: 20px; text-align: center; animation: slideDown 0.3s ease;
-    `;
+    banner.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
+    
+    const advanceButton = state.isHost
+        ? `<button class="btn btn-primary" onclick="confirmAdvanceRound()" 
+                   style="padding: 12px 24px; font-weight: 900;">
+               ▶️ PROSSIMO ROUND
+           </button>`
+        : `<div class="spinner"></div>
+           <span style="color: rgba(255,255,255,0.8);">Attendi l'host...</span>`;
+    
     banner.innerHTML = `
-        <div style="font-size: 2rem; margin-bottom: 10px;">⏰</div>
-        <div style="font-size: 1.3rem; font-weight: 900; color: white;">TEMPO SCADUTO!</div>
-        <div style="font-size: 1rem; color: rgba(255,255,255,0.9); margin-top: 5px;">
-            La parola era: <strong>"${word}"</strong>
+        <div class="banner-left">
+            <span class="banner-icon">⏰</span>
+            <div>
+                <div class="banner-title">TEMPO SCADUTO!</div>
+                <div class="banner-subtitle">La parola era: "${word}" • Nessun punto assegnato</div>
+            </div>
         </div>
-        <div id="countdown-text" style="font-size: 1rem; margin-top: 15px; color: rgba(255,255,255,0.8);">
-            Prossimo round tra <span id="countdown-num">3</span>...
+        <div class="banner-right">
+            ${advanceButton}
         </div>
     `;
+    
     document.body.appendChild(banner);
+}
+
+// ✅ NUOVA: Conferma avanzamento round (chiamata dal pulsante)
+async function confirmAdvanceRound() {
+    if (!state.isHost) return;
     
-    let count = 3;
-    const countdownEl = document.getElementById('countdown-num');
+    // Disabilita pulsante
+    const btn = document.querySelector('#game-banner .btn-primary');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ CARICAMENTO...';
+    }
     
-    const countdownInterval = setInterval(() => {
-        count--;
-        if (countdownEl) countdownEl.textContent = count;
-        
-        if (count <= 0) {
-            clearInterval(countdownInterval);
-            if (state.isHost) {
-                advanceGuessItRound();
-            }
-        }
-    }, 1000);
+    await advanceGuessItRound();
 }
 
 // ========================================
@@ -3903,22 +3918,39 @@ function redrawGuessItCanvas() {
 // ========================================
 // STREAMING E TIMER
 // ========================================
-
+let lastCanvasHash = '';
 function startGuessItStreaming() {
     if (guessIt.streamInterval) clearInterval(guessIt.streamInterval);
+    lastCanvasHash = '';
     
     guessIt.streamInterval = setInterval(async () => {
         if (!guessIt.isDrawer || !guessIt.canvas) return;
         
         try {
             const dataUrl = guessIt.canvas.toDataURL('image/jpeg', 0.6);
+            
+            // ✅ Diff check: scrivi SOLO se il canvas è cambiato
+            const newHash = simpleHash(dataUrl);
+            if (newHash === lastCanvasHash) return;
+            lastCanvasHash = newHash;
+            
             await db.collection("pictionary_rooms").doc(state.roomId).update({
                 'guessIt.canvasData': dataUrl
             });
         } catch (e) {
             console.error('Errore streaming:', e);
         }
-    }, 350);
+    }, 500);  // ✅ Anche aumentato a 500ms (era 350)
+}
+
+// Hash veloce per confronto
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i += 100) {  // Campiona ogni 100 char
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash;
 }
 
 function startGuessItTimer(seconds) {
@@ -4016,13 +4048,28 @@ async function approveAnswer(guessId, playerName) {
 }
 
 async function markAsWinner(guesser, drawer) {
-    const pointsGuesser = 10;
-    const pointsDrawer = 5;
+    const gi = state.roomData?.guessIt;
+    if (!gi) return;
+
+    const totalTime = gi.timePerRound || 60;
+    const startedAt = gi.roundStartedAt || Date.now();
     
+    // Calcolo tempo trascorso
+    const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    const remainingPercent = Math.max(0, (totalTime - elapsedSeconds) / totalTime);
+
+    // Punteggio variabile
+    const pointsGuesser = Math.round(5 + (15 * remainingPercent));  // 5 → 20 punti
+    const pointsDrawer = Math.round(2 + (8 * remainingPercent));    // 2 → 10 punti
+
+    console.log(`🏆 Punteggio: ${guesser}=+${pointsGuesser} | ${drawer}=+${pointsDrawer} (${elapsedSeconds}s/${totalTime}s)`);
+
     await db.collection("pictionary_rooms").doc(state.roomId).update({
         [`guessIt.scores.${guesser}`]: firebase.firestore.FieldValue.increment(pointsGuesser),
         [`guessIt.scores.${drawer}`]: firebase.firestore.FieldValue.increment(pointsDrawer),
-        'guessIt.roundWinner': guesser
+        'guessIt.roundWinner': guesser,
+        'guessIt.roundWinnerPoints': pointsGuesser,   // ← Salviamo i punti
+        'guessIt.roundDrawerPoints': pointsDrawer     // ← Salviamo i punti
     });
 }
 
@@ -4058,11 +4105,12 @@ const theme = getRandomTheme(); // ✅ Usa la nuova funzione
 await db.collection("pictionary_rooms").doc(state.roomId).update({
     'guessIt.round': nextRound,
     'guessIt.currentDrawer': nextDrawer,
-    'guessIt.currentWord': theme.word,       // ✅ Parola
-    'guessIt.currentCategory': theme.category, // ✅ Categoria
+    'guessIt.currentWord': theme.word,
+    'guessIt.currentCategory': theme.category,
     'guessIt.canvasData': null,
     'guessIt.guesses': {},
-    'guessIt.roundWinner': null
+    'guessIt.roundWinner': null,
+    'guessIt.roundStartedAt': Date.now()     // ← AGGIUNTO
 });
     }
 }
