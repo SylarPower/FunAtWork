@@ -764,79 +764,22 @@ pictionary: {
 			function debugLog(msg) {
 			  console.log(msg);
 			}
-			if (mioNome && passwordHashSalvato) {
-window.onload = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('room');
-    const mioNome = localStorage.getItem('mioNome');
-    
-    console.log(`🎮 Caricamento gioco: room=${roomCode}, user=${mioNome}`);
-    
-    if (!roomCode || !mioNome) {
-        console.warn('❌ Mancano parametri');
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    state.playerName = mioNome;
-    state.roomId = roomCode;
-    
-    showScreen('loading-screen');
-    
-    try {
-        // ✅ ATTENDI 1 SECONDO per dare tempo a Firebase di propagare i dati
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
-        
-        if (!doc.exists) {
-            console.warn('⚠️ Room non trovata');
-            window.location.href = 'index.html';
-            return;
-        }
-        
-        const data = doc.data();
-        
-        // ✅ VALIDA CHE settings.mode ESISTA
-        if (!data.settings || !data.settings.mode) {
-            console.log('⚙️ Impostando mode default...');
-            await db.collection("pictionary_rooms").doc(roomCode).update({
-                'settings.mode': 'classic',
-                'settings.timePerRound': data.settings?.timePerRound || 60
-            });
-            
-            // Ricarica dati aggiornati
-            const updatedDoc = await db.collection("pictionary_rooms").doc(roomCode).get();
-            const updatedData = updatedDoc.data();
-            state.roomData = updatedData;
-        } else {
-            state.roomData = data;
-        }
-        
-        // ✅ AUTO-JOIN SE NECESSARIO
-        if (data.players.includes(mioNome)) {
-            state.isHost = data.host === mioNome;
-            console.log(`✅ Giocatore già nella room (isHost: ${state.isHost})`);
-            enterLobby();
-        } else if (data.stato === 'lobby') {
-            console.log('🚪 Entro nella lobby...');
-            await db.collection("pictionary_rooms").doc(roomCode).update({
-                players: firebase.firestore.FieldValue.arrayUnion(mioNome)
-            });
-            state.isHost = false;
-            enterLobby();
-        } else {
-            alert("La partita è già iniziata!");
-            window.location.href = 'index.html';
-        }
-        
-    } catch (e) {
-        console.error("❌ Errore caricamento:", e);
-        alert("Errore di connessione:\n" + e.message);
-        window.location.href = 'index.html';
-    }
-};
-			}
+// ✅ AUTO-LOGIN se già autenticato
+if (mioNome && passwordHashSalvato) {
+    window.onload = () => {
+        document.getElementById('username').value = mioNome;
+        document.getElementById('password').value = '***'; // placeholder
+        // Esegui login automatico
+        document.getElementById('login-div').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('user-display').textContent = "👤 " + mioNome;
+        aggiornaUIDisponibilita();
+        aggiornaPresenza();
+        setInterval(aggiornaPresenza, 20000);
+        listen();
+        caricaStorico();
+    };
+}
 			// Funzione per creare hash SHA-256 (sicuro lato client)
 			async function hashPassword(password) {
 			  const encoder = new TextEncoder();
@@ -1933,4 +1876,5 @@ if (giocoSelezionato === 'pictionary') {
 		</script>
 	</body>
 </html>
+
 
