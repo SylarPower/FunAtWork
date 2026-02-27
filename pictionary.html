@@ -1367,7 +1367,8 @@ const db = firebase.firestore();
 // ========================================
 // DATABASE TEMI PICTIONARY - 500+ PAROLE
 // ========================================
-
+const DRAWING_SIZE = 800;   // Risoluzione interna più alta
+const DISPLAY_SIZE = DRAWING_SIZE;   // Grandezza visibile
 const THEMES_DATABASE = {
     
     // ========================================
@@ -2180,10 +2181,13 @@ async function startGame() {
     
 if (gameMode === 'guessit') {
     const firstDrawer = players[Math.floor(Math.random() * players.length)];
-    const theme = getRandomTheme(); // ✅ Usa la nuova funzione
+    const theme = getRandomTheme();
     
     const initialScores = {};
     players.forEach(p => initialScores[p] = 0);
+    
+    // ✅ Creiamo un ordine fisso e randomico una sola volta (fair per tutta la partita)
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
     
     await db.collection("pictionary_rooms").doc(state.roomId).update({
         stato: 'guessit',
@@ -2198,7 +2202,8 @@ if (gameMode === 'guessit') {
             scores: initialScores,
             roundWinner: null,
             timePerRound: data.settings?.timePerRound || 60,
-            roundStartedAt: Date.now()        // ← AGGIUNTO
+            roundStartedAt: Date.now(),
+            playerOrder: shuffledPlayers   // ← Salviamo l'ordine fisso
         }
     });
     return;
@@ -3461,10 +3466,10 @@ function handleGuessItPhase(data) {
         }
 
         guessIt.ctx = guessIt.canvas.getContext('2d');
-        guessIt.canvas.width = 500;
-        guessIt.canvas.height = 500;
+        guessIt.canvas.width = DRAWING_SIZE;
+        guessIt.canvas.height = DRAWING_SIZE;
         guessIt.ctx.fillStyle = '#ffffff';
-        guessIt.ctx.fillRect(0, 0, 500, 500);
+        guessIt.ctx.fillRect(0, 0, DRAWING_SIZE, DRAWING_SIZE);
 
         document.getElementById('guessit-round-info').textContent = 
             `ROUND ${currentRoundFromDB + 1}/${gi.totalRounds || 5}`;
@@ -3488,17 +3493,23 @@ function handleGuessItPhase(data) {
         const img = new Image();
         img.onload = () => {
             if (guessIt.canvas && guessIt.ctx) {
-                guessIt.ctx.drawImage(img, 0, 0, 500, 500);
+                guessIt.ctx.drawImage(img, 0, 0, DRAWING_SIZE, DRAWING_SIZE);
             }
         };
         img.src = gi.canvasData;
     }
 
-    // Vincitore round
-    if (gi.roundWinner && !guessIt.roundEndedLocally) {
-        guessIt.roundEndedLocally = true;
-        showRoundWinnerBanner(gi.roundWinner, gi.currentWord, gi.currentDrawer, data);
+// GESTIONE VINCITORE ROUND
+if (gi.roundWinner && !guessIt.roundEndedLocally) {
+    guessIt.roundEndedLocally = true;
+    
+    // Disabilita il disegno per il disegnatore
+    if (guessIt.isDrawer) {
+        disableDrawerCanvas();
     }
+    
+    showRoundWinnerBanner(gi.roundWinner, gi.currentWord, gi.currentDrawer, data);
+}
 }
 
 function setupGuessItDrawer(gi) {
@@ -3512,6 +3523,17 @@ function setupGuessItDrawer(gi) {
     document.getElementById('guessit-word-badge').style.display = 'block';
     document.getElementById('guessit-drawer-info').style.display = 'none';
     document.getElementById('guessit-answers-sidebar').style.display = 'flex';
+
+    // Setup canvas ad alta risoluzione
+    guessIt.canvas.width = DRAWING_SIZE;
+    guessIt.canvas.height = DRAWING_SIZE;
+    guessIt.ctx = guessIt.canvas.getContext('2d');
+    guessIt.ctx.fillStyle = '#ffffff';
+    guessIt.ctx.fillRect(0, 0, DRAWING_SIZE, DRAWING_SIZE);
+    
+    // Scala visiva (mantiene la grandezza sullo schermo)
+    guessIt.canvas.style.width = DISPLAY_SIZE + 'px';
+    guessIt.canvas.style.height = DISPLAY_SIZE + 'px';
     
     // Parola da disegnare
 const badge = document.getElementById('guessit-word-badge');
@@ -3532,7 +3554,6 @@ badge.innerHTML = `
     if (drawerNotice) drawerNotice.style.display = 'block';
     
     // Canvas interattivo
-    guessIt.canvas.style.cursor = 'crosshair';
     attachGuessItCanvasListeners();
     
     // Quick colors
@@ -3541,14 +3562,23 @@ badge.innerHTML = `
     // Reset tools
     guessIt.tool = 'pen';
     guessIt.color = '#000000';
-    guessIt.size = 12;
+    guessIt.size = 8;
     setGuessItTool('pen');
-    setGuessItSize(12);
+    setGuessItSize(8);
     
     // Streaming
     startGuessItStreaming();
 }
-
+function disableDrawerCanvas() {
+    const c = guessIt.canvas;
+    if (!c) return;
+    
+    removeGuessItCanvasListeners();
+    c.style.pointerEvents = 'none';
+    c.style.cursor = 'default';
+    guessIt.isDrawing = false;
+}
+    
 // ✅ NUOVA FUNZIONE - Aggiungi prima di setupGuessItGuesser
 function removeGuessItCanvasListeners() {
     const c = guessIt.canvas;
@@ -3857,64 +3887,76 @@ function attachGuessItCanvasListeners() {
 function floodFillGuessIt(startX, startY, fillColorHex) {
     const ctx = guessIt.ctx;
     const canvas = guessIt.canvas;
+    if (!ctx || !canvas) return;
+
     const width = canvas.width;
     const height = canvas.height;
-    
-    startX = Math.max(0, Math.min(width - 1, Math.floor(startX)));
-    startY = Math.max(0, Math.min(height - 1, Math.floor(startY)));
-    
+
+    // Clamp + floor coordinate
+    startX = Math.floor(Math.max(0, Math.min(width - 1, startX)));
+    startY = Math.floor(Math.max(0, Math.min(height - 1, startY)));
+
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
-    
+
     const startIdx = (startY * width + startX) * 4;
     const targetR = data[startIdx];
     const targetG = data[startIdx + 1];
     const targetB = data[startIdx + 2];
-    
-    const fillRgb = hexToRgb(fillColorHex);
-    
-    if (Math.abs(targetR - fillRgb[0]) < 5 && 
-        Math.abs(targetG - fillRgb[1]) < 5 && 
-        Math.abs(targetB - fillRgb[2]) < 5) {
-        return;
-    }
-    
-    const tolerance = 32;
-    const pixelsToCheck = [[startX, startY]];
+    const targetA = data[startIdx + 3];
+
+    const fillRgb = hexToRgb(fillColorHex); // deve ritornare [r,g,b]
+
+    // Se è già (quasi) lo stesso colore, esci
+    if (
+        Math.abs(targetR - fillRgb[0]) < 8 &&
+        Math.abs(targetG - fillRgb[1]) < 8 &&
+        Math.abs(targetB - fillRgb[2]) < 8 &&
+        targetA === 255
+    ) return;
+
+    const tolerance = 28;
+
+    // Stack con coppie x,y (pushiamo x,y consecutivi per performance)
+    const stack = [startX, startY];
+
+    // Per evitare loop e rallentamenti: segna i pixel già controllati
     const checked = new Uint8Array(width * height);
-    
-    let count = 0;
-    const maxPixels = width * height;
-    
-    while (pixelsToCheck.length > 0 && count < maxPixels) {
-        count++;
-        const [x, y] = pixelsToCheck.pop();
-        
+
+    while (stack.length) {
+        const y = stack.pop();
+        const x = stack.pop();
+
         if (x < 0 || x >= width || y < 0 || y >= height) continue;
-        
-        const idx = y * width + x;
-        if (checked[idx]) continue;
-        checked[idx] = 1;
-        
-        const pixelIdx = idx * 4;
-        const r = data[pixelIdx];
-        const g = data[pixelIdx + 1];
-        const b = data[pixelIdx + 2];
-        
-        if (Math.abs(r - targetR) > tolerance ||
+
+        const p = (y * width + x);
+        if (checked[p]) continue;
+        checked[p] = 1;
+
+        const i = p * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+
+        // Match col target (con tolleranza) — includo anche alpha per robustezza
+        if (
+            Math.abs(r - targetR) > tolerance ||
             Math.abs(g - targetG) > tolerance ||
-            Math.abs(b - targetB) > tolerance) {
-            continue;
-        }
-        
-        data[pixelIdx] = fillRgb[0];
-        data[pixelIdx + 1] = fillRgb[1];
-        data[pixelIdx + 2] = fillRgb[2];
-        data[pixelIdx + 3] = 255;
-        
-        pixelsToCheck.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            Math.abs(b - targetB) > tolerance ||
+            Math.abs(a - targetA) > 40
+        ) continue;
+
+        // Fill
+        data[i] = fillRgb[0];
+        data[i + 1] = fillRgb[1];
+        data[i + 2] = fillRgb[2];
+        data[i + 3] = 255;
+
+        // Vicini
+        stack.push(x + 1, y);
+        stack.push(x - 1, y);
+        stack.push(x, y + 1);
+        stack.push(x, y - 1);
     }
-    
+
     ctx.putImageData(imageData, 0, 0);
 }
 
@@ -4184,27 +4226,25 @@ async function advanceGuessItRound() {
                 scores: gi.scores || {}
             });
         } else {
-            // Prossimo round
-            const playerOrder = gi.playerOrder || freshData.players;
-            const nextDrawerIdx = nextRound % playerOrder.length;
-            const nextDrawer = playerOrder[nextDrawerIdx];
-            
-            const theme = getRandomTheme();
+        // Prossimo round
+        const playerOrder = gi.playerOrder || data.players;   // usa l'ordine salvato
+        const nextDrawerIdx = nextRound % playerOrder.length;
+        const nextDrawer = playerOrder[nextDrawerIdx];
+        
+        const theme = getRandomTheme();
 
-            console.log(`➡️ Avanzamento a round ${nextRound} | Disegnatore: ${nextDrawer}`);
-
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                'guessIt.round': nextRound,
-                'guessIt.currentDrawer': nextDrawer,
-                'guessIt.currentWord': theme.word,
-                'guessIt.currentCategory': theme.category,
-                'guessIt.canvasData': null,
-                'guessIt.guesses': {},
-                'guessIt.roundWinner': null,
-                'guessIt.roundWinnerPoints': null,
-                'guessIt.roundDrawerPoints': null,
-                'guessIt.roundStartedAt': Date.now()
-            });
+        await db.collection("pictionary_rooms").doc(state.roomId).update({
+            'guessIt.round': nextRound,
+            'guessIt.currentDrawer': nextDrawer,
+            'guessIt.currentWord': theme.word,
+            'guessIt.currentCategory': theme.category,
+            'guessIt.canvasData': null,
+            'guessIt.guesses': {},
+            'guessIt.roundWinner': null,
+            'guessIt.roundWinnerPoints': null,
+            'guessIt.roundDrawerPoints': null,
+            'guessIt.roundStartedAt': Date.now()
+        });
         }
     } catch (e) {
         console.error("❌ Errore update Firestore in advanceGuessItRound:", e);
