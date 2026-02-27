@@ -765,29 +765,77 @@ pictionary: {
 			  console.log(msg);
 			}
 			if (mioNome && passwordHashSalvato) {
-			  window.onload = async () => {
-			    try {
-			      const userRef = db.collection("utenti").doc(mioNome);
-			      const doc = await userRef.get();
-			      if (doc.exists && doc.data().passwordHash === passwordHashSalvato) {
-			        document.getElementById('login-div').style.display = 'none';
-			        document.getElementById('main-app').style.display = 'block';
-			        document.getElementById('user-display').textContent = "👤 " + mioNome;
-			        aggiornaUIDisponibilita();
-			        aggiornaPresenza();
-			        setInterval(aggiornaPresenza, 20000);
-			        listen();
-			        caricaStorico();
-			      } else {
-			        // Hash non valido, richiedi login
-			        localStorage.removeItem('passwordHash');
-			        debugLog('❌ Hash non valido');
-			      }
-			    } catch (e) {
-			      console.error("Errore auto-login:", e);
-			      debugLog('❌ Errore: ' + e.message);
-			    }
-			  };
+window.onload = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('room');
+    const mioNome = localStorage.getItem('mioNome');
+    
+    console.log(`🎮 Caricamento gioco: room=${roomCode}, user=${mioNome}`);
+    
+    if (!roomCode || !mioNome) {
+        console.warn('❌ Mancano parametri');
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    state.playerName = mioNome;
+    state.roomId = roomCode;
+    
+    showScreen('loading-screen');
+    
+    try {
+        // ✅ ATTENDI 1 SECONDO per dare tempo a Firebase di propagare i dati
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
+        
+        if (!doc.exists) {
+            console.warn('⚠️ Room non trovata');
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        const data = doc.data();
+        
+        // ✅ VALIDA CHE settings.mode ESISTA
+        if (!data.settings || !data.settings.mode) {
+            console.log('⚙️ Impostando mode default...');
+            await db.collection("pictionary_rooms").doc(roomCode).update({
+                'settings.mode': 'classic',
+                'settings.timePerRound': data.settings?.timePerRound || 60
+            });
+            
+            // Ricarica dati aggiornati
+            const updatedDoc = await db.collection("pictionary_rooms").doc(roomCode).get();
+            const updatedData = updatedDoc.data();
+            state.roomData = updatedData;
+        } else {
+            state.roomData = data;
+        }
+        
+        // ✅ AUTO-JOIN SE NECESSARIO
+        if (data.players.includes(mioNome)) {
+            state.isHost = data.host === mioNome;
+            console.log(`✅ Giocatore già nella room (isHost: ${state.isHost})`);
+            enterLobby();
+        } else if (data.stato === 'lobby') {
+            console.log('🚪 Entro nella lobby...');
+            await db.collection("pictionary_rooms").doc(roomCode).update({
+                players: firebase.firestore.FieldValue.arrayUnion(mioNome)
+            });
+            state.isHost = false;
+            enterLobby();
+        } else {
+            alert("La partita è già iniziata!");
+            window.location.href = 'index.html';
+        }
+        
+    } catch (e) {
+        console.error("❌ Errore caricamento:", e);
+        alert("Errore di connessione:\n" + e.message);
+        window.location.href = 'index.html';
+    }
+};
 			}
 			// Funzione per creare hash SHA-256 (sicuro lato client)
 			async function hashPassword(password) {
@@ -935,30 +983,45 @@ function listen() {
             renderTutteLePartite();
         });
 
-    // ✅ LISTENER 4: Pictionary (CON PROTEZIONE LOOP)
-    db.collection("pictionary_rooms")
-        .where("players", "array-contains", mioNome)
-        .onSnapshot(
-            snap => {
-                partiteCache.pictionary = [];
-                
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    // ✅ VALIDA che i dati siano completi
-                    if (data && data.players && Array.isArray(data.players)) {
-                        partiteCache.pictionary.push({ id: doc.id, ...data });
-                    }
-                });
-                
-                renderTutteLePartite();
-            },
-            error => {
-                // ✅ GESTISCI ERRORI (es. regole Firestore)
-                console.warn("⚠️ Errore listener Pictionary:", error.message);
-                // Non bloccare l'app, mostra solo partite Ruzzle/NeonWar
-                renderTutteLePartite();
+// ✅ LISTENER 4: Pictionary (CORRETTO - evita loop)
+let lastPictionaryUpdate = 0;
+const PICTIONARY_THROTTLE = 1000; // Max 1 update al secondo
+
+db.collection("pictionary_rooms")
+    .where("players", "array-contains", mioNome)
+    .onSnapshot(
+        snap => {
+            const now = Date.now();
+            
+            // ✅ Throttle per evitare troppi render
+            if (now - lastPictionaryUpdate < PICTIONARY_THROTTLE) {
+                console.log('⏳ Pictionary update throttled');
+                return;
             }
-        );
+            lastPictionaryUpdate = now;
+            
+            partiteCache.pictionary = [];
+            
+            snap.forEach(doc => {
+                const data = doc.data();
+                
+                // ✅ Valida dati + ignora partite concluse
+                if (data && 
+                    data.players && 
+                    Array.isArray(data.players) &&
+                    data.stato !== 'results') {
+                    
+                    partiteCache.pictionary.push({ id: doc.id, ...data });
+                }
+            });
+            
+            renderTutteLePartite();
+        },
+        error => {
+            console.warn("⚠️ Errore listener Pictionary:", error.message);
+            renderTutteLePartite();
+        }
+    );
 }
 // ========================================
 // ✅ RENDER UNIFICATO
@@ -1346,7 +1409,7 @@ function renderPartitaPictionary(p, div) {
 			        return;
 			    }
 			    
-// ✅ GESTIONE SPECIFICA PER PICTIONARY
+// ✅ GESTIONE SPECIFICA PER PICTIONARY (CORRETTA)
 if (giocoSelezionato === 'pictionary') {
     showLoadingBanner('Creazione sfida Pictionary...');
     
@@ -1355,15 +1418,16 @@ if (giocoSelezionato === 'pictionary') {
         
         // ✅ Determina il numero di round in base alla modalità
         const numRounds = modalitaId === 'guessit' 
-            ? partecipanti.length * 2  // GuessIt: ogni giocatore disegna 2 volte
-            : partecipanti.length;      // Classic: 1 volta a testa
+            ? partecipanti.length * 2
+            : partecipanti.length;
         
+        // ✅ CREA LA ROOM
         await db.collection("pictionary_rooms").doc(roomCode).set({
             host: mioNome,
             players: partecipanti,
             ready: [],
             settings: { 
-                mode: modalitaId,  // ✅ AGGIUNTO: classic o guessit
+                mode: modalitaId,
                 timePerRound: parseInt(opzioni.timePerRound || 60)
             },
             stato: 'lobby',
@@ -1372,29 +1436,35 @@ if (giocoSelezionato === 'pictionary') {
             chains: {},
             votes: {},
             scores: {},
-            completedRound: {},  // ✅ CORRETTO: era completedPhase
+            completedRound: {},
+            playerOrder: partecipanti, // ✅ AGGIUNGI QUESTO
             timestamp: Date.now(),
             dataOra: new Date().toLocaleString('it-IT'),
             sfidaDiretta: true
         });
         
-        // Salva ultima modalità usata
+        console.log(`✅ Room Pictionary creata: ${roomCode}`);
+        
+        // Salva ultima modalità
         localStorage.setItem('ultimo_pictionary_mode', modalitaId);
         
-        // Deseleziona amici
-        amiciSelezionati.clear();
-        document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
-        aggiornaBottoneSfida();
-        
-        // Redirect diretto
-        window.location.href = `pictionary.html?room=${roomCode}`;
+        // ✅ ASPETTA 500ms prima del redirect (evita race condition)
+        setTimeout(() => {
+            // Deseleziona amici
+            amiciSelezionati.clear();
+            document.querySelectorAll('.user-item.selected').forEach(el => el.classList.remove('selected'));
+            aggiornaBottoneSfida();
+            
+            // Redirect
+            window.location.href = `pictionary.html?room=${roomCode}`;
+        }, 500);
         
     } catch (e) {
-        console.error("Errore creazione Pictionary:", e);
+        console.error("❌ Errore creazione Pictionary:", e);
         removeGameBanner();
-        mostraToast('❌ Errore creazione sfida');
+        mostraToast('❌ Errore: ' + e.message);
     }
-    return; // ← ESCI SUBITO
+    return;
 }
 			    
 			    // ✅ CONTINUA CON LA LOGICA NORMALE PER GLI ALTRI GIOCHI
@@ -1844,16 +1914,3 @@ if (giocoSelezionato === 'pictionary') {
 		</script>
 	</body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
