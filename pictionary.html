@@ -539,13 +539,25 @@ body:has(#guessit-screen:not(.hidden)) #fixed-home-btn {
    ======================================== */
 
 #game-ui {
-    position: fixed !important;
+    position: fixed;
     inset: 0;
-    display: flex !important;
+    display: flex;  /* ✅ Senza !important */
     background: var(--bg);
     z-index: 500;
 }
 
+#game-ui.hidden {
+    display: none !important;  /* ✅ Forza nascondimento quando ha .hidden */
+}
+#guessit-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+}
+
+#guessit-screen.hidden {
+    display: none !important;
+}
 .toolbar-left {
     width: 90px;
     min-width: 90px;
@@ -1774,9 +1786,31 @@ let unsubscribeRoom = null;
 // UTILITY
 // ========================================
 function showScreen(id) {
-    document.querySelectorAll('.overlay, .app-container').forEach(el => el.classList.add('hidden'));
-    const target = document.getElementById(id);
-    if (target) target.classList.remove('hidden');
+    // ✅ Nascondi TUTTI gli overlay normali
+    document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+    
+    // ✅ Gestione speciale per game-ui e guessit-screen
+    const gameUI = document.getElementById('game-ui');
+    const guessitScreen = document.getElementById('guessit-screen');
+    
+    if (id === 'game-ui') {
+        // Mostra game-ui, nascondi tutto il resto
+        if (gameUI) gameUI.classList.remove('hidden');
+        if (guessitScreen) guessitScreen.classList.add('hidden');
+        document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+    } else if (id === 'guessit-screen') {
+        // Mostra guessit, nascondi tutto il resto
+        if (guessitScreen) guessitScreen.classList.remove('hidden');
+        if (gameUI) gameUI.classList.add('hidden');
+        document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+    } else {
+        // Mostra overlay classico, nascondi game-ui e guessit
+        if (gameUI) gameUI.classList.add('hidden');
+        if (guessitScreen) guessitScreen.classList.add('hidden');
+        
+        const target = document.getElementById(id);
+        if (target) target.classList.remove('hidden');
+    }
 }
 
 function showBanner(options) {
@@ -1887,55 +1921,75 @@ function enterLobby() {
 
 let lastUpdateTime = 0;
 
+let lastUpdateTime = 0;
+let isHandlingUpdate = false;  // ✅ Nuova variabile
+
 function handleRoomUpdate(doc) {
+    // ✅ Evita re-entry
+    if (isHandlingUpdate) {
+        console.log('⚠️ Update già in corso, skip');
+        return;
+    }
+    
     // ✅ Throttle: max 1 update ogni 500ms
     const now = Date.now();
     if (now - lastUpdateTime < 500) return;
     lastUpdateTime = now;
     
-    if (!doc.exists) {
-        if (unsubscribeRoom) {
-            unsubscribeRoom();
-            unsubscribeRoom = null;
+    // ✅ Imposta flag
+    isHandlingUpdate = true;
+    
+    try {
+        if (!doc.exists) {
+            if (unsubscribeRoom) {
+                unsubscribeRoom();
+                unsubscribeRoom = null;
+            }
+            showScreen('loading-screen');
+            document.getElementById('loading-screen').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2 style="color: #f39c12;">⚠️ Room Eliminata</h2>
+                    <button onclick="window.location.href='index.html'" 
+                            style="padding: 15px 30px; background: #e94560; color: white; 
+                                   border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                        🏠 Torna alla Home
+                    </button>
+                </div>
+            `;
+            return;
         }
-        // ✅ Mostra messaggio invece di redirect
-        showScreen('loading-screen');
-        document.getElementById('loading-screen').innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <h2 style="color: #f39c12;">⚠️ Room Eliminata</h2>
-                <button onclick="window.location.href='index.html'" 
-                        style="padding: 15px 30px; background: #e94560; color: white; 
-                               border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
-                    🏠 Torna alla Home
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    const data = doc.data();
-    if (!data || !data.stato) return;
-    
-    const prevStato = state.roomData?.stato;
-    state.roomData = data;
-    state.isHost = data.host === state.playerName;
-    
-    // GuessIt
-    if (data.stato === 'guessit') {
-        handleGuessItPhase(data);
-        return;
-    }
-    
-    // Ignora se sto disegnando
-    if (state.isDrawing) return;
-    
-    console.log(`🔄 ${prevStato} → ${data.stato}`);
-    
-    switch(data.stato) {
-        case 'lobby': renderLobby(data); break;
-        case 'drawing': handleDrawingPhase(data); break;
-        case 'voting': handleVotingPhase(data); break;
-        case 'results': handleResultsPhase(data); break;
+        
+        const data = doc.data();
+        if (!data || !data.stato) return;
+        
+        const prevStato = state.roomData?.stato;
+        state.roomData = data;
+        state.isHost = data.host === state.playerName;
+        
+        console.log(`🔄 ${prevStato} → ${data.stato}`);
+        
+        // GuessIt
+        if (data.stato === 'guessit') {
+            handleGuessItPhase(data);
+            return;
+        }
+        
+        // Ignora se sto disegnando
+        if (state.isDrawing) return;
+        
+        switch(data.stato) {
+            case 'lobby': renderLobby(data); break;
+            case 'drawing': handleDrawingPhase(data); break;
+            case 'voting': handleVotingPhase(data); break;
+            case 'results': handleResultsPhase(data); break;
+        }
+    } catch (e) {
+        console.error('❌ Errore handleRoomUpdate:', e);
+    } finally {
+        // ✅ Reset flag dopo 100ms
+        setTimeout(() => {
+            isHandlingUpdate = false;
+        }, 100);
     }
 }
 
