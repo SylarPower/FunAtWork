@@ -3723,16 +3723,35 @@ function showTimeUpBanner(word, drawer, data) {
 
 // ✅ NUOVA: Conferma avanzamento round (chiamata dal pulsante)
 async function confirmAdvanceRound() {
-    if (!state.isHost) return;
-    
-    // Disabilita pulsante
+    const gi = state.roomData?.guessIt;
+    if (!gi) return;
+
+    const isCurrentDrawer = gi.currentDrawer === state.playerName;
+    const canAdvance = state.isHost || isCurrentDrawer;
+
+    if (!canAdvance) {
+        console.log("⛔ Solo l'host o il disegnatore corrente può avanzare");
+        return;
+    }
+
+    // Disabilita il pulsante
     const btn = document.querySelector('#game-banner .btn-primary');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ CARICAMENTO...';
+        btn.innerHTML = '⏳ AVANZAMENTO...';
     }
-    
-    await advanceGuessItRound();
+
+    try {
+        console.log(`▶️ Avanzamento round richiesto da ${state.playerName} (host: ${state.isHost}, drawer: ${isCurrentDrawer})`);
+        await advanceGuessItRound();
+    } catch (e) {
+        console.error("❌ Errore durante advanceGuessItRound:", e);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '▶️ PROSSIMO ROUND';
+        }
+        alert("Errore durante l'avanzamento del round. Riprova.");
+    }
 }
 
 // ========================================
@@ -4142,54 +4161,54 @@ async function advanceGuessItRound() {
     
     removeBanner();
     document.getElementById('winner-overlay')?.remove();
-    
-    const data = state.roomData;
-    const gi = data?.guessIt;
-    if (!gi) return;
-    
-    const nextRound = (gi.round || 0) + 1;
-    const totalRounds = gi.totalRounds || data.players.length;
-    
-    // Reset per prossimo round
-    guessIt.initialized = false;
-    
-    if (nextRound >= totalRounds) {
-        // Fine gioco
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            stato: 'results',
-            scores: gi.scores || {}
-        });
-    } else {
-        // Prossimo round
-        const nextRound = (gi.round || 0) + 1;
-        const totalRounds = gi.totalRounds || data.players.length * 2;
-        
-        // ✅ Rotazione equa + casuale: prima mischiamo l'ordine una volta sola
-        if (!data.guessIt.playerOrder || data.guessIt.playerOrder.length === 0) {
-            // Mischia i giocatori una sola volta all'inizio della partita
-            const shuffled = [...data.players].sort(() => Math.random() - 0.5);
-            await db.collection("pictionary_rooms").doc(state.roomId).update({
-                'guessIt.playerOrder': shuffled
-            });
-            return; // Aspetta il prossimo snapshot
-        }
-        
-        const playerOrder = data.guessIt.playerOrder || data.players;
-        const nextDrawerIdx = nextRound % playerOrder.length;
-        const nextDrawer = playerOrder[nextDrawerIdx];
-        
-        const theme = getRandomTheme();
 
-        await db.collection("pictionary_rooms").doc(state.roomId).update({
-            'guessIt.round': nextRound,
-            'guessIt.currentDrawer': nextDrawer,
-            'guessIt.currentWord': theme.word,
-            'guessIt.currentCategory': theme.category,
-            'guessIt.canvasData': null,
-            'guessIt.guesses': {},
-            'guessIt.roundWinner': null,
-            'guessIt.roundStartedAt': Date.now()
-        });
+    // Forza refresh dati freschi prima di avanzare
+    const freshDoc = await db.collection("pictionary_rooms").doc(state.roomId).get();
+    const freshData = freshDoc.data();
+    if (!freshData) return;
+
+    const gi = freshData.guessIt;
+    if (!gi) return;
+
+    const nextRound = (gi.round || 0) + 1;
+    const totalRounds = gi.totalRounds || freshData.players.length * 2;
+
+    guessIt.initialized = false;   // Importante per il prossimo round
+
+    try {
+        if (nextRound >= totalRounds) {
+            // Fine della partita
+            console.log("🏁 Fine partita → risultati");
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                stato: 'results',
+                scores: gi.scores || {}
+            });
+        } else {
+            // Prossimo round
+            const playerOrder = gi.playerOrder || freshData.players;
+            const nextDrawerIdx = nextRound % playerOrder.length;
+            const nextDrawer = playerOrder[nextDrawerIdx];
+            
+            const theme = getRandomTheme();
+
+            console.log(`➡️ Avanzamento a round ${nextRound} | Disegnatore: ${nextDrawer}`);
+
+            await db.collection("pictionary_rooms").doc(state.roomId).update({
+                'guessIt.round': nextRound,
+                'guessIt.currentDrawer': nextDrawer,
+                'guessIt.currentWord': theme.word,
+                'guessIt.currentCategory': theme.category,
+                'guessIt.canvasData': null,
+                'guessIt.guesses': {},
+                'guessIt.roundWinner': null,
+                'guessIt.roundWinnerPoints': null,
+                'guessIt.roundDrawerPoints': null,
+                'guessIt.roundStartedAt': Date.now()
+            });
+        }
+    } catch (e) {
+        console.error("❌ Errore update Firestore in advanceGuessItRound:", e);
+        throw e; // Permette di gestire l'errore nel confirm
     }
 }
 
