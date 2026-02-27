@@ -1885,58 +1885,57 @@ function enterLobby() {
     unsubscribeRoom = db.collection("pictionary_rooms").doc(state.roomId).onSnapshot(handleRoomUpdate);
 }
 
+let lastUpdateTime = 0;
+
 function handleRoomUpdate(doc) {
+    // ✅ Throttle: max 1 update ogni 500ms
+    const now = Date.now();
+    if (now - lastUpdateTime < 500) return;
+    lastUpdateTime = now;
+    
     if (!doc.exists) {
         if (unsubscribeRoom) {
             unsubscribeRoom();
             unsubscribeRoom = null;
         }
-        window.location.href = 'index.html';
+        // ✅ Mostra messaggio invece di redirect
+        showScreen('loading-screen');
+        document.getElementById('loading-screen').innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h2 style="color: #f39c12;">⚠️ Room Eliminata</h2>
+                <button onclick="window.location.href='index.html'" 
+                        style="padding: 15px 30px; background: #e94560; color: white; 
+                               border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                    🏠 Torna alla Home
+                </button>
+            </div>
+        `;
         return;
     }
     
     const data = doc.data();
-    const prevStato = state.roomData?.stato;
+    if (!data || !data.stato) return;
     
+    const prevStato = state.roomData?.stato;
     state.roomData = data;
     state.isHost = data.host === state.playerName;
     
-    // ✅ PROTEZIONE: Valida dati critici
-    if (!data.settings) {
-        console.warn('⚠️ settings mancante, ricarico...');
-        location.reload();
-        return;
-    }
-    
-    // ✅ GUESS IT: Gestito internamente
+    // GuessIt
     if (data.stato === 'guessit') {
         handleGuessItPhase(data);
         return;
     }
     
-    // ✅ Ignora se sto disegnando
-    if (state.isDrawing) {
-        console.log("📝 Sto disegnando, ignoro update");
-        return;
-    }
+    // Ignora se sto disegnando
+    if (state.isDrawing) return;
     
-    console.log(`🔄 Update: stato=${data.stato}, prev=${prevStato}`);
+    console.log(`🔄 ${prevStato} → ${data.stato}`);
     
     switch(data.stato) {
-        case 'lobby': 
-            renderLobby(data); 
-            break;
-        case 'drawing': 
-            handleDrawingPhase(data); 
-            break;
-        case 'voting': 
-            handleVotingPhase(data); 
-            break;
-        case 'results': 
-            handleResultsPhase(data); 
-            break;
-        default:
-            console.error('Stato non riconosciuto:', data.stato);
+        case 'lobby': renderLobby(data); break;
+        case 'drawing': handleDrawingPhase(data); break;
+        case 'voting': handleVotingPhase(data); break;
+        case 'results': handleResultsPhase(data); break;
     }
 }
 
@@ -2058,8 +2057,9 @@ async function updateSettings() {
 }
 
 async function toggleReady() {
-const data = state.roomData;
-    const isCurrentlyReady = data.ready.includes(state.playerName);
+    if (!state.roomData) return;
+    
+    const isCurrentlyReady = state.roomData.ready?.includes(state.playerName) || false;
     
     const field = isCurrentlyReady ? 
         firebase.firestore.FieldValue.arrayRemove(state.playerName) :
@@ -3207,12 +3207,23 @@ window.onload = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('room');
     const mioNome = localStorage.getItem('mioNome');
-        // ✅ AGGIUNGI QUESTE RIGHE
-    const gameMode = urlParams.get('mode') || 'classic';
+    
+    console.log(`🎨 Pictionary: room=${roomCode}, user=${mioNome}`);
+    
+    // ✅ VALIDAZIONE SENZA REDIRECT AUTOMATICO
     if (!roomCode || !mioNome) {
-        alert("Accedi dalla homepage per giocare!");
-        window.location.href = 'index.html';
-        return;
+        document.getElementById('loading-screen').innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h2 style="color: #e94560;">❌ Errore</h2>
+                <p>${!roomCode ? 'Room mancante' : 'Devi fare il login'}</p>
+                <button onclick="window.location.href='index.html'" 
+                        style="padding: 15px 30px; background: #e94560; color: white; 
+                               border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                    🏠 Torna alla Home
+                </button>
+            </div>
+        `;
+        return; // ✅ STOP QUI, niente redirect automatico
     }
     
     state.playerName = mioNome;
@@ -3221,21 +3232,36 @@ window.onload = async () => {
     showScreen('loading-screen');
     
     try {
+        await new Promise(r => setTimeout(r, 500)); // Attendi propagazione Firebase
+        
         const doc = await db.collection("pictionary_rooms").doc(roomCode).get();
         
-if (!doc.exists) {
-    // ✅ Nessun alert
-    window.location.href = 'index.html';
-    return;
-}
+        if (!doc.exists) {
+            document.getElementById('loading-screen').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2 style="color: #e94560;">❌ Room Non Trovata</h2>
+                    <p>La room "${roomCode}" non esiste</p>
+                    <button onclick="window.location.href='index.html'" 
+                            style="padding: 15px 30px; background: #e94560; color: white; 
+                                   border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                        🏠 Torna alla Home
+                    </button>
+                </div>
+            `;
+            return; // ✅ STOP QUI
+        }
         
         const data = doc.data();
-        if (!data.settings || !data.settings.mode) {
+        state.roomData = data;
+        
+        // Imposta settings se mancante
+        if (!data.settings?.mode) {
             await db.collection("pictionary_rooms").doc(roomCode).update({
-                'settings.mode': gameMode,
-                'settings.timePerRound': data.settings?.timePerRound || 60
+                settings: { mode: 'classic', timePerRound: 60 }
             });
-        }        
+        }
+        
+        // Auto-join
         if (data.players.includes(mioNome)) {
             state.isHost = data.host === mioNome;
             enterLobby();
@@ -3243,18 +3269,34 @@ if (!doc.exists) {
             await db.collection("pictionary_rooms").doc(roomCode).update({
                 players: firebase.firestore.FieldValue.arrayUnion(mioNome)
             });
-            state.isHost = false;
             enterLobby();
         } else {
-            alert("La partita è già iniziata!");
-            window.location.href = 'index.html';
+            document.getElementById('loading-screen').innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <h2 style="color: #f39c12;">⚠️ Partita già iniziata</h2>
+                    <button onclick="window.location.href='index.html'" 
+                            style="padding: 15px 30px; background: #e94560; color: white; 
+                                   border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                        🏠 Torna alla Home
+                    </button>
+                </div>
+            `;
         }
         
-} catch (e) {
-    console.error("Errore auto-join:", e);
-    // ✅ Nessun alert
-    window.location.href = 'index.html';
-}
+    } catch (e) {
+        console.error("Errore:", e);
+        document.getElementById('loading-screen').innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h2 style="color: #e94560;">❌ Errore</h2>
+                <p>${e.message}</p>
+                <button onclick="window.location.href='index.html'" 
+                        style="padding: 15px 30px; background: #e94560; color: white; 
+                               border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">
+                    🏠 Torna alla Home
+                </button>
+            </div>
+        `;
+    }
 };
 
 // ========================================
