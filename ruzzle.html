@@ -216,6 +216,14 @@
 			transform: translate(-1px, -1px);
 			}
 			}
+			@keyframes banner-glow-draw {
+			    0%, 100% {
+			        box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+			    }
+			    50% {
+			        box-shadow: 0 4px 25px rgba(230, 126, 34, 0.8), 0 0 40px rgba(230, 126, 34, 0.4);
+			    }
+			}
 			body.mega-win-effect {
 			animation: earthquake 0.5s 3, disco-flash 0.5s 3;
 			}
@@ -1555,6 +1563,7 @@
 			let unsubscribeProposte = null;
 			let wordDisplayLocked = false;
 			let dictionaryReady = false;
+			let proposteInCoda = [];
 			// --- TRIE ---
 			class TrieNode {
 			  constructor() {
@@ -1665,7 +1674,8 @@
 			    
 			    // ✅ Aggiorna stile senza ricreare
 			    banner.style.background = `linear-gradient(135deg, ${options.color} 0%, ${adjustColor(options.color, -20)} 100%)`;
-			    
+			    banner.style.animation = '';
+    			banner.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			    // Genera HTML bottoni
 			    let buttonsHtml = '';
 			    if (options.buttons && options.buttons.length > 0) {
@@ -3347,10 +3357,28 @@ document.addEventListener('visibilitychange', () => {
         if (!isGameActive || isPaused || isSandboxMode || matchId) return;
         togglePause();
     } else {
-        // ✅ Riattiva listener proposte se morto
+        // ✅ Riattiva listener se morto
         if (matchId && !unsubscribeProposte) {
             console.log("🔄 Riattivo listener proposte...");
             setupProposteListener();
+        }
+        
+        // ✅ Processa proposte accodate mentre ero via
+        if (proposteInCoda.length > 0) {
+            console.log(`📬 ${proposteInCoda.length} proposte in coda`);
+            const coda = [...proposteInCoda];
+            proposteInCoda = [];
+            coda.forEach(async ({ docId, prop }) => {
+                // Ri-leggi per avere dati freschi
+                const freshDoc = await db.collection("partite").doc(matchId)
+                    .collection("proposte").doc(docId).get();
+                if (freshDoc.exists) {
+                    const freshProp = freshDoc.data();
+                    if (!freshProp.voti.includes(mioNome)) {
+                        await processaProposta(docId, freshProp);
+                    }
+                }
+            });
         }
     }
 });
@@ -3400,16 +3428,22 @@ document.addEventListener('visibilitychange', () => {
 				aggiornaInterfacciaMultiplayer(data);
 				
 				// Aggiorna banner classifica se in stato conclusa
-				if (data.stato === "conclusa") {
-				    let classifica = Object.entries(data.punteggi || {}).sort((a, b) => b[1] - a[1]);
-				    let risultatiStr = classifica.map(([p, s], i) => {
-    const medal = i === 0 ? '👑' : '💀';
-    return `${medal} ${p}: <strong>${s} PT</strong>`;
-}).join('<br>');
-				    
-const subtitleEl = document.querySelector('#game-banner .banner-left div:last-child');
-if (subtitleEl) subtitleEl.innerHTML = risultatiStr;
-				}
+if (data.stato === "conclusa") {
+    let classifica = Object.entries(data.punteggi || {}).sort((a, b) => b[1] - a[1]);
+    const topScore = classifica[0][1];
+    const isPareggio = classifica.filter(([p, s]) => s === topScore).length > 1;
+    
+    let risultatiStr = classifica.map(([p, s], i) => {
+        let medal;
+        if (s === topScore && isPareggio) medal = '🤝';
+        else if (i === 0) medal = '👑';
+        else medal = '💀';
+        return `${medal} ${p}: <strong>${s} PT</strong>`;
+    }).join('<br>');
+    
+    const subtitleEl = document.querySelector('#game-banner .banner-left div:last-child');
+    if (subtitleEl) subtitleEl.innerHTML = risultatiStr;
+}
 				
 				// Aggiorna punteggio proprio se visibile
 				if (data.punteggi && data.punteggi[mioNome] !== undefined) {
@@ -3778,15 +3812,47 @@ if (data.stato === "in_corso") {
 			});
 			return;
 			}
-// Nessuna rivincita - mostra classifica
+// Nessuna rivincita - mostra classifica con gestione pareggio
 let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-const haVinto = classifica[0][0] === mioNome;
+const topScore = classifica[0][1];
+const vincitori = classifica.filter(([p, s]) => s === topScore).map(([p]) => p);
+const isPareggio = vincitori.length > 1;
+const haVinto = !isPareggio && vincitori[0] === mioNome;
+const haPareggiatoAlTop = isPareggio && vincitori.includes(mioNome);
+
 let risultatiStr = classifica.map(([p, s], i) => {
-    const medal = i === 0 ? '👑' : '💀';
+    let medal;
+    if (s === topScore && isPareggio) medal = '🤝';
+    else if (i === 0) medal = '👑';
+    else medal = '💀';
     return `${medal} ${p}: <strong>${s} PT</strong>`;
 }).join('<br>');
 
-if (haVinto) {
+if (isPareggio) {
+    // === PAREGGIO ===
+    showGameBanner({
+        icon: '🤝',
+        title: haPareggiatoAlTop ? '🤝 PAREGGIO! 🤝' : 'SCONFITTA!',
+        subtitle: risultatiStr,
+        color: haPareggiatoAlTop ? '#e67e22' : '#7f8c8d',
+        buttons: [{
+            text: '🔄 RIVINCITA',
+            onclick: 'apriRivincitaBanner()',
+            special: true
+        }]
+    });
+
+    if (haPareggiatoAlTop) {
+        // Glow arancione per pareggio (più sobrio della vittoria)
+        const banner = document.getElementById('game-banner');
+        if (banner) {
+            banner.style.animation = 'banner-glow-draw 2s infinite';
+        }
+        fireConfettiLight();
+    }
+
+} else if (haVinto) {
+    // === VITTORIA ===
     showGameBanner({
         icon: '👑',
         title: '🎉🏆 VITTORIA! 🏆🎉',
@@ -3799,23 +3865,22 @@ if (haVinto) {
         }]
     });
 
-    // ✅ Animazione banner dorato (SENZA fuochi d'artificio)
     const banner = document.getElementById('game-banner');
     if (banner) {
         banner.style.animation = 'disco-flash 0.8s 5, earthquake 0.3s 5';
         banner.style.boxShadow = '0 0 30px rgba(241, 196, 15, 0.8), 0 0 60px rgba(241, 196, 15, 0.4)';
         setTimeout(() => {
             if (banner) {
-        banner.style.animation = 'banner-glow 2s infinite';
-        banner.style.boxShadow = '';
+                banner.style.animation = 'banner-glow 2s infinite';
+                banner.style.boxShadow = '';
             }
         }, 4000);
     }
 
-    // ✅ Solo confetti leggeri, NO fuochi
     fireConfettiLight();
 
 } else {
+    // === SCONFITTA (nessun glow) ===
     showGameBanner({
         icon: '🐷',
         title: 'SCONFITTA!',
@@ -3844,10 +3909,10 @@ if (!window.analisiGiaAttivata) {
         });
         renderizzaAnalisiPlayerSilent(selAnalisi.value, data, conteggioParoleGlobali);
 
-const bannerSubtitle = document.querySelector('#game-banner .banner-left div:last-child');
-if (bannerSubtitle && !data.prossimaPartita) {
-    bannerSubtitle.innerHTML = risultatiStr;
-}
+        const bannerSubtitle = document.querySelector('#game-banner .banner-left div:last-child');
+        if (bannerSubtitle && !data.prossimaPartita) {
+            bannerSubtitle.innerHTML = risultatiStr;
+        }
     }
 }
 			    }
@@ -3988,34 +4053,53 @@ function setupProposteListener() {
                 const docId = change.doc.id;
                 const prop = change.doc.data();
 
+                // ✅ Se non ho ancora votato
                 if (!prop.voti.includes(mioNome)) {
-                    const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE DAL DIZIONARIO';
-                    if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
-                        await db.collection("partite").doc(matchId).collection("proposte")
-                            .doc(docId)
-                            .update({
-                                voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                            }).catch(e => console.error("Errore voto:", e));
+                    if (document.hidden) {
+                        // ✅ Tab non attiva → accoda
+                        if (!proposteInCoda.some(p => p.docId === docId)) {
+                            proposteInCoda.push({ docId, prop });
+                        }
+                        return; // Non fare altro finché non torna in focus
                     }
+                    await processaProposta(docId, prop);
                 }
 
-                const freshDoc = await db.collection("partite").doc(matchId)
-                    .collection("proposte").doc(docId).get();
-
-                if (freshDoc.exists && currentGameData && currentGameData.partecipanti) {
-                    const freshProp = freshDoc.data();
-                    if (freshProp.voti.length >= currentGameData.partecipanti.length) {
-                        await applicaModificaDizionario(freshProp.parola, freshProp.tipo);
-                        await db.collection("partite").doc(matchId)
-                            .collection("proposte").doc(docId)
-                            .delete().catch(e => {});
-                    }
-                }
+                // ✅ Controlla se tutti hanno votato
+                await verificaApplicazioneProposta(docId);
             }
         });
     });
 }
-			
+async function processaProposta(docId, prop) {
+    if (prop.voti.includes(mioNome)) return; // Già votato
+    
+    const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE DAL DIZIONARIO';
+    if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
+        await db.collection("partite").doc(matchId).collection("proposte")
+            .doc(docId)
+            .update({
+                voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+            }).catch(e => console.error("Errore voto:", e));
+    }
+    
+    await verificaApplicazioneProposta(docId);
+}
+
+async function verificaApplicazioneProposta(docId) {
+    const freshDoc = await db.collection("partite").doc(matchId)
+        .collection("proposte").doc(docId).get();
+
+    if (freshDoc.exists && currentGameData && currentGameData.partecipanti) {
+        const freshProp = freshDoc.data();
+        if (freshProp.voti.length >= currentGameData.partecipanti.length) {
+            await applicaModificaDizionario(freshProp.parola, freshProp.tipo);
+            await db.collection("partite").doc(matchId)
+                .collection("proposte").doc(docId)
+                .delete().catch(e => {});
+        }
+    }
+}			
 async function applicaModificaDizionario(parola, tipo) {
     // === AGGIORNA DIZIONARIO LOCALE ===
     if (tipo === 'extra') {
@@ -4552,6 +4636,7 @@ async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
 		</div>
 	</body>
 </html>
+
 
 
 
