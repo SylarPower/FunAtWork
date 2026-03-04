@@ -96,6 +96,14 @@
 			background-color: #3498db;
 			}
 			}
+			@keyframes banner-glow {
+			    0%, 100% {
+			        box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3);
+			    }
+			    50% {
+			        box-shadow: 0 4px 25px rgba(241, 196, 15, 0.8), 0 0 40px rgba(241, 196, 15, 0.4);
+			    }
+			}
 			@keyframes pulse-ready {
 			0%,
 			100% {
@@ -509,12 +517,6 @@
 			flex-direction: column;
 			position: relative;
 			min-height: 600px;
-			}
-			@media (max-width: 600px) {
-			.sidebar {
-			flex: 1;
-			min-height: 500px;
-			}
 			}
 			.score-box-container {
 			position: relative;
@@ -1036,20 +1038,29 @@
 			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 			}
 			.game-banner {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			padding: 12px 20px;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			z-index: 9999;
-			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-			animation: slideDown 0.3s ease;
-			color: white;
-			flex-wrap: wrap;
+			    position: fixed;
+			    top: 0;
+			    left: 0;
+			    right: 0;
+			    padding: 12px 20px;
+			    display: flex;
+			    justify-content: space-between;
+			    align-items: center;
+			    z-index: 9999;
+			    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			    animation: slideDown 0.3s ease;
+			    color: white;
+			    flex-wrap: wrap;
+			    transform-origin: center top;
+			    box-sizing: border-box;
+			    max-width: 100vw;
+			    overflow: hidden;
 			}
+			.game-banner .btn-rivincita {
+			    animation: none !important;
+			    transform: none !important;
+			    position: relative;
+			}			
 			.game-banner .banner-left {
 			display: flex;
 			align-items: center;
@@ -1061,11 +1072,27 @@
 			gap: 10px;
 			flex-wrap: wrap;
 			}
+			.game-banner .banner-left div:last-child {
+		    overflow: hidden;
+		    text-overflow: ellipsis;
+		    max-width: 50vw;
+		    line-height: 1.5;
+			}
 			@media (max-width: 600px) {
+			.sidebar {
+				flex: 1;
+				min-height: 500px;
+			}
 			.game-banner {
 			flex-direction: column;
 			text-align: center;
-			gap: 15px;
+			gap: 10px;
+			padding: 10px 15px;
+			}
+			.game-banner .banner-left div:last-child {
+				max-width: 80vw;
+				text-overflow: clip;
+				line-height: 1.5;
 			}
 			.game-banner .banner-left,
 			.game-banner .banner-right {
@@ -3315,10 +3342,18 @@
 			    e.target.style.display = 'none';
 			  }
 			});
-			document.addEventListener('visibilitychange', () => {
-			  if (!document.hidden || !isGameActive || isPaused || isSandboxMode || matchId) return;
-			  togglePause();
-			});
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (!isGameActive || isPaused || isSandboxMode || matchId) return;
+        togglePause();
+    } else {
+        // ✅ Riattiva listener proposte se morto
+        if (matchId && !unsubscribeProposte) {
+            console.log("🔄 Riattivo listener proposte...");
+            setupProposteListener();
+        }
+    }
+});
 			// --- LOGICA DI GESTIONE FINALE ---
 			// Richiedi login SOLO in multiplayer
 			if (!mioNome && matchId) {
@@ -3353,7 +3388,8 @@
 			  if (unsubscribePartita) unsubscribePartita();
 			  if (unsubscribeProposte) unsubscribeProposte();
 			  // ✅ LISTENER PRINCIPALE PARTITA
-			  unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
+			  setupProposteListener();
+				unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
 			    const data = doc.data();
 			    if (!data) {
 			      window.location.href = "index.html";
@@ -3366,10 +3402,13 @@
 				// Aggiorna banner classifica se in stato conclusa
 				if (data.stato === "conclusa") {
 				    let classifica = Object.entries(data.punteggi || {}).sort((a, b) => b[1] - a[1]);
-				    let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+				    let risultatiStr = classifica.map(([p, s], i) => {
+    const medal = i === 0 ? '👑' : '💀';
+    return `${medal} ${p}: <strong>${s} PT</strong>`;
+}).join('<br>');
 				    
-				    const subtitleEl = document.querySelector('#game-banner .banner-left div:last-child');
-				    if (subtitleEl) subtitleEl.textContent = risultatiStr;
+const subtitleEl = document.querySelector('#game-banner .banner-left div:last-child');
+if (subtitleEl) subtitleEl.innerHTML = risultatiStr;
 				}
 				
 				// Aggiorna punteggio proprio se visibile
@@ -3742,7 +3781,10 @@ if (data.stato === "in_corso") {
 // Nessuna rivincita - mostra classifica
 let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
 const haVinto = classifica[0][0] === mioNome;
-let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+let risultatiStr = classifica.map(([p, s], i) => {
+    const medal = i === 0 ? '👑' : '💀';
+    return `${medal} ${p}: <strong>${s} PT</strong>`;
+}).join('<br>');
 
 if (haVinto) {
     showGameBanner({
@@ -3764,8 +3806,8 @@ if (haVinto) {
         banner.style.boxShadow = '0 0 30px rgba(241, 196, 15, 0.8), 0 0 60px rgba(241, 196, 15, 0.4)';
         setTimeout(() => {
             if (banner) {
-                banner.style.animation = 'pulse-ready 2s infinite';
-                banner.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+        banner.style.animation = 'banner-glow 2s infinite';
+        banner.style.boxShadow = '';
             }
         }, 4000);
     }
@@ -3802,52 +3844,14 @@ if (!window.analisiGiaAttivata) {
         });
         renderizzaAnalisiPlayerSilent(selAnalisi.value, data, conteggioParoleGlobali);
 
-        const bannerSubtitle = document.querySelector('#game-banner .banner-left div:last-child');
-        if (bannerSubtitle && !data.prossimaPartita) {
-            bannerSubtitle.textContent = risultatiStr;
-        }
+const bannerSubtitle = document.querySelector('#game-banner .banner-left div:last-child');
+if (bannerSubtitle && !data.prossimaPartita) {
+    bannerSubtitle.innerHTML = risultatiStr;
+}
     }
 }
 			    }
 			  });
-			  // ✅ LISTENER PROPOSTE
-unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-    snap.docChanges().forEach(async change => {
-        if (change.type === "added" || change.type === "modified") {
-            const docId = change.doc.id;
-            const prop = change.doc.data();
-
-            // ✅ Se non ho ancora votato, chiedi conferma
-            if (!prop.voti.includes(mioNome)) {
-                const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE DAL DIZIONARIO';
-                if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
-                    await db.collection("partite").doc(matchId).collection("proposte")
-                        .doc(docId)  // ✅ Usa l'ID reale del documento
-                        .update({
-                            voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                        }).catch(e => console.error("Errore voto:", e));
-                }
-            }
-
-            // ✅ Ri-leggi il documento per avere i voti aggiornati
-            const freshDoc = await db.collection("partite").doc(matchId)
-                .collection("proposte").doc(docId).get();
-
-            if (freshDoc.exists && currentGameData && currentGameData.partecipanti) {
-                const freshProp = freshDoc.data();
-                const numPartecipanti = currentGameData.partecipanti.length;
-
-                if (freshProp.voti.length >= numPartecipanti) {
-                    // ✅ Applica la modifica e cancella la proposta
-                    await applicaModificaDizionario(freshProp.parola, freshProp.tipo);
-                    await db.collection("partite").doc(matchId)
-                        .collection("proposte").doc(docId)  // ✅ Usa l'ID reale
-                        .delete().catch(e => console.error("Errore delete proposta:", e));
-                }
-            }
-        }
-    });
-});
 			  loadDictionary();
 			}
 			
@@ -3975,6 +3979,43 @@ unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte
 			  });
 			  alert("Proposta inviata! Gli altri devono approvare.");
 			}
+function setupProposteListener() {
+    if (unsubscribeProposte) unsubscribeProposte();
+    
+    unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
+        snap.docChanges().forEach(async change => {
+            if (change.type === "added" || change.type === "modified") {
+                const docId = change.doc.id;
+                const prop = change.doc.data();
+
+                if (!prop.voti.includes(mioNome)) {
+                    const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE DAL DIZIONARIO';
+                    if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
+                        await db.collection("partite").doc(matchId).collection("proposte")
+                            .doc(docId)
+                            .update({
+                                voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+                            }).catch(e => console.error("Errore voto:", e));
+                    }
+                }
+
+                const freshDoc = await db.collection("partite").doc(matchId)
+                    .collection("proposte").doc(docId).get();
+
+                if (freshDoc.exists && currentGameData && currentGameData.partecipanti) {
+                    const freshProp = freshDoc.data();
+                    if (freshProp.voti.length >= currentGameData.partecipanti.length) {
+                        await applicaModificaDizionario(freshProp.parola, freshProp.tipo);
+                        await db.collection("partite").doc(matchId)
+                            .collection("proposte").doc(docId)
+                            .delete().catch(e => {});
+                    }
+                }
+            }
+        });
+    });
+}
+			
 async function applicaModificaDizionario(parola, tipo) {
     // === AGGIORNA DIZIONARIO LOCALE ===
     if (tipo === 'extra') {
@@ -4081,7 +4122,6 @@ async function applicaModificaDizionario(parola, tipo) {
 			  }
 			}
 			window.addEventListener('beforeunload', cleanupFirebaseListeners);
-			window.addEventListener('pagehide', cleanupFirebaseListeners);
 			
 			function tornaHome() {
 			  cleanupAllListeners();
@@ -4512,5 +4552,6 @@ async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
 		</div>
 	</body>
 </html>
+
 
 
