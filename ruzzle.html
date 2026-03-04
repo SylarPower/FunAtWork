@@ -3925,19 +3925,6 @@ if (data.stato === "in_corso") {
 			  if (parola.length > 20) return alert("Troppo lunga!");
 			  inviaPropostaFirebase(parola, 'extra');
 			}
-			async function proponiRimozioneParola(parola, proprietario) {
-			    if (!confirm(`Vuoi proporre la RIMOZIONE della parola "${parola}" di ${proprietario}?`)) return;
-			
-			    await db.collection("partite").doc(matchId).collection("proposte").doc(`remove_${parola}`).set({
-			        parola: parola,
-			        tipo: 'remove',
-			        proprietario: proprietario,
-			        proponente: mioNome,
-			        voti: [mioNome]
-			    });
-			
-			    alert("Proposta di rimozione inviata. Gli altri giocatori devono approvare.");
-			}
 			async function inviaPropostaFirebase(parola, tipo) {
 			  const azione = (tipo === 'extra') ? "AGGIUNGERE alle EXTRA" : "ELIMINARE (EXCLUDED)";
 			  if (!confirm(`Vuoi proporre al gruppo di ${azione} la parola: ${parola}?`)) return;
@@ -4315,8 +4302,9 @@ function renderizzaAnalisiPlayerSilent(nomePlayer, data, conteggioParoleGlobali)
             <div class="word-item-left">
                 <button class="btn-eye" onclick="event.stopPropagation(); showWordOnGrid('${item.w}')">👁️</button>
                 <span>${item.w}</span>
-                <button onclick="event.stopPropagation(); proponiRimozioneParola('${item.w}', '${nomePlayer}')" 
-                        style="background:none; border:none; cursor:pointer; color:#e74c3c;" title="Proponi rimozione">🗑️</button>
+                <button onclick="event.stopPropagation(); inviaPropostaFirebase('${item.w}', 'exclude')" 
+        style="background:none; border:none; cursor:pointer; color:#e74c3c;" 
+        title="Proponi rimozione">🗑️</button>
             </div>
             <span class="pts">${isDuplicata ? '0 (dup)' : puntiEffettivi}</span>
         `;
@@ -4471,11 +4459,3 @@ async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
 		</div>
 	</body>
 </html>
-
-
-
-
-
-
-
-
