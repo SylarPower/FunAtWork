@@ -3484,7 +3484,7 @@ if (unsubscribePartita) unsubscribePartita();
 if (unsubscribeProposte) unsubscribeProposte();
 // ✅ LISTENER PRINCIPALE PARTITA
 setupProposteListener();
-unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
+unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async (doc) => {
 if (isUpdatingWords) return;
 const data = doc.data();
 if (!data) {
@@ -3968,7 +3968,7 @@ if (bannerSubtitle && !data.prossimaPartita) {
 }
 }
 }
-};
+});
 loadDictionary();
 }
 
