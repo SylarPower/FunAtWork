@@ -1565,7 +1565,8 @@ let wordDisplayLocked = false;
 let dictionaryReady = false;
 let proposteInCoda = [];
 let isUpdatingWords = false;
-// --- TRIE ---
+let medal;
+	// --- TRIE ---
 class TrieNode {
 constructor() {
 this.children = {};
@@ -3512,7 +3513,6 @@ if (data.stato === "conclusa") {
     const isPareggio = classifica.filter(([p, s]) => s === topScore).length > 1;
     
     let risultatiStr = classifica.map(([p, s], i) => {
-        let medal;
         if (s === topScore && isPareggio) medal = '🤝';
         else if (i === 0) medal = '👑';
         else medal = '💀';
@@ -3901,7 +3901,6 @@ const haPareggiatoAlTop = isPareggio && vincitori.includes(mioNome);
 
 let risultatiStr = classifica.map(([p, s], i) => {
     const medal = i === 0 ? '👑' : '💀';
-    let medal;
     if (s === topScore && isPareggio) medal = '🤝';
     else if (i === 0) medal = '👑';
     else medal = '💀';
@@ -4750,6 +4749,7 @@ setupHomeButtonCleanup();
 </div>
 </body>
 </html>
+
 
 
 
