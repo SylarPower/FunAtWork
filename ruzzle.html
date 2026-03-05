@@ -3827,7 +3827,6 @@ return;
 // Nessuna rivincita - mostra classifica
 // Nessuna rivincita - mostra classifica con gestione pareggio
 let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-const haVinto = classifica[0][0] === mioNome;
 const topScore = classifica[0][1];
 const vincitori = classifica.filter(([p, s]) => s === topScore).map(([p]) => p);
 const isPareggio = vincitori.length > 1;
@@ -3979,7 +3978,7 @@ return conteggio;
 }
 async function attivaAnalisiMultiplayer() {
 const loadingDiv = document.createElement('div');
-loadingDiv.innerHTML = ' < div style = "text-align:center; padding:20px;" > ⏳Caricamento analisi... < /div>';
+loadingDiv.innerHTML = '<div style="text-align:center; padding:20px;">⏳ Caricamento analisi...</div>';
 document.getElementById('found-words').appendChild(loadingDiv);
 const snap = await db.collection("partite").doc(matchId).get();
 const data = snap.data();
