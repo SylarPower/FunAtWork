@@ -79,6 +79,18 @@
 			transform: translate(1px, -2px) rotate(-1deg);
 			}
 			}
+@keyframes bannerWinShake {
+  0%, 100% { transform: translate(0,0); }
+  20% { transform: translate(-1px, 1px); }
+  40% { transform: translate(1px, -1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+#game-banner.win-celebration {
+  animation: bannerWinShake 0.35s infinite;
+  box-shadow: 0 0 35px rgba(241, 196, 15, 0.55), 0 4px 15px rgba(0,0,0,0.3);
+}
 			@keyframes disco-flash {
 			0% {
 			background-color: #e74c3c;
@@ -1351,8 +1363,6 @@
 			let gridSize = 5;
 			const MIN_WORD_LENGTH = 4;
 			const LETTER_POOL = "AAAAAAAABBCCDDEEEEEEEEFFGGGHHIIIIIILLLMMNNOOOOOOPPQRRSSTTTUUUVVZ";
-			let EXTRA_WORDS = ["ASIA", "EUROPA", "AFRICA", "AMERICA", "OCEANIA", "ANTARTIDE", "ITALIA", "CINA", "INDIA", "USA", "RUSSIA", "FRANCIA", "SPAGNA", "GERMANIA", "PERU", "CILE", "IRAN", "IRAQ", "LAOS", "MALI", "CUBA", "FIJI", "TOGO", "ROMA", "MILANO", "NAPOLI", "TORINO", "BARI", "OSLO", "LIMA", "RIGA", "BONN", "NILO", "RENO", "PO", "TEVERE", "ARNO", "ADIGE", "PIAVE", "ADDA", "ALPI", "ANDE", "URALI", "ETNA", "LAGO", "MARE", "MONTE", "CITTA", "ISOLA", "BELA", "LOBO", "LOGO", "JAVA", "HTML", "WEB", "EMAIL", "FILE", "APP", "GODITI", "DIMMI", "DAMMI", "FAMMI", "DILLO", "FALLO", "VATTENE", "PIGLIAMI", "SENTIMI", "ANITA", "LUCA", "MARCO", "ANNA", "MARIA", "PAOLO", "LUIGI", "SARA", "ELENA", "ROSA", "VIOLA", "GIOIA", "SOLE", "LUNA", "STELLA", "PISA", "SIENA", "PARMA", "COMO", "LECCO", "LODI", "ENNA", "RAGUSA", "FOGGIA", "TERNI", "AOSTA", "MONZA", "MEGA", "EZIO", "PORCHI", "MAMELI", "GARDA", "MASAI", "MAASAI", "PABLO", "SELINA", "LAVAREDO", "LARA", "PETO", "GENE", "ENNE", "ALARE", "RAGU", "MONA", "GASAI", "FETA", "FETE", "MASO", "MASI", "MEME", "GASI", "CAGA", "SITE", "CASIO", "ALONSO", "DRENI", "CEDO", "PENTO", "PENTE", "ERMA", "ERMI", "SITA", "TOFU", "POTAI", "PIPPE", "CALCIA", "ERSE", "ERSI", "QUINOA", "GASO", "BUSET", "MISO", "NASA", "EBOLA", "TERA", "NONE", "ZORRO", "EOLIE", "SERI", "SILE", "PELMO", "PITA"];
-			let EXCLUDED_WORDS = ["SAETTI", "BIFFE", "PIATO", "PIOTA", "GILE", "GLIE", "GIOI", "POPE", "RAFFA", "RAFFI", "ZAFFI", "PASCI", "MEVE", "MINO", "BASTE", "DIANE", "MAIO", "SPALLI", "RENA", "FELA", "FERA", "GATO", "ZOIA", "ANCE", "ELISE", "ELSE", "FIFE", "PILLI", "PILLO", "BASA", "INIO", "PIVA", "PIVE", "ROMI", "ALPA", "ALPO", "BIDE", "LARIO", "LARO", "LAURI", "PROTI", "NESTO", "TOSONE", "GORE", "BIAVA", "FOIA", "PASSE", "SAPA", "LETO", "LETA", "ORTE", "TORE", "SILA", "SERPA", "ENEO", "LENE", "LENO", "LIANO", "IANO", "MALO", "BALIO", "TELMA", "TALLO", "GRUMA", "GIACO", "PASCO", "CIRA", "VAGITA", "FEDO", "PRECI", "SIRO", "QUIRO", "POTTE", "ROSI", "POTTA", "PELUTO", "BOVO", "BETTO", "CIANA", "CIANE", "CIANI", "VELIE", "FAGO", "CORE", "RICO", "BOVE", "CEBO", "LIMANA", "GIANA", "MUFFI", "MUFFO", "NILA", "FOGNATA", "NASATE", "LICE", "GERI", "MITRE", "TOMA", "PELTA", "POLTA", "FANNE", "INNA", "GENICA", "AGIEA", "FANNI", "SANNA", "SANNE", "GINNO", "FANNI", "OLGO", "CALE", "IMMO", "MITRE", "TREVO", "MESCE", "PINGE", "NINI", "ANITO", "OVATO", "GELSA", "TOSSO", "COTI", "BAULA", "BAULO", "CARMI", "LORA", "SIMO", "BOTRO", "EOLA", "AGGIO", "ALIA", "BORNI", "BORNIA"];
 			// --- ACHIEVEMENTS ---
 			const ACHIEVEMENTS = [{
 			  id: 'not_now',
@@ -1427,11 +1437,6 @@
 			  title: 'Copione',
 			  desc: 'Elimina il 95% delle tue parole in fase di verifica',
 			  check: (ctx) => ctx.game.wordCount >= 10 && (ctx.game.deletedCount / ctx.game.wordCount) >= 0.9
-			}, {
-			  id: 'buset',
-			  title: 'BUSET MAIALONE',
-			  desc: 'Hai trovato l amore della tua vita!',
-			  check: (ctx) => ctx.last.word === 'BUSET'
 			}, {
 			  id: 'biatch_move',
 			  title: 'MAL DI TESTA 💅',
@@ -1525,10 +1530,17 @@
 			let currentGameData = null;
 			let dizionarioCustomApplicato = false;
 			let unsubscribePartita = null;
-			let unsubscribeProposte = null;
 			let wordDisplayLocked = false;
 			let dictionaryReady = false;
-			let verificaInCorsoDa = null;   // Chi sta attualmente modificando le parole
+			let unsubscribeEliminazioni = null;
+			let pendingEliminations = new Map(); // word -> docData (pending)
+			let shownVotePromptFor = new Set();  // word -> per non ripromptare a raffica
+			let lastWinnerName = null;
+
+			// helper: esclusioni partita corrente
+			function getMatchExcludedSet(data) {
+			  return new Set((data && Array.isArray(data.paroleEscluse)) ? data.paroleEscluse : []);
+			}
 			// --- TRIE ---
 			class TrieNode {
 			  constructor() {
@@ -1729,43 +1741,35 @@
 			    const addWordsToDictionary = (textData) => {
 			      textData.split('\n').forEach(w => {
 			        const clean = w.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z]/g, "");
-			        if (clean.length >= MIN_WORD_LENGTH && !EXCLUDED_WORDS.includes(clean)) {
+			        if (clean.length >= MIN_WORD_LENGTH) {
 			          dictionary.add(clean);
 			        }
 			      });
 			    };
 			    texts.forEach(t => addWordsToDictionary(t));
-			    EXTRA_WORDS.forEach(w => dictionary.add(w));
-			    console.log("🔥 Caricamento dizionario Firebase...");
-			    try {
-			      const globalDocPromise = db.collection("config").doc("dizionario").get();
-			      const globalDoc = await Promise.race([
-			        globalDocPromise,
-			        new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 5000))
-			      ]);
-			      if (globalDoc.exists) {
-			        const data = globalDoc.data();
-			        if (data.extra) {
-			          data.extra.forEach(w => {
-			            if (w && !EXTRA_WORDS.includes(w)) {
-			              EXTRA_WORDS.push(w);
-			              dictionary.add(w);
-			            }
-			          });
-			        }
-			        if (data.excluded) {
-			          data.excluded.forEach(w => {
-			            if (w && !EXCLUDED_WORDS.includes(w)) {
-			              EXCLUDED_WORDS.push(w);
-			              dictionary.delete(w);
-			            }
-			          });
-			        }
-			        console.log("✅ Dizionario Firebase caricato");
-			      }
-			    } catch (fbError) {
-			      console.warn("⚠️ Firebase non disponibile (continuo comunque):", fbError);
-			    }
+				console.log("🔥 Caricamento dizionario Firebase (source of truth)...");
+				try {
+				  const globalDoc = await db.collection("config").doc("dizionario").get();
+				  if (globalDoc.exists) {
+					 const data = globalDoc.data() || {};
+					 const extra = Array.isArray(data.extra) ? data.extra : [];
+					 const excluded = Array.isArray(data.excluded) ? data.excluded : [];
+
+					 // Applica extra
+					 extra.forEach(w => {
+						if (w) dictionary.add(String(w).trim().toUpperCase());
+					 });
+
+					 // Applica excluded
+					 excluded.forEach(w => {
+						if (w) dictionary.delete(String(w).trim().toUpperCase());
+					 });
+
+					 console.log(`✅ Dizionario Firebase applicato (extra:${extra.length}, excluded:${excluded.length})`);
+				  }
+				} catch (fbError) {
+				  console.warn("⚠️ Firebase dizionario non disponibile (continuo comunque):", fbError);
+				}
 			    console.log("🌳 Costruzione Trie...");
 			    buildTrie();
 			    dictionaryReady = true;
@@ -2562,18 +2566,6 @@
 			  }, 1500);
 			}
 			
-			function triggerBusetExplosion() {
-			  document.body.classList.add('mega-win-effect');
-			  if (fireworksInterval) clearInterval(fireworksInterval);
-			  fireworksInterval = setInterval(() => {
-			    launchFirework();
-			    launchFirework();
-			  }, 150);
-			  setTimeout(() => {
-			    document.body.classList.remove('mega-win-effect');
-			    stopFireworks();
-			  }, 5000);
-			}
 			// --- ✅ SISTEMA VALIDAZIONE OTTIMIZZATO ---
 			const endDrag = () => {
 			    if (!inputState.isDragging) return;
@@ -2652,7 +2644,6 @@
 			      path: originalPath
 			    });
 			    if (pts >= 10) fireConfettiLight();
-			    if (word === "BUSET") triggerBusetExplosion();
 			    if (isBiatchMode) {
 			      rotateGrid();
 			      showBiatchOverlay();
@@ -3215,16 +3206,6 @@
 			  }
 			}
 			
-			function startEndGameCelebration() {
-			  if (fireworksInterval) clearInterval(fireworksInterval);
-			  let count = 0;
-			  fireworksInterval = setInterval(() => {
-			    launchFirework();
-			    launchFirework();
-			    count++;
-			    if (count > 40) stopFireworks();
-			  }, 200);
-			}
 			
 			function stopFireworks() {
 			  if (fireworksInterval) {
@@ -3352,7 +3333,6 @@
 			} else {
 			  // MODALITÀ MULTIPLAYER
 			  if (unsubscribePartita) unsubscribePartita();
-			  if (unsubscribeProposte) unsubscribeProposte();
 			  // ✅ LISTENER PRINCIPALE PARTITA
 			  unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(async doc => {
 			    const data = doc.data();
@@ -3361,44 +3341,11 @@
 			      return;
 			    }
 			    currentGameData = data;
-				// Gestione lock eliminazione
-				if (data.verificaInCorsoDa !== verificaInCorsoDa) {
-				    verificaInCorsoDa = data.verificaInCorsoDa;
-				    
-				    const sel = document.getElementById('sel-analisi');
-				    if (sel && isAnalysisPhase) {
-				        renderizzaAnalisiPlayerSilent(sel.value, data, getConteggioGlobale());
-				    }
-				}
 				  // Nascondi SEMPRE la lobby (usiamo solo banner)
 			    document.getElementById('multiplayer-lobby').style.display = 'none';
 			    const btnNewEl = document.querySelector('.btn-new');
 			    if (btnNewEl) {
 			      btnNewEl.style.display = (data.stato === 'conclusa') ? 'block' : 'none';
-			    }
-			    // APPLICA DIZIONARIO CUSTOM
-			    if (data.dizionarioCustom) {
-			      const extraLen = (data.dizionarioCustom.extra || []).length;
-			      const excludedLen = (data.dizionarioCustom.excluded || []).length;
-			      const currentVersion = `${extraLen}-${excludedLen}`;
-			      if (!dizionarioCustomApplicato || window.lastDictVersion !== currentVersion) {
-			        (data.dizionarioCustom.extra || []).forEach(w => {
-			          if (w && !EXTRA_WORDS.includes(w)) {
-			            EXTRA_WORDS.push(w);
-			            dictionary.add(w);
-			          }
-			        });
-			        (data.dizionarioCustom.excluded || []).forEach(w => {
-			          if (w && !EXCLUDED_WORDS.includes(w)) {
-			            EXCLUDED_WORDS.push(w);
-			            dictionary.delete(w);
-			          }
-			        });
-			        buildTrie();
-			        dizionarioCustomApplicato = true;
-			        window.lastDictVersion = currentVersion;
-			        if (DEBUG_MODE) console.log("Dizionario custom aggiornato:", currentVersion);
-			      }
 			    }
 			    const pronti = data.pronti || [];
 			    const finito = data.finito || [];
@@ -3733,21 +3680,33 @@ if (data.stato === "in_corso") {
 			return;
 			}
 			      // Nessuna rivincita - mostra classifica
-			      let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-			      const haVinto = classifica[0][0] === mioNome;
-			      let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
-			      showGameBanner({
-			        icon: haVinto ? '👑' : '🐷',
-			        title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
-			        subtitle: risultatiStr,
-			        color: haVinto ? '#f1c40f' : '#7f8c8d',
-			        buttons: [{
-			          text: '🔄 RIVINCITA',
-			          onclick: 'apriRivincitaBanner()',
-			          special: true
-			        }]
-			      });
-			      	if (haVinto) fireConfettiLight();
+					let classifica = Object.entries(data.punteggi || {}).sort((a, b) => b[1] - a[1]);
+					const winner = classifica.length ? classifica[0][0] : null;
+					const haVinto = (winner === mioNome);
+
+					let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+
+					showGameBanner({
+					  icon: haVinto ? '👑' : '🐷',
+					  title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
+					  subtitle: risultatiStr,
+					  color: haVinto ? '#f1c40f' : '#7f8c8d',
+					  buttons: [{
+						 text: '🔄 RIVINCITA',
+						 onclick: 'apriRivincitaBanner()',
+						 special: true
+					  }]
+					});
+
+					// Se cambia winner => aggiorna celebrazione
+					if (winner !== lastWinnerName) {
+					  lastWinnerName = winner;
+					  setWinCelebration(false);     // reset
+					  if (haVinto) setWinCelebration(true);
+					} else {
+					  // winner invariato: mantieni coerente lo stato
+					  setWinCelebration(haVinto);
+					}
 					// ✅ Attiva/Aggiorna analisi
 					if (!window.analisiGiaAttivata) {
 					    window.analisiGiaAttivata = true;
@@ -3779,29 +3738,6 @@ if (data.stato === "in_corso") {
 					}
 			    }
 			  });
-			  // ✅ LISTENER PROPOSTE
-			  unsubscribeProposte = db.collection("partite").doc(matchId).collection("proposte").onSnapshot(snap => {
-			    snap.docChanges().forEach(async change => {
-			      if (change.type === "added" || change.type === "modified") {
-			        const prop = change.doc.data();
-			        if (!prop.voti.includes(mioNome)) {
-			          const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
-			          if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
-			            await db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
-			              voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-			            }).catch(e => console.error("Errore voto:", e));
-			          }
-			        }
-			        if (currentGameData && currentGameData.partecipanti) {
-			          const numPartecipanti = currentGameData.partecipanti.length;
-			          if (prop.voti.length >= numPartecipanti) {
-			            await applicaModificaDizionario(prop.parola, prop.tipo);
-			            await db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).delete().catch(e => console.error("Errore delete:", e));
-			          }
-			        }
-			      }
-			    });
-			  });
 			  loadDictionary();
 			}
 			
@@ -3827,50 +3763,6 @@ if (data.stato === "in_corso") {
 			  }
 			  // Il calcolo finale avviene automaticamente nel listener quando tutti hanno confermato
 			}
-			async function iniziaEliminazioneParole() {
-			    if (verificaInCorsoDa && verificaInCorsoDa !== mioNome) {
-			        alert(`Eliminazione già in corso da ${verificaInCorsoDa}`);
-			        return;
-			    }
-			
-			    if (!confirm("Inizierai l'eliminazione delle parole.\nSolo tu potrai modificare finché non terminerai.")) return;
-			
-			    await db.collection("partite").doc(matchId).update({
-			        verificaInCorsoDa: mioNome
-			    });
-			
-			    verificaInCorsoDa = mioNome;
-			
-			    // Ricarica vista corrente
-			    const sel = document.getElementById('sel-analisi');
-			    if (sel && currentGameData) {
-			        renderizzaAnalisiPlayerSilent(sel.value, currentGameData, getConteggioGlobale());
-			    }
-			
-			    showGameBanner({
-			        icon: '✂️',
-			        title: 'ELIMINAZIONE IN CORSO',
-			        subtitle: 'Puoi modificare parole di tutti i giocatori',
-			        color: '#e74c3c',
-			        buttons: [{ text: '✅ TERMINA ELIMINAZIONE', onclick: 'terminaEliminazioneParole()' }]
-			    });
-			}
-			
-			async function terminaEliminazioneParole() {
-			    if (verificaInCorsoDa !== mioNome) return;
-			
-			    await db.collection("partite").doc(matchId).update({
-			        verificaInCorsoDa: firebase.firestore.FieldValue.delete()
-			    });
-			
-			    verificaInCorsoDa = null;
-			    removeGameBanner();
-			
-			    const sel = document.getElementById('sel-analisi');
-			    if (sel && currentGameData) {
-			        renderizzaAnalisiPlayerSilent(sel.value, currentGameData, getConteggioGlobale());
-			    }
-			}
 			
 			function getConteggioGlobale() {
 			    let conteggio = {};
@@ -3890,7 +3782,6 @@ if (data.stato === "in_corso") {
 			  const data = snap.data();
 			  loadingDiv.remove();
 			  document.getElementById('multiplayer-lobby').style.display = 'none';
-			  document.getElementById('proposta-manuale-container').style.display = 'block';
 			  isAnalysisPhase = true;
 			  isGameActive = true;
 			  if (document.getElementById('analysis-msg')) document.getElementById('analysis-msg').style.display = "block";
@@ -3951,128 +3842,20 @@ if (data.stato === "in_corso") {
 			  btnTornaLobby.style.marginTop = '15px';
 			  btnTornaLobby.onclick = () => {
 			    document.getElementById('multiplayer-lobby').style.display = 'flex';
-			    document.getElementById('proposta-manuale-container').style.display = 'none';
 			  };
 			  wordsListEl.parentNode.appendChild(btnTornaLobby);
 			}
 			
-			function proponiParolaManuale() {
-			  const parola = document.getElementById('input-nuova-parola').value.trim().toUpperCase().replace(/[^A-Z]/g, '');
-			  if (parola.length < 4) return alert("Minimo 4 lettere!");
-			  if (parola.length > 20) return alert("Troppo lunga!");
-			  inviaPropostaFirebase(parola, 'extra');
-			}
-			async function inviaPropostaFirebase(parola, tipo) {
-			  const azione = (tipo === 'extra') ? "AGGIUNGERE alle EXTRA" : "ELIMINARE (EXCLUDED)";
-			  if (!confirm(`Vuoi proporre al gruppo di ${azione} la parola: ${parola}?`)) return;
-			  await db.collection("partite").doc(matchId).collection("proposte").doc(parola).set({
-			    parola: parola,
-			    tipo: tipo,
-			    proponente: mioNome,
-			    voti: [mioNome]
-			  });
-			  alert("Proposta inviata! Gli altri devono approvare.");
-			}
-async function applicaModificaDizionario(parola, tipo) {
-    if (tipo === 'extra') {
-        if (!EXTRA_WORDS.includes(parola)) EXTRA_WORDS.push(parola);
-        dictionary.add(parola);
-    } else {
-        if (!EXCLUDED_WORDS.includes(parola)) EXCLUDED_WORDS.push(parola);
-        dictionary.delete(parola);
-    }
-    buildTrie();
-    
-    // ✅ Aggiorna dizionario custom nella partita
-    if (matchId) {
-        const updateData = {};
-        if (tipo === 'extra') {
-            updateData['dizionarioCustom.extra'] = firebase.firestore.FieldValue.arrayUnion(parola);
-        } else {
-            updateData['dizionarioCustom.excluded'] = firebase.firestore.FieldValue.arrayUnion(parola);
-        }
-        
-        await db.collection("partite").doc(matchId).update(updateData);
-        
-        // ✅ RICALCOLA PUNTEGGI PER TUTTI I GIOCATORI
-        if (tipo === 'exclude' && currentGameData) {
-            const nuoviPunteggi = {};
-            const nuoveParole = {};
-            
-            currentGameData.partecipanti.forEach(player => {
-                let parolePlayer = currentGameData.parole[player] || [];
-                
-                // Rimuovi la parola esclusa
-                parolePlayer = parolePlayer.filter(p => p.w !== parola);
-                nuoveParole[player] = parolePlayer;
-                
-                // Ricalcola punteggio (considerando duplicati)
-                let punteggio = 0;
-                parolePlayer.forEach(p => {
-                    // Conta quanti giocatori hanno questa parola
-                    let count = 0;
-                    currentGameData.partecipanti.forEach(altro => {
-                        const paroleAltro = altro === player ? parolePlayer : (nuoveParole[altro] || currentGameData.parole[altro] || []);
-                        if (paroleAltro.some(x => x.w === p.w)) count++;
-                    });
-                    // Se solo uno ha la parola, conta
-                    if (count <= 1) punteggio += p.p;
-                });
-                
-                nuoviPunteggi[player] = punteggio;
-            });
-            
-            // Aggiorna Firebase con nuovi punteggi
-            await db.collection("partite").doc(matchId).update({
-                parole: nuoveParole,
-                punteggi: nuoviPunteggi
-            });
-            
-            // Aggiorna locale
-            score = nuoviPunteggi[mioNome] || 0;
-            scoreDisplay.textContent = score;
-        }
-    }
-    
-    // Aggiorna dizionario globale
-    const globalRef = db.collection("config").doc("dizionario");
-    if (tipo === 'extra') {
-        await globalRef.set({
-            extra: firebase.firestore.FieldValue.arrayUnion(parola)
-        }, { merge: true });
-    } else {
-        await globalRef.set({
-            excluded: firebase.firestore.FieldValue.arrayUnion(parola)
-        }, { merge: true });
-    }
-    
-    alert(`${tipo === 'extra' ? '✅ Aggiunta' : '🚫 Rimossa'} PERMANENTEMENTE: "${parola}"`);
-    
-    // ✅ Forza refresh dell'analisi
-    if (currentGameData) {
-        let conteggioParoleGlobali = {};
-        currentGameData.partecipanti.forEach(p => {
-            (currentGameData.parole[p] || []).forEach(par => {
-                conteggioParoleGlobali[par.w] = (conteggioParoleGlobali[par.w] || 0) + 1;
-            });
-        });
-        
-        const selAnalisi = document.getElementById('sel-analisi');
-        if (selAnalisi) {
-            renderizzaAnalisiPlayerSilent(selAnalisi.value, currentGameData, conteggioParoleGlobali);
-        }
-    }
-}
 			// ✅ CLEANUP FIREBASE
 			function cleanupFirebaseListeners() {
 			  if (unsubscribePartita) {
 			    unsubscribePartita();
 			    unsubscribePartita = null;
 			  }
-			  if (unsubscribeProposte) {
-			    unsubscribeProposte();
-			    unsubscribeProposte = null;
-			  }
+				if (unsubscribeEliminazioni) {
+				  unsubscribeEliminazioni();
+				  unsubscribeEliminazioni = null;
+				}
 			}
 			window.addEventListener('beforeunload', cleanupFirebaseListeners);
 			window.addEventListener('pagehide', cleanupFirebaseListeners);
@@ -4260,8 +4043,6 @@ async function applicaModificaDizionario(parola, tipo) {
 			async function attivaAnalisiMultiplayerSilent() {
 			    const snap = await db.collection("partite").doc(matchId).get();
 			    const data = snap.data();
-			    
-			    document.getElementById('proposta-manuale-container').style.display = 'block';
 			    isAnalysisPhase = true;
 			    isGameActive = true;
 			    isSandboxMode = true;
@@ -4306,69 +4087,61 @@ async function applicaModificaDizionario(parola, tipo) {
 			
 			    renderizzaAnalisiPlayerSilent(mioNome, data, conteggioParoleGlobali);
 			
-			    // Banner iniziale per iniziare l'eliminazione
-			    if (!verificaInCorsoDa) {
-			        showGameBanner({
-			            icon: '✂️',
-			            title: 'FASE VERIFICA',
-			            subtitle: 'Chiunque può iniziare l\'eliminazione delle parole',
-			            color: '#e74c3c',
-			            buttons: [{ 
-			                text: 'INIZIA ELIMINAZIONE', 
-			                onclick: 'iniziaEliminazioneParole()' 
-			            }]
-			        });
-			    }
 			}
 			
 function renderizzaAnalisiPlayerSilent(nomePlayer, data, conteggioParoleGlobali) {
-    const wordsListEl = document.getElementById('found-words');
-    wordsListEl.innerHTML = "";
-    foundWords.clear();
+  const wordsListEl = document.getElementById('found-words');
+  wordsListEl.innerHTML = "";
+  foundWords.clear();
 
-    const parole = (data.parole[nomePlayer] || []).sort((a, b) => a.w.localeCompare(b.w));
-    let playerScore = 0;
+  const excludedSet = getMatchExcludedSet(data);
 
-    parole.forEach(item => {
-        const isDuplicata = conteggioParoleGlobali[item.w] > 1;
-        const puntiEffettivi = isDuplicata ? 0 : item.p;
-        playerScore += puntiEffettivi;
+  const parole = (data.parole?.[nomePlayer] || []).sort((a, b) => a.w.localeCompare(b.w));
 
-        foundWords.set(item.w, { points: item.p, path: item.path, active: true });
+  parole.forEach(item => {
+    const w = item.w;
 
-        const li = document.createElement('li');
-        li.dataset.word = item.w;
-        if (isDuplicata) li.classList.add('deleted');
+    const isDuplicata = (conteggioParoleGlobali[w] || 0) > 1;
+    const isEsclusaMatch = excludedSet.has(w);
+    const isZero = isDuplicata || isEsclusaMatch;
 
-        li.innerHTML = `
-            <div class="word-item-left">
-                <button class="btn-eye" onclick="event.stopPropagation(); showWordOnGrid('${item.w}')">👁️</button>
-                <span>${item.w}</span>
-            </div>
-            <span class="pts">${isDuplicata ? '0 (dup)' : puntiEffettivi}</span>
-        `;
+    foundWords.set(w, { points: item.p, path: item.path, active: true });
 
-        // Solo chi sta facendo l'eliminazione può cliccare (su qualsiasi giocatore)
-        if (verificaInCorsoDa === mioNome && !isDuplicata) {
-            li.style.cursor = 'pointer';
-            li.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn-eye')) {
-                    toggleWordMultiplayer(item.w, li, data, conteggioParoleGlobali);
-                }
-            });
-        }
+    const isPending = pendingEliminations.has(w);
 
-        wordsListEl.appendChild(li);
-    });
+    const li = document.createElement('li');
+    li.dataset.word = w;
+    if (isZero) li.classList.add('deleted');
 
-    // Aggiorna punteggio visibile
-    if (nomePlayer === mioNome) {
-        score = playerScore;
-        scoreDisplay.textContent = score;
-    }
+    const labelPts = isEsclusaMatch
+      ? '0 (excl)'
+      : (isDuplicata ? '0 (dup)' : String(item.p));
 
-    wordCountDisplay.textContent = parole.length;
-    wordsListEl.classList.toggle('interactive', verificaInCorsoDa === mioNome);
+    const disBtn = (isPending || isEsclusaMatch) ? 'disabled' : '';
+    const btnText = isPending ? '⏳' : '🚫';
+    const btnTitle = isPending
+      ? 'Votazione in corso'
+      : (isEsclusaMatch ? 'Già esclusa' : 'Proponi eliminazione (serve unanimità)');
+
+    li.innerHTML = `
+      <div class="word-item-left">
+        <button class="btn-eye" onclick="event.stopPropagation(); showWordOnGrid('${w}')" title="Mostra">👁️</button>
+        <span>${w}</span>
+        <button
+          ${disBtn}
+          onclick="event.stopPropagation(); proponiEliminazioneParola('${w}')"
+          style="background:none; border:none; cursor:${(isPending || isEsclusaMatch) ? 'not-allowed' : 'pointer'}; opacity:${(isPending || isEsclusaMatch) ? '0.4' : '1'};"
+          title="${btnTitle}"
+        >${btnText}</button>
+      </div>
+      <span class="pts">${labelPts}</span>
+    `;
+
+    wordsListEl.appendChild(li);
+  });
+
+  wordCountDisplay.textContent = parole.length;
+  wordsListEl.classList.remove('interactive'); // non si cliccano più per “eliminare direttamente”
 }
 // ✅ TOGGLE PAROLA IN MULTIPLAYER (elimina/ripristina)
 async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
@@ -4469,7 +4242,157 @@ async function toggleWordMultiplayer(word, li, data, conteggioParoleGlobali) {
 			    actionDiv.appendChild(btnTorna);
 			  }
 			}
-			
+			function getConteggioGlobaleFromData(data) {
+			  let conteggio = {};
+			  if (!data || !data.partecipanti) return conteggio;
+
+			  data.partecipanti.forEach(p => {
+				 (data.parole?.[p] || []).forEach(par => {
+					conteggio[par.w] = (conteggio[par.w] || 0) + 1;
+				 });
+			  });
+			  return conteggio;
+			}
+
+			async function proponiEliminazioneParola(parola) {
+			  parola = String(parola || '').trim().toUpperCase();
+			  if (!matchId || !parola) return;
+
+			  // se già pending, stop
+			  const pend = pendingEliminations.get(parola);
+			  if (pend && pend.stato === 'pending') {
+				 alert(`C'è già una votazione in corso per "${parola}".`);
+				 return;
+			  }
+
+			  if (!confirm(`Vuoi proporre l'eliminazione di "${parola}"?\n(Serve approvazione di tutti)`)) return;
+
+			  const ref = db.collection("partite").doc(matchId).collection("eliminazioni").doc(parola);
+
+			  try {
+				 await db.runTransaction(async (tx) => {
+					const snap = await tx.get(ref);
+					if (snap.exists) {
+					  const d = snap.data() || {};
+					  if (d.stato === 'pending') {
+						 throw new Error("Votazione già in corso");
+					  }
+					}
+					tx.set(ref, {
+					  parola,
+					  proponente: mioNome,
+					  stato: 'pending',
+					  createdAt: Date.now(),
+					  voti: { [mioNome]: true }
+					});
+				 });
+			  } catch (e) {
+				 console.error(e);
+				 alert(`Impossibile proporre: ${e.message || e}`);
+				 return;
+			  }
+
+			  alert("Proposta inviata. Gli altri devono votare.");
+			}
+
+			async function votaEliminazioneParola(parola, approvo) {
+			  parola = String(parola || '').trim().toUpperCase();
+			  if (!matchId || !parola) return;
+
+			  const elimRef = db.collection("partite").doc(matchId).collection("eliminazioni").doc(parola);
+			  const matchRef = db.collection("partite").doc(matchId);
+			  const configRef = db.collection("config").doc("dizionario");
+
+			  try {
+				 await db.runTransaction(async (tx) => {
+					const elimSnap = await tx.get(elimRef);
+					const matchSnap = await tx.get(matchRef);
+					if (!elimSnap.exists) return;
+
+					const elim = elimSnap.data() || {};
+					if (elim.stato !== 'pending') return;
+
+					const match = matchSnap.data() || {};
+					const players = match.partecipanti || [];
+
+					// scrivo il mio voto
+					tx.update(elimRef, { [`voti.${mioNome}`]: !!approvo });
+
+					// rileggo "virtualmente" i voti (elim + il mio appena scritto)
+					const voti = { ...(elim.voti || {}), [mioNome]: !!approvo };
+
+					// se qualcuno rifiuta => chiudi ciclo (delete doc)
+					const qualcunoHaRifiutato = Object.values(voti).some(v => v === false);
+					if (qualcunoHaRifiutato) {
+					  tx.delete(elimRef);
+					  return;
+					}
+
+					// se non hanno votato tutti, attendi
+					const hannoVotatoTutti = players.length > 0 && players.every(p => typeof voti[p] !== 'undefined');
+					if (!hannoVotatoTutti) return;
+
+					// tutti true => applica esclusione
+					const excludedSet = new Set([...(match.paroleEscluse || []), parola]);
+
+					// conteggio globale parole (dup)
+					const wordCount = {};
+					players.forEach(p => {
+					  (match.parole?.[p] || []).forEach(par => {
+						 wordCount[par.w] = (wordCount[par.w] || 0) + 1;
+					  });
+					});
+
+					// ricalcolo punteggi: conta solo (non dup) e (non esclusa)
+					const nuoviPunteggi = {};
+					players.forEach(p => {
+					  let s = 0;
+					  (match.parole?.[p] || []).forEach(par => {
+						 const w = par.w;
+						 if (excludedSet.has(w)) return;
+						 if ((wordCount[w] || 0) === 1) s += par.p;
+					  });
+					  nuoviPunteggi[p] = s;
+					});
+
+					tx.update(matchRef, {
+					  paroleEscluse: firebase.firestore.FieldValue.arrayUnion(parola),
+					  punteggi: nuoviPunteggi
+					});
+
+					// aggiorna excluded globali
+					tx.set(configRef, {
+					  excluded: firebase.firestore.FieldValue.arrayUnion(parola)
+					}, { merge: true });
+
+					// chiudi ciclo
+					tx.delete(elimRef);
+				 });
+			  } catch (e) {
+				 console.error("Errore voto/applicazione:", e);
+				 alert("Errore durante voto/applicazione.");
+			  }
+			}			
+let winConfettiCooldown = 0;
+
+function setWinCelebration(active) {
+  const banner = document.getElementById('game-banner');
+  if (!banner) return;
+
+  banner.classList.toggle('win-celebration', !!active);
+
+  if (active) {
+    // vibrazione “fisica” su mobile (se supportato)
+    try { if (navigator.vibrate) navigator.vibrate([120, 60, 120, 60, 200]); } catch(e){}
+
+    // confetti “carini” (no fuochi)
+    const now = Date.now();
+    if (now > winConfettiCooldown) {
+      winConfettiCooldown = now + 1500;
+      fireConfetti(banner);
+    }
+  }
+}
 			function setupHomeButtonCleanup() {
 			  document.addEventListener('click', (e) => {
 			    const target = e.target.closest('a, button');
