@@ -3885,14 +3885,19 @@ if (data.stato === "in_corso") {
 			    snap.docChanges().forEach(async change => {
 			      if (change.type === "added" || change.type === "modified") {
 			        const prop = change.doc.data();
-			        if (!prop.voti.includes(mioNome)) {
-			          const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
-			          if (confirm(`VOTAZIONE: ${prop.proponente} vuole ${azione} "${prop.parola}". Approvi?`)) {
-			            await db.collection("partite").doc(matchId).collection("proposte").doc(prop.parola).update({
-			              voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-			            }).catch(e => console.error("Errore voto:", e));
-			          }
-			        }
+						if (!prop.voti.includes(mioNome)) {
+							 const azione = prop.tipo === 'extra' ? 'AGGIUNGERE' : 'RIMUOVERE';
+							 showGameBanner({
+								  icon: '📢',
+								  title: 'MODIFICA DIZIONARIO',
+								  subtitle: `${prop.proponente} vuole ${azione} "${prop.parola}"`,
+								  color: '#3498db',
+								  buttons: [
+										{ text: '👍 APPROVA', onclick: `votaDizionario('${prop.parola}', true)` },
+										{ text: '👎 RIFIUTA', onclick: `removeGameBanner()` }
+								  ]
+							 });
+						}
 			        if (currentGameData && currentGameData.partecipanti) {
 			          const numPartecipanti = currentGameData.partecipanti.length;
 			          if (prop.voti.length >= numPartecipanti) {
@@ -4030,6 +4035,23 @@ if (data.stato === "in_corso") {
 			  });
 			  alert("Proposta inviata! Gli altri devono approvare.");
 			}
+
+async function votaDizionario(parola, approva) {
+    if (approva) {
+        await db.collection("partite").doc(matchId).collection("proposte").doc(parola).update({
+            voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+        });
+    }
+    removeGameBanner();
+}async function votaDizionario(parola, approva) {
+    if (approva) {
+        await db.collection("partite").doc(matchId).collection("proposte").doc(parola).update({
+            voti: firebase.firestore.FieldValue.arrayUnion(mioNome)
+        });
+    }
+    removeGameBanner();
+}
+
 async function applicaModificaDizionario(parola, tipo) {
     if (tipo === 'extra') {
         if (!EXTRA_WORDS.includes(parola)) EXTRA_WORDS.push(parola);
@@ -4526,25 +4548,19 @@ function startEliminazioniListener() {
                     return;
                 }
 
-                // ✅ Se io non ho ancora votato e non sono il proponente → chiedi conferma
-                if (!proposta.accettati.includes(mioNome) && !proposta.rifiutati.includes(mioNome)) {
-                    const accetta = confirm(
-                        `📢 PROPOSTA DI ELIMINAZIONE\n\n` +
-                        `${proposta.proponente} propone di eliminare "${proposta.parola}" ` +
-                        `(parola di ${proposta.giocatoreTarget}).\n\n` +
-                        `Accetti l'eliminazione?`
-                    );
-
-                    if (accetta) {
-                        await db.collection("partite").doc(matchId).collection("eliminazioni").doc(proposta.parola).update({
-                            accettati: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                        }).catch(e => console.error("Errore voto accetta:", e));
-                    } else {
-                        await db.collection("partite").doc(matchId).collection("eliminazioni").doc(proposta.parola).update({
-                            rifiutati: firebase.firestore.FieldValue.arrayUnion(mioNome)
-                        }).catch(e => console.error("Errore voto rifiuta:", e));
-                    }
-                }
+					// Cerca questo blocco dentro startEliminazioniListener e sostituiscilo:
+					if (!proposta.accettati.includes(mioNome) && !proposta.rifiutati.includes(mioNome)) {
+						 showGameBanner({
+							  icon: '📢',
+							  title: 'VOTAZIONE ELIMINAZIONE',
+							  subtitle: `${proposta.proponente} vuole eliminare "${proposta.parola}" di ${proposta.giocatoreTarget}`,
+							  color: '#e67e22',
+							  buttons: [
+									{ text: '✅ ACCETTA', onclick: `votaEliminazione('${proposta.parola}', true)` },
+									{ text: '❌ RIFIUTA', onclick: `votaEliminazione('${proposta.parola}', false)` }
+							  ]
+						 });
+					}
             }
         });
 
@@ -4554,6 +4570,18 @@ function startEliminazioniListener() {
             renderizzaAnalisiPlayerSilent(sel.value, currentGameData, getConteggioGlobale());
         }
     });
+}
+
+async function votaEliminazione(parola, accetta) {
+    try {
+        const campo = accetta ? 'accettati' : 'rifiutati';
+        await db.collection("partite").doc(matchId).collection("eliminazioni").doc(parola).update({
+            [campo]: firebase.firestore.FieldValue.arrayUnion(mioNome)
+        });
+        removeGameBanner(); // Chiude il banner dopo il voto
+    } catch (e) {
+        console.error("Errore durante il voto:", e);
+    }
 }
 
 // ✅ APPLICA ELIMINAZIONE PAROLA (tutti hanno accettato)
