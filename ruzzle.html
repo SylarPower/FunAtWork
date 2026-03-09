@@ -44,6 +44,20 @@
 			-webkit-tap-highlight-color: transparent;
 			-webkit-touch-callout: none;
 			}
+			@keyframes bannerVictoryPulse {
+				 0%, 100% { transform: translateY(0); box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3); }
+				 15% { transform: translateX(-3px) translateY(1px); }
+				 30% { transform: translateX(3px) translateY(-1px); }
+				 45% { transform: translateX(-2px) translateY(1px); }
+				 60% { transform: translateX(2px); }
+				 75% { transform: translateX(-1px); }
+				 85% { transform: translateX(1px); }
+			}
+
+			.banner-victory {
+				 animation: bannerVictoryPulse 0.6s ease-in-out infinite;
+				 border-bottom: 3px solid #fff;
+			}			
 			@keyframes earthquake {
 			0% {
 			transform: translate(1px, 1px) rotate(0deg);
@@ -1351,8 +1365,8 @@
 			let gridSize = 5;
 			const MIN_WORD_LENGTH = 4;
 			const LETTER_POOL = "AAAAAAAABBCCDDEEEEEEEEFFGGGHHIIIIIILLLMMNNOOOOOOPPQRRSSTTTUUUVVZ";
-			let EXTRA_WORDS = ["ASIA", "EUROPA"];
-			let EXCLUDED_WORDS = ["SAETTI", "BIFFE"];
+			let EXTRA_WORDS = [];
+			let EXCLUDED_WORDS = [];
 			// --- ACHIEVEMENTS ---
 			const ACHIEVEMENTS = [{
 			  id: 'not_now',
@@ -1530,6 +1544,7 @@
 			let dictionaryReady = false;
 			let unsubscribeEliminazioni = null;
 			let pendingEliminazioni = new Map(); // parola -> dati proposta in corso
+			let currentWinner = null;
 			// --- TRIE ---
 			class TrieNode {
 			  constructor() {
@@ -1640,7 +1655,12 @@
 			    
 			    // ✅ Aggiorna stile senza ricreare
 			    banner.style.background = `linear-gradient(135deg, ${options.color} 0%, ${adjustColor(options.color, -20)} 100%)`;
-			    
+				 // ✅ Gestisci vibrazione vittoria
+				 if (options.vibrate) {
+					  banner.classList.add('banner-victory');
+				 } else {
+					  banner.classList.remove('banner-victory');
+				 }			    
 			    // Genera HTML bottoni
 			    let buttonsHtml = '';
 			    if (options.buttons && options.buttons.length > 0) {
@@ -3215,7 +3235,126 @@
 			    }).onfinish = () => p.remove();
 			  }
 			}
-			
+function celebraVittoria() {
+    // Coriandoli dorati esplosivi
+    fireConfettiVittoria();
+
+    // Fuochi d'artificio brevi (3 secondi)
+    stopFireworks();
+    let count = 0;
+    fireworksInterval = setInterval(() => {
+        launchFirework();
+        count++;
+        if (count > 15) stopFireworks();
+    }, 200);
+}
+
+function fireConfettiVittoria() {
+    const colors = ['#f1c40f', '#f39c12', '#e67e22', '#fff9c4', '#ffe082', '#ffd54f', '#ffffff', '#ffeb3b'];
+    const count = 200;
+
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'confetti';
+        p.style.position = 'fixed';
+        p.style.left = (Math.random() * 100) + '%';
+        p.style.top = '-5%';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        const size = Math.random() * 12 + 4;
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        if (Math.random() > 0.3) p.style.borderRadius = '50%';
+        p.style.zIndex = '10000';
+        p.style.pointerEvents = 'none';
+        p.style.boxShadow = '0 0 6px rgba(241,196,15,0.6)';
+        document.body.appendChild(p);
+
+        const driftX = (Math.random() - 0.5) * 300;
+        const fallDuration = 2000 + Math.random() * 3000;
+        const rot = (Math.random() - 0.5) * 1000;
+
+        p.animate([
+            { transform: `translate(0, 0) rotate(0deg) scale(1)`, opacity: 1 },
+            { transform: `translate(${driftX * 0.3}px, ${window.innerHeight * 0.4}px) rotate(${rot * 0.5}deg) scale(1)`, opacity: 1, offset: 0.4 },
+            { transform: `translate(${driftX}px, ${window.innerHeight + 50}px) rotate(${rot}deg) scale(0.3)`, opacity: 0 }
+        ], {
+            duration: fallDuration,
+            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            delay: Math.random() * 800
+        }).onfinish = () => p.remove();
+    }
+}
+
+function fermaFesteggiamenti() {
+    stopFireworks();
+    document.body.classList.remove('mega-win-effect');
+    const banner = document.getElementById('game-banner');
+    if (banner) banner.classList.remove('banner-victory');
+}
+
+function aggiornaFesteggiamentoVincitore(data) {
+    if (!data || !data.punteggi) return;
+
+    let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
+    if (classifica.length === 0) return;
+
+    const nuovoVincitore = classifica[0][0];
+    const haVinto = nuovoVincitore === mioNome;
+    const vincitoreCambiato = currentWinner !== null && currentWinner !== nuovoVincitore;
+
+    // ✅ Aggiorna live-opponent-score
+    aggiornaLiveScorePostGame(data);
+
+    // ✅ Aggiorna banner (solo se non c'è rivincita in corso)
+    if (!data.prossimaPartita) {
+        let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
+
+        showGameBanner({
+            icon: haVinto ? '👑' : '🐷',
+            title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
+            subtitle: risultatiStr,
+            color: haVinto ? '#f1c40f' : '#7f8c8d',
+            vibrate: haVinto,
+            buttons: [{ text: '🔄 RIVINCITA', onclick: 'apriRivincitaBanner()', special: true }]
+        });
+    }
+
+    // ✅ Gestisci celebrazioni
+    if (haVinto && (currentWinner === null || vincitoreCambiato)) {
+        // Sono il nuovo vincitore → festeggia!
+        celebraVittoria();
+    } else if (!haVinto && vincitoreCambiato) {
+        // Ho perso il primo posto → ferma tutto
+        fermaFesteggiamenti();
+    }
+
+    // ✅ Aggiorna punteggio locale
+    if (data.punteggi[mioNome] !== undefined) {
+        score = data.punteggi[mioNome];
+        scoreDisplay.textContent = score;
+    }
+
+    currentWinner = nuovoVincitore;
+}
+
+function aggiornaLiveScorePostGame(data) {
+    if (!data || !data.partecipanti) return;
+
+    const altri = data.partecipanti.filter(n => n !== mioNome);
+    let scoresHtml = "";
+    altri.forEach(a => {
+        const punteggio = data.punteggi && data.punteggi[a] ? data.punteggi[a] : 0;
+        scoresHtml += `<span style="margin:0 5px;">🆚 ${a}: <strong>${punteggio}</strong></span>`;
+    });
+
+    const scoreEl = document.getElementById('live-opponent-score');
+    if (scoreEl) {
+        scoreEl.style.display = 'block';
+        if (scoreEl.innerHTML !== scoresHtml) {
+            scoreEl.innerHTML = scoresHtml;
+        }
+    }
+}			
 			function startEndGameCelebration() {
 			  if (fireworksInterval) clearInterval(fireworksInterval);
 			  let count = 0;
@@ -3429,32 +3568,22 @@ if (data.stato === "attesa") {
     timerDisplay.textContent = formatTime(timeRemaining);
     displaySeed.textContent = currentSeed;
     
-    // Banner in base allo stato
+     // ✅ Auto-ready: il giocatore ha già accettato l'invito entrando nella partita
     if (!pronti.includes(mioNome)) {
-        // Non ho ancora cliccato SONO PRONTO
-        showGameBanner({
-            icon: '🎮',
-            title: `SFIDA PRONTA`,
-            subtitle: `Giocatori pronti: ${pronti.length}/${data.partecipanti.length}`,
-            color: '#27ae60',
-            buttons: [
-                { text: '🚀 SONO PRONTO!', onclick: 'setProntoOnline()' },
-                { text: '🚫 ANNULLA', onclick: 'annullaPartita()' }
-            ]
-        });
-    } else {
-        // Ho cliccato, aspetto gli altri
-        showGameBanner({
-            icon: '⏳',
-            title: `ATTESA GIOCATORI (${pronti.length}/${data.partecipanti.length})`,
-            subtitle: 'Sei pronto! Aspettiamo gli altri...',
-            color: '#2c3e50',
-            buttons: [
-                { text: '🚫 ANNULLA', onclick: 'annullaPartita()' }
-            ],
-            spinner: true
-        });
+        setProntoOnline();
     }
+
+    // Mostra sempre il banner di attesa
+    showGameBanner({
+        icon: '⏳',
+        title: `ATTESA GIOCATORI (${pronti.length}/${data.partecipanti.length})`,
+        subtitle: 'Preparazione in corso... Aspettiamo tutti!',
+        color: '#2c3e50',
+        buttons: [
+            { text: '🚫 ANNULLA', onclick: 'annullaPartita()' }
+        ],
+        spinner: true
+    });
     
     // ✅ Tutti pronti? Passa a "in_corso"
     if (pronti.length >= data.partecipanti.length) {
@@ -3724,22 +3853,8 @@ if (data.stato === "in_corso") {
 			});
 			return;
 			}
-			      // Nessuna rivincita - mostra classifica
-			      let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-			      const haVinto = classifica[0][0] === mioNome;
-			      let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
-			      showGameBanner({
-			        icon: haVinto ? '👑' : '🐷',
-			        title: haVinto ? 'VITTORIA!' : 'SCONFITTA!',
-			        subtitle: risultatiStr,
-			        color: haVinto ? '#f1c40f' : '#7f8c8d',
-			        buttons: [{
-			          text: '🔄 RIVINCITA',
-			          onclick: 'apriRivincitaBanner()',
-			          special: true
-			        }]
-			      });
-			      	if (haVinto) fireConfettiLight();
+      // ✅ Classifica, festeggiamenti e live score gestiti dalla funzione unificata
+      aggiornaFesteggiamentoVincitore(data);
 					// ✅ Attiva/Aggiorna analisi
 					if (!window.analisiGiaAttivata) {
 					    window.analisiGiaAttivata = true;
@@ -3756,24 +3871,12 @@ if (data.stato === "in_corso") {
 									});
 							  });
 
-							  // Aggiorna vista corrente (includerà paroleEscluse)
+							  // Aggiorna vista corrente
 							  renderizzaAnalisiPlayerSilent(selAnalisi.value, data, conteggioParoleGlobali);
-
-							  // ✅ Aggiorna anche il punteggio locale
-							  if (data.punteggi && data.punteggi[mioNome] !== undefined) {
-									score = data.punteggi[mioNome];
-									scoreDisplay.textContent = score;
-							  }
-
-							  // ✅ Aggiorna classifica nel banner
-							  let classifica = Object.entries(data.punteggi).sort((a, b) => b[1] - a[1]);
-							  let risultatiStr = classifica.map(([p, s]) => `${p}: ${s}`).join(' | ');
-
-							  const bannerSubtitle = document.querySelector('#game-banner .banner-left div:last-child');
-							  if (bannerSubtitle && !data.prossimaPartita) {
-									bannerSubtitle.textContent = risultatiStr;
-							  }
 						 }
+
+						 // ✅ Aggiorna festeggiamenti, banner, live-score e punteggio locale
+						 aggiornaFesteggiamentoVincitore(data);
 					}
 			    }
 			  });
