@@ -255,6 +255,73 @@
 				 cursor:pointer;padding:0;transition:all .15s;
 			}
 			.set-del:active { color:var(--red);transform:scale(.85); }
+
+			/* ===== SUPERSERIE ===== */
+			.ss-group {
+			    border:2px solid rgba(155,89,182,.5);border-radius:20px;
+			    padding:10px 8px 8px;margin:14px 0;
+			    background:rgba(155,89,182,.03);position:relative;
+			}
+			.ss-header {
+			    display:flex;justify-content:space-between;align-items:center;
+			    padding:4px 10px 8px;
+			}
+			.ss-label {
+			    font-size:.7rem;font-weight:800;color:var(--pur2);
+			    text-transform:uppercase;letter-spacing:1px;
+			    display:flex;align-items:center;gap:6px;
+			}
+			.ss-label::before {
+			    content:'';width:8px;height:8px;border-radius:50%;
+			    background:var(--pur2);display:inline-block;
+			}
+			.ss-break {
+			    padding:5px 14px;border-radius:10px;border:1px solid rgba(207,102,121,.3);
+			    background:rgba(207,102,121,.08);color:var(--red);
+			    font-size:.68rem;font-weight:600;cursor:pointer;min-height:32px;
+			}
+			.ss-group .ex-card { margin:6px 0;border-color:rgba(155,89,182,.25); }
+			.ss-option {
+			    display:flex;align-items:center;gap:12px;
+			    padding:14px;margin:6px 0;border-radius:14px;
+			    background:var(--c2);border:2px solid var(--brd);
+			    cursor:pointer;transition:all .2s;min-height:58px;
+			}
+			.ss-option:active { transform:scale(.98); }
+			.ss-option.selected { border-color:var(--pur);background:rgba(155,89,182,.1); }
+			.ss-check-mark {
+			    width:30px;height:30px;border-radius:50%;
+			    border:2px solid var(--brd);display:flex;
+			    align-items:center;justify-content:center;
+			    font-size:.9rem;flex-shrink:0;transition:all .2s;
+			}
+			.ss-option.selected .ss-check-mark {
+			    background:var(--pur);border-color:var(--pur);color:#fff;
+			}
+			.ss-option-name { font-size:.88rem;font-weight:600;color:var(--tx); }
+			.ss-option-detail { font-size:.7rem;color:var(--tx2); }
+			.ss-count {
+			    text-align:center;padding:10px;font-size:.78rem;
+			    color:var(--pur2);font-weight:600;
+			}
+			/* ===== RIORDINO ESERCIZI ===== */
+			.ex-toolbar {
+			    display:flex;gap:6px;padding:12px 0 8px;flex-wrap:wrap;align-items:center;
+			}
+			.ex-toolbar .btn-icon {
+			    border-radius:10px;padding:0 12px;font-size:.78rem;
+			    min-width:auto;width:auto;height:38px;
+			}
+			.reorder-btns {
+			    display:flex;gap:3px;margin-left:auto;
+			}
+			.reorder-btn {
+			    width:34px;height:28px;border-radius:8px;border:1px solid var(--brd);
+			    background:var(--c2);color:var(--tx2);font-size:.72rem;
+			    display:flex;align-items:center;justify-content:center;
+			    cursor:pointer;padding:0;transition:all .15s;min-height:28px;
+			}
+			.reorder-btn:active { background:var(--acc);color:#000;transform:scale(.9); }
         /* ===== PROGRESS COUNTER ===== */
         .progress-info {
             display:flex;justify-content:space-between;align-items:center;
@@ -400,50 +467,103 @@
         /* ===== VOLUME CHART ===== */
         #vol-chart { width:100%;height:130px;border-radius:10px;background:var(--c2); }
 
-			/* ===== MAPPA MUSCOLARE SVG ===== */
-			.body-map-wrap {
-				 display:flex;justify-content:center;gap:12px;
-				 margin-top:10px;flex-wrap:wrap;
-			}
-			.body-svg { width:45%;max-width:160px;height:auto; }
-			.body-svg .body-outline {
-				 fill:#1a1a1a;stroke:#444;stroke-width:1.5;
-				 stroke-linejoin:round;stroke-linecap:round;
-			}
-			[data-theme="light"] .body-svg .body-outline {
-				 fill:#e0e0e0;stroke:#bbb;stroke-width:1.5;
-			}
-			.body-svg .m-area {
-				 fill:rgba(80,80,80,0.25);stroke:none;
-				 transition:fill 0.5s ease;cursor:default;
-			}
-			.body-svg .m-area.low  { fill:rgba(46,213,115,0.55); }
-			.body-svg .m-area.med  { fill:rgba(255,165,2,0.65); }
-			.body-svg .m-area.high { fill:rgba(231,76,60,0.75); }
-			.muscle-legend {
-				 display:flex;justify-content:center;gap:14px;
-				 margin-top:14px;font-size:.68rem;color:var(--tx2);
-				 flex-wrap:wrap;
-			}
-			.muscle-legend span {
-				 display:flex;align-items:center;gap:5px;
-			}
-			.legend-dot {
-				 width:12px;height:12px;border-radius:50%;display:inline-block;
-			}
-			.muscle-list {
-				 display:flex;flex-wrap:wrap;justify-content:center;
-				 gap:6px;margin-top:10px;
-			}
-			.muscle-tag {
-				 padding:4px 10px;border-radius:15px;font-size:.65rem;
-				 font-weight:600;border:1px solid var(--brd);
-				 background:var(--c2);color:var(--tx2);
-			}
-			.muscle-tag.active { color:#fff;border-color:transparent; }
-			.muscle-tag.low  { background:rgba(46,213,115,0.4); }
-			.muscle-tag.med  { background:rgba(255,165,2,0.5); }
-			.muscle-tag.high { background:rgba(231,76,60,0.6); }
+		/* ===== MAPPA MUSCOLARE SVG ===== */
+		.body-map-wrap {
+		    display:flex;justify-content:center;gap:16px;
+		    margin-top:12px;flex-wrap:wrap;
+		}
+		.body-svg { width:44%;max-width:155px;height:auto; }
+		.body-svg .body-outline {
+		    fill:#161616;stroke:#3a3a3a;stroke-width:1.2;
+		    stroke-linejoin:round;stroke-linecap:round;
+		}
+		[data-theme="light"] .body-svg .body-outline {
+		    fill:#e4e4e4;stroke:#c0c0c0;stroke-width:1.2;
+		}
+		
+		/* Muscoli inattivi */
+		.body-svg .m-area {
+		    fill:rgba(60,60,60,0.12);
+		    stroke:rgba(60,60,60,0.08);stroke-width:0.4;
+		    transition:all 0.6s ease;cursor:default;
+		}
+		
+		/* Leggero */
+		.body-svg .m-area.low {
+		    fill:rgba(46,213,115,0.35);
+		    stroke:rgba(46,213,115,0.55);stroke-width:0.8;
+		}
+		[data-theme="light"] .body-svg .m-area.low {
+		    fill:rgba(46,213,115,0.3);
+		    stroke:rgba(46,213,115,0.45);
+		}
+		
+		/* Medio */
+		.body-svg .m-area.med {
+		    fill:rgba(255,165,2,0.4);
+		    stroke:rgba(255,165,2,0.65);stroke-width:1;
+		    filter:drop-shadow(0 0 4px rgba(255,165,2,0.25));
+		}
+		[data-theme="light"] .body-svg .m-area.med {
+		    fill:rgba(255,165,2,0.35);
+		    stroke:rgba(255,165,2,0.5);
+		    filter:drop-shadow(0 0 3px rgba(255,165,2,0.15));
+		}
+		
+		/* Intenso */
+		.body-svg .m-area.high {
+		    fill:rgba(231,76,60,0.5);
+		    stroke:rgba(231,76,60,0.75);stroke-width:1.2;
+		    filter:drop-shadow(0 0 8px rgba(231,76,60,0.35));
+		    animation:muscleGlow 2.5s ease-in-out infinite alternate;
+		}
+		[data-theme="light"] .body-svg .m-area.high {
+		    fill:rgba(231,76,60,0.4);
+		    stroke:rgba(231,76,60,0.6);
+		    filter:drop-shadow(0 0 6px rgba(231,76,60,0.25));
+		}
+		@keyframes muscleGlow {
+		    from { filter:drop-shadow(0 0 5px rgba(231,76,60,0.25)); }
+		    to   { filter:drop-shadow(0 0 12px rgba(231,76,60,0.5)); }
+		}
+		
+		/* Legenda */
+		.muscle-legend {
+		    display:flex;justify-content:center;gap:16px;
+		    margin-top:16px;font-size:.7rem;color:var(--tx2);
+		    flex-wrap:wrap;
+		}
+		.muscle-legend span { display:flex;align-items:center;gap:6px; }
+		.legend-dot {
+		    width:14px;height:14px;border-radius:50%;display:inline-block;
+		    border:1px solid rgba(255,255,255,.1);
+		}
+		
+		/* Tag muscoli */
+		.muscle-list {
+		    display:flex;flex-wrap:wrap;justify-content:center;
+		    gap:6px;margin-top:12px;
+		}
+		.muscle-tag {
+		    padding:5px 12px;border-radius:20px;font-size:.68rem;
+		    font-weight:600;border:1px solid var(--brd);
+		    background:var(--c2);color:var(--tx2);transition:all .3s;
+		}
+		.muscle-tag.active { color:#fff;border-color:transparent; }
+		.muscle-tag.low {
+		    background:rgba(46,213,115,0.3);
+		    border-color:rgba(46,213,115,0.4);
+		}
+		.muscle-tag.med {
+		    background:rgba(255,165,2,0.35);
+		    border-color:rgba(255,165,2,0.5);
+		    box-shadow:0 0 6px rgba(255,165,2,0.15);
+		}
+		.muscle-tag.high {
+		    background:rgba(231,76,60,0.4);
+		    border-color:rgba(231,76,60,0.6);
+		    box-shadow:0 0 8px rgba(231,76,60,0.2);
+		}
 
         /* ===== BOTTOM NAV ===== */
         .bn {
@@ -582,7 +702,20 @@
     <button class="bs" onclick="closeSel()" style="width:100%;margin-top:12px;">Chiudi</button>
 </div>
 </div>
-
+<!-- MODAL: SUPERSERIE -->
+<div id="mSS" class="modal" onclick="if(event.target===this)this.style.display='none'">
+<div class="mc" style="max-width:500px;">
+    <h2>🔗 Crea Superserie</h2>
+    <p style="font-size:.78rem;color:var(--tx2);text-align:center;margin-bottom:12px;">
+        Seleziona 1–3 esercizi da collegare (max 4 totali)
+    </p>
+    <div id="ssExList" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="bs" onclick="document.getElementById('mSS').style.display='none'" style="flex:1;">Annulla</button>
+        <button class="bp" onclick="confirmSS()" style="flex:1;">✅ Conferma</button>
+    </div>
+</div>
+</div>
 <!-- MODAL: PROGRESSIONE -->
 <div id="mProg" class="modal" onclick="if(event.target===this)this.style.display='none'">
 <div class="mc" style="max-width:500px;">
@@ -641,7 +774,8 @@ function toLocalDate(d) {
 // ============================================================
 // 📦 STATE
 // ============================================================
-let D = null, EX_DB = [], curDay = null, ssMode = false, ss1 = null, mf = 'all';
+let D = null, EX_DB = [], curDay = null, mf = 'all';
+let ssTarget = null;
 let openExercises = new Set(); // Tiene traccia di quali esercizi sono aperti
 let viewMode = localStorage.getItem('gym-viewmode') === 'true';
 let myExChart = null;
@@ -746,6 +880,9 @@ const BODY_BACK = `
   <ellipse data-muscle="calves" cx="120" cy="352" rx="9" ry="20" class="m-area"/>
 </svg>`;
 
+// Peso fittizio per esercizi a corpo libero (plank, push-up, ecc.)
+const BW_FACTOR = 15;
+	
 // Mappa: nomi usati nei JSON → nome del muscolo nell'SVG
 const MUSCLE_MAP = {
     // Target diretti (come nel tuo JSON)
@@ -1035,9 +1172,26 @@ function renDay() {
         ${muscles.map(m => `<span style="background:var(--c2);color:var(--acc);padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1px solid rgba(3,218,198,.2)">${m}</span>`).join('')}
     </div>`;
 
-    // Exercise cards
+    // Exercise cards (con raggruppamento superserie)
+    const rendered = new Set();
     day.exs.forEach(ex => {
-        try { h += renEC(ex); } catch(e) { console.error("Render error:", ex, e); }
+        if (rendered.has(ex.uid)) return;
+        if (ex.ssG) {
+            const group = day.exs.filter(e => e.ssG === ex.ssG);
+            h += `<div class="ss-group fade-in">`;
+            h += `<div class="ss-header">
+                <span class="ss-label">🔗 Superserie (${group.length})</span>
+                <button class="ss-break" onclick="breakSS('${ex.ssG}')">Sciogli</button>
+            </div>`;
+            group.forEach(gex => {
+                try { h += renEC(gex); } catch(e) { console.error(e); }
+                rendered.add(gex.uid);
+            });
+            h += `</div>`;
+        } else {
+            try { h += renEC(ex); } catch(e) { console.error(e); }
+            rendered.add(ex.uid);
+        }
     });
 
     cont.innerHTML = h;
@@ -1082,13 +1236,18 @@ function renEC(ex) {
     // === BODY (collassabile) ===
     h += `<div class="ex-body${isOpen ? ' open' : ''}" id="exbody-${ex.uid}">`;
 
-    // Bottoni azione
-    h += `<div style="display:flex;gap:6px;padding:12px 0 8px;flex-wrap:wrap;">`;
+    // Toolbar azioni
+    h += `<div class="ex-toolbar">`;
     if (hasMedia) {
-        h += `<button class="btn-icon" onclick="event.stopPropagation();togVid('${ex.uid}')" style="border-radius:10px;padding:0 12px;font-size:.78rem;min-width:auto;width:auto;">🎬 Video</button>`;
+        h += `<button class="btn-icon" onclick="event.stopPropagation();togVid('${ex.uid}')">🎬</button>`;
     }
-    h += `<button class="btn-icon" onclick="event.stopPropagation();showProgression('${ex.exerciseId}','${safeName}')" style="border-radius:10px;padding:0 12px;font-size:.78rem;min-width:auto;width:auto;">📈 Grafico</button>`;
-    h += `<button class="btn-icon" onclick="event.stopPropagation();remEx('${ex.uid}')" style="border-radius:10px;padding:0 12px;font-size:.78rem;min-width:auto;width:auto;color:var(--red);">🗑️</button>`;
+    h += `<button class="btn-icon" onclick="event.stopPropagation();showProgression('${ex.exerciseId}','${safeName}')">📈</button>`;
+    h += `<button class="btn-icon" onclick="event.stopPropagation();openSSModal('${ex.uid}')" style="color:var(--pur2);">${ex.ssG ? '🔗✓' : '🔗'}</button>`;
+    h += `<button class="btn-icon" onclick="event.stopPropagation();remEx('${ex.uid}')" style="color:var(--red);">🗑️</button>`;
+    h += `<div class="reorder-btns">
+        <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',-1)">▲</button>
+        <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',1)">▼</button>
+    </div>`;
     h += `</div>`;
 
     // Media (video)
@@ -1266,13 +1425,115 @@ function addSet(u) {
     e.sd.push({r: last.r, w: last.w, done: false});
     save(); renDay();
 }
+// ===== SUPERSERIE =====
+function openSSModal(exUid) {
+    ssTarget = exUid;
+    const day = gD();
+    const ex = day.exs.find(e => e.uid === exUid);
+    if (!ex) return;
+    const others = day.exs.filter(e => e.uid !== exUid);
+    if (!others.length) { toast('⚠️ Aggiungi altri esercizi prima', 'warn'); return; }
 
+    const currentGroup = ex.ssG;
+    let h = '';
+    others.forEach(e => {
+        const inSame = currentGroup && e.ssG === currentGroup;
+        const def = exDef(e.exerciseId);
+        h += `<div class="ss-option${inSame ? ' selected' : ''}" onclick="toggleSSOption(this)">
+            <input type="checkbox" style="display:none" class="ss-cb" value="${e.uid}" ${inSame ? 'checked' : ''}>
+            <div class="ss-check-mark">${inSame ? '✓' : ''}</div>
+            <div style="flex:1;min-width:0;">
+                <div class="ss-option-name">${e.name}</div>
+                <div class="ss-option-detail">${def ? def.bp : ''} • ${e.sd ? e.sd.length : 0} serie</div>
+            </div>
+        </div>`;
+    });
+    const cnt = currentGroup ? day.exs.filter(e => e.ssG === currentGroup).length : 1;
+    h += `<div class="ss-count" id="ssCount">${cnt}/4 esercizi</div>`;
+    document.getElementById('ssExList').innerHTML = h;
+    document.getElementById('mSS').style.display = 'flex';
+}
+
+function toggleSSOption(el) {
+    const cb = el.querySelector('.ss-cb');
+    const mark = el.querySelector('.ss-check-mark');
+    const all = document.querySelectorAll('.ss-cb:checked').length;
+    if (!cb.checked && all >= 3) { toast('⚠️ Max 4 esercizi per superserie', 'warn'); return; }
+    cb.checked = !cb.checked;
+    el.classList.toggle('selected', cb.checked);
+    mark.textContent = cb.checked ? '✓' : '';
+    const c = document.getElementById('ssCount');
+    if (c) c.textContent = (document.querySelectorAll('.ss-cb:checked').length + 1) + '/4 esercizi';
+}
+
+function confirmSS() {
+    const day = gD();
+    if (!day) return;
+    const checks = document.querySelectorAll('.ss-cb:checked');
+    const uids = [ssTarget, ...Array.from(checks).map(c => c.value)];
+
+    if (uids.length < 2) {
+        // Rimuovi da superserie
+        const ex = day.exs.find(e => e.uid === ssTarget);
+        if (ex && ex.ssG) {
+            const old = ex.ssG;
+            ex.ssG = null;
+            const rem = day.exs.filter(e => e.ssG === old);
+            if (rem.length === 1) rem[0].ssG = null;
+        }
+        save(); renDay();
+        document.getElementById('mSS').style.display = 'none';
+        toast('🔗 Superserie rimossa', 'info');
+        return;
+    }
+
+    const gid = uid();
+    // Pulisci vecchi gruppi
+    uids.forEach(u => {
+        const e = day.exs.find(x => x.uid === u);
+        if (e && e.ssG) {
+            const old = e.ssG; e.ssG = null;
+            const rem = day.exs.filter(x => x.ssG === old);
+            if (rem.length === 1) rem[0].ssG = null;
+        }
+    });
+    uids.forEach(u => { const e = day.exs.find(x => x.uid === u); if (e) e.ssG = gid; });
+    save();
+    document.getElementById('mSS').style.display = 'none';
+    renDay();
+    toast('🔗 Superserie creata!', 'ok');
+    if (navigator.vibrate) navigator.vibrate([20, 10, 20]);
+}
+
+function breakSS(groupId) {
+    const day = gD();
+    if (!day) return;
+    day.exs.forEach(e => { if (e.ssG === groupId) e.ssG = null; });
+    save(); renDay();
+    toast('🔗 Superserie sciolta', 'info');
+}
+function moveEx(exUid, dir) {
+    const day = gD();
+    if (!day) return;
+    const idx = day.exs.findIndex(e => e.uid === exUid);
+    if (idx < 0) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= day.exs.length) return;
+    [day.exs[idx], day.exs[newIdx]] = [day.exs[newIdx], day.exs[idx]];
+    save(); renDay();
+    if (navigator.vibrate) navigator.vibrate(15);
+}
 function remEx(u) {
     const ex = fEx(u);
     if (!ex) return;
     if (!confirm('Rimuovere "' + ex.name + '"?')) return;
     const d = gD();
+    const oldGroup = ex.ssG;
     d.exs = d.exs.filter(e => e.uid !== u);
+    if (oldGroup) {
+        const rem = d.exs.filter(e => e.ssG === oldGroup);
+        if (rem.length === 1) rem[0].ssG = null;
+    }
     save(); renDay();
     toast('🗑️ Esercizio rimosso', 'info');
 }
@@ -1355,7 +1616,7 @@ function addEx(eid) {
         : [{r:10,w:0,done:false}, {r:10,w:0,done:false}, {r:10,w:0,done:false}];
     day.exs.push({
         uid: uid(), exerciseId: eid, name: d.name, sd,
-        rest: l?.rest || 90, seat: l?.seat || '', notes: l?.notes || '',
+        rest: l?.rest || 90, seat: l?.seat || '',
         ssG: null, pF: false
     });
     save(); closeSel(); renDay();
@@ -1402,13 +1663,13 @@ function complWO() {
         const maxW = doneS.length ? Math.max(...doneS.map(x => parseFloat(x.w) || 0)) : 0;
         if (maxW > (s.pr[e.exerciseId] || 0)) { s.pr[e.exerciseId] = maxW; newPR = true; }
         const avgR = doneS.length ? Math.round(doneS.reduce((a, x) => a + (parseInt(x.r) || 0), 0) / doneS.length) : 0;
-			D.hist.push({
-				 eid: e.exerciseId, name: e.name, dt: new Date().toISOString(),
-				 dayId: curDay,  // ← AGGIUNTO: salva quale giornata
-				 s: doneS.length, r: avgR, w: maxW, rest: e.rest,
-				 seat: e.seat, notes: e.notes,
-				 sd: e.sd.map(x => ({r: x.r, w: x.w}))
-			});
+        D.hist.push({
+            eid: e.exerciseId, name: e.name, dt: new Date().toISOString(),
+            dayId: curDay,
+            s: doneS.length, r: avgR, w: maxW, rest: e.rest,
+            seat: e.seat,
+            sd: e.sd.map(x => ({r: x.r, w: x.w}))
+        });
     });
 
     // Reset sets
@@ -1567,7 +1828,8 @@ function renVol() {
             D.hist.forEach(l => {
                 if (!l.dt) return;
                 if (toLocalDate(l.dt) === key) {
-                    vol += (l.s || 0) * (l.r || 0) * (l.w || 0);
+                    const peso = (l.w && l.w > 0) ? l.w : BW_FACTOR;
+                    vol += (l.s || 0) * (l.r || 0) * peso;
                 }
             });
         }
@@ -1623,26 +1885,31 @@ function renMuscle() {
         return;
     }
 
-    // Calcola volume per ogni muscolo
+    // Calcola volume E numero di serie per ogni muscolo
     const muscleVol = {};
+    const muscleSets = {};
+
+    function addMuscle(name, vol, sets) {
+        if (!name) return;
+        muscleVol[name] = (muscleVol[name] || 0) + vol;
+        muscleSets[name] = (muscleSets[name] || 0) + sets;
+    }
+
     todayLogs.forEach(l => {
         const def = exDef(l.eid);
         if (!def) return;
-        const vol = (l.s || 0) * (l.r || 0) * (l.w || 1);
+        const peso = (l.w && l.w > 0) ? l.w : BW_FACTOR;
+        const vol = (l.s || 0) * (l.r || 0) * peso;
+        const sets = l.s || 0;
 
         // Da body part (bp)
-        const bpMuscle = MUSCLE_MAP[def.bp];
-        if (bpMuscle) muscleVol[bpMuscle] = (muscleVol[bpMuscle] || 0) + vol;
+        addMuscle(MUSCLE_MAP[def.bp], vol, sets);
 
         // Da target array (tgt)
         if (def.tgt && Array.isArray(def.tgt)) {
-            def.tgt.forEach(t => {
-                const mapped = MUSCLE_MAP[t];
-                if (mapped) muscleVol[mapped] = (muscleVol[mapped] || 0) + vol;
-            });
+            def.tgt.forEach(t => addMuscle(MUSCLE_MAP[t], vol, sets));
         } else if (def.tgt && typeof def.tgt === 'string') {
-            const mapped = MUSCLE_MAP[def.tgt];
-            if (mapped) muscleVol[mapped] = (muscleVol[mapped] || 0) + vol;
+            addMuscle(MUSCLE_MAP[def.tgt], vol, sets);
         }
     });
 
@@ -1652,32 +1919,42 @@ function renMuscle() {
     c.innerHTML = `
         <div class="body-map-wrap">${BODY_FRONT}${BODY_BACK}</div>
         <div class="muscle-legend">
-            <span><span class="legend-dot" style="background:rgba(46,213,115,0.55);"></span> Leggero</span>
-            <span><span class="legend-dot" style="background:rgba(255,165,2,0.65);"></span> Medio</span>
-            <span><span class="legend-dot" style="background:rgba(231,76,60,0.75);"></span> Intenso</span>
+            <span><span class="legend-dot" style="background:rgba(46,213,115,0.45);"></span> Leggero</span>
+            <span><span class="legend-dot" style="background:rgba(255,165,2,0.5);box-shadow:0 0 4px rgba(255,165,2,.3);"></span> Medio</span>
+            <span><span class="legend-dot" style="background:rgba(231,76,60,0.6);box-shadow:0 0 6px rgba(231,76,60,.3);"></span> Intenso</span>
         </div>
         <div class="muscle-list" id="muscleTagList"></div>
     `;
 
-    // Colora le aree SVG
+    // Colora le aree SVG con intensità basata su SERIE + VOLUME
     Object.entries(muscleVol).forEach(([muscle, vol]) => {
+        const sets = muscleSets[muscle] || 0;
         const pct = vol / maxVol;
-        const level = pct > 0.6 ? 'high' : pct > 0.3 ? 'med' : 'low';
-        // Seleziona TUTTI gli elementi SVG con quel muscolo (fronte + retro)
+
+        // Intensità ibrida: serve sia volume relativo che numero di serie
+        let level;
+        if (sets >= 6 && pct > 0.5) level = 'high';
+        else if (sets >= 3 && pct > 0.2) level = 'med';
+        else level = 'low';
+
         document.querySelectorAll(`[data-muscle="${muscle}"]`).forEach(el => {
             el.classList.add(level);
         });
     });
 
-    // Mostra anche lista testuale dei muscoli attivati
+    // Lista testuale dei muscoli attivati
     const tagList = document.getElementById('muscleTagList');
     if (tagList) {
         tagList.innerHTML = Object.entries(muscleVol)
             .sort((a, b) => b[1] - a[1])
             .map(([m, v]) => {
+                const sets = muscleSets[m] || 0;
                 const pct = v / maxVol;
-                const level = pct > 0.6 ? 'high' : pct > 0.3 ? 'med' : 'low';
-                return `<span class="muscle-tag active ${level}">${m.replace(/_/g, ' ')}</span>`;
+                let level;
+                if (sets >= 6 && pct > 0.5) level = 'high';
+                else if (sets >= 3 && pct > 0.2) level = 'med';
+                else level = 'low';
+                return `<span class="muscle-tag active ${level}">${m.replace(/_/g, ' ')} <small style="opacity:.6;">(${sets}s)</small></span>`;
             }).join('');
     }
 }
