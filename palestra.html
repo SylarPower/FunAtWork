@@ -10,9 +10,10 @@
     <link rel="icon" href="gym-icon.png">
 	 <link rel="apple-touch-icon" href="gym-icon.png">
     <link rel="manifest" href="gym-manifest.json">
+	 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-	 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root{
             --bg:#121212;--c1:#1e1e1e;--c2:#252525;--c3:#2a2a2a;
@@ -385,10 +386,6 @@ const MIO=localStorage.getItem('mioNome');
 if(!MIO){alert('Devi prima fare login dal portale!');location.href='index.html';}
 document.getElementById('ubadge').textContent=MIO;
 
-// =============================================
-// 🎬 EXERCISE DATABASE (Manuale da GitHub)
-// =============================================
-
 // --- CONFIGURAZIONE GITHUB ---
 const GITHUB_USER = "SylarPower"; 
 const GITHUB_REPO = "FunAtWork";
@@ -397,30 +394,28 @@ const MEDIA_PATH = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_RE
 let EX_DB = [];
 
 async function loadExDB() {
-    const statusEl = document.getElementById('load-status');
     try {
-        if (statusEl) statusEl.textContent = 'Sincronizzazione archivio esercizi...';
-        
-        // Carica il file exercises.json che caricherai nel tuo repo
+        // Carica il file exercises.json dal tuo server/repo
         const r = await fetch('exercises.json');
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error("File non trovato");
         EX_DB = await r.json();
-        
         console.log('✅ Archivio pronto: ' + EX_DB.length + ' esercizi');
     } catch(e) {
-        console.error("Errore caricamento exercises.json");
-        if (statusEl) statusEl.textContent = 'Errore: carica exercises.json su GitHub!';
+        console.error("Errore caricamento exercises.json, uso fallback locale");
+        EX_DB = [
+            {id: "panca_piana", name: "Panca Piana", bp: "Chest", eq: "Barbell", video: "panca.mp4"},
+            {id: "squat", name: "Squat", bp: "Upper Legs", eq: "Barbell", video: "squat.mp4"}
+        ];
     }
+    // Una volta caricati gli esercizi e i dati, nascondiamo il loader
+    document.getElementById('vLoad').style.display = 'none';
+    goHome();
 }
 
-// Funzione per i colori dei muscoli (Highlight Area)
-function getMuscleColor(bp) {
-    const map = {
-        'Petto': '#ff4757', 'Schiena': '#2f3542', 'Spalle': '#ffa502', 
-        'Bicipiti': '#ff6b81', 'Tricipiti': '#70a1ff', 'Gambe': '#2ed573', 
-        'Core': '#eccc68', 'Avambracci': '#a4b0be'
-    };
-    return map[bp] || '--acc';
+// Calcola il volume della singola istanza esercizio
+function calcVolEx(ex) {
+    if (!ex.sd) return 0;
+    return ex.sd.reduce((acc, s) => s.done ? acc + (parseFloat(s.w || 0) * parseInt(s.r || 0)) : acc, 0);
 }
 
 const BPARTS=['all','back','cardio','chest','lower arms','lower legs','neck','shoulders','upper arms','upper legs','waist'];
@@ -443,7 +438,12 @@ let tI=null,tS=0,tT=0,tR=false;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).substr(2,5);
 const exDef=id=>EX_DB.find(e=>e.id===id);
 const exGif = e => (e.gif && e.gif.endsWith('.gif')) ? e.gif : '';
-function calc1RM(w,r){if(!w||!r)return 0;return r===1?w:Math.round(w*(1+r/30));}
+// Calcola 1RM teorico
+function calc1RM(w, r) {
+    if (!w || !r || r === 0) return 0;
+    if (r === 1) return w;
+    return Math.round(w * (1 + r / 30));
+}
 let myExChart = null;
 
 function showExProgression(exId, exName) {
@@ -625,95 +625,82 @@ function renDay(){
     }).join('');
 }
 
-function renEC(ex,inSS){
-    const d=exDef(ex.exerciseId);
-    const last=getLast(ex.exerciseId);
-	const media = d ? getMediaTag(d.media) : '';
-    const sc=ssMode?(ss1===ex.uid?'ssel2':'ssel'):'';
-    const hc=inSS?'hss':'';
-    const ck=ssMode?`onclick="ssClk('${ex.uid}')"`:'';
-
-    // Ensure setsDetail exists
-    if(!ex.sd||!ex.sd.length){
-        ex.sd=[];
-        for(let i=0;i<(ex.numS||3);i++) ex.sd.push({r:ex.tR||10,w:ex.tW||0,done:false});
+function renEC(ex, inSS) {
+    const d = exDef(ex.exerciseId);
+    const vol = calcVolEx(ex);
+    const sc = ssMode ? (ss1 === ex.uid ? 'ssel2' : 'ssel') : '';
+    const hc = inSS ? 'hss' : '';
+    const ck = ssMode ? `onclick="ssClk('${ex.uid}')"` : '';
+    
+    // Recupero colore muscolare
+    const mColor = d ? getMuscleColor(d.bp) : 'var(--brd)';
+    
+    // Calcolo 1RM stimato dal set migliore
+    let bestRM = 0;
+    if (ex.sd) {
+        ex.sd.forEach(s => {
+            const currentRM = calc1RM(parseFloat(s.w), parseInt(s.r));
+            if (currentRM > bestRM) bestRM = currentRM;
+        });
     }
 
-    // 1RM calc from best set
-    const bestSet=ex.sd.reduce((b,s)=>(!b||s.w>b.w)?s:b,null);
-    const rm=bestSet?calc1RM(bestSet.w,bestSet.r):0;
-	const sug = suggestWeight(ex);
-	${sug?`<span class="rm-badge">Suggerito ${sug}kg</span>`:''}
-    let h=`<div class="ec ${sc} ${hc}" id="ex-${ex.uid}" ${ck}>`;
+    // Gestione Video: mostriamo il tasto solo se d.video esiste nel JSON
+    const hasVideo = d && d.video && d.video.trim() !== "";
 
-    // Header
-    h+=`<div class="eh">`;
-    if(media) h+=media;
-    // Calcola il volume attuale della sessione
-const currentVol = calcVolume(ex);
+    let h = `<div class="ec ${sc} ${hc}" id="ex-${ex.uid}" ${ck} style="border-left: 5px solid ${mColor}">`;
 
-h+=`<div class="ei" onclick="showExProgression('${ex.exerciseId}', '${ex.name.replace(/'/g, "\\'")}')" style="cursor:pointer">
-        <h4>${ex.name} 📈</h4>
-        <div class="em">
-            ${d ? d.bp + ' • ' + d.eq : ''}
-            ${rm ? ' <span class="rm-badge">1RM: ' + rm + 'kg</span>' : ''}
-            <span class="badge" style="background:var(--pur2);color:#000;margin-left:4px;">Vol: ${vol}kg</span>
-        </div>
-    </div>`;
-    h+=`<div class="ea">
-        <button onclick="event.stopPropagation();togP('${ex.uid}')" style="opacity:${ex.pF?1:.3}">⬆️</button>
-        <button onclick="event.stopPropagation();togE('${ex.uid}')">⚙️</button>
-        <button onclick="event.stopPropagation();remEx('${ex.uid}')">🗑️</button>
-    </div></div>`;
-
-    // Progression
-    if(ex.pF) h+=`<div class="bprog">⬆️ <b>Progressione:</b> +2.5kg e -1 rep al completamento</div>`;
-
-    // Last session
-    if(last) h+=`<div class="blast"><span>📊 Ultima: ${last.w}kg × ${last.r} × ${last.s}s${last.seat?' | 📌'+last.seat:''}</span><button onclick="event.stopPropagation();loadL('${ex.uid}')">⟲ Carica</button></div>`;
-
-    // Params: rest + timer
-    h+=`<div class="prow">
-        <div class="pm"><label>Rest(s)</label><div class="pc">
-            <button onclick="event.stopPropagation();adjP('${ex.uid}','rest',-15)">−</button>
-            <input type="number" value="${ex.rest||90}" onchange="event.stopPropagation();uEx('${ex.uid}','rest',parseInt(this.value)||90)" onclick="event.stopPropagation()">
-            <button onclick="event.stopPropagation();adjP('${ex.uid}','rest',15)">+</button>
-        </div></div>
-        <button class="tbtn" onclick="event.stopPropagation();openTmr(${ex.rest||90})" style="margin-left:8px;">⏱️ Timer</button>
-        <button class="bs" onclick="event.stopPropagation();addSet('${ex.uid}')" style="margin-left:auto;padding:6px 10px;font-size:.72rem;">+ Serie</button>
-    </div>`;
-
-    // SET-BY-SET TRACKING
-    const completedSets = ex.sd.filter(x => x.done).length;
-    h += `<div class="sets-track">
-        <div class="sets-header"><span>Set</span><span>Kg</span><span>Reps</span><span>OK</span></div>`;
-    
-    ex.sd.forEach((s, i) => {
-        h += `<div class="set-row ${s.done?'done':''}">
-            <span class="set-num">${i+1}</span>
-            <input type="number" inputmode="decimal" value="${s.w}" onchange="updSet('${ex.uid}',${i},'w',parseFloat(this.value)||0)" onclick="event.stopPropagation()">
-            <span style="color:var(--tx3); font-size:0.7rem;">×</span>
-            <input type="number" inputmode="numeric" value="${s.r}" onchange="updSet('${ex.uid}',${i},'r',parseInt(this.value)||0)" onclick="event.stopPropagation()">
-            <button class="set-chk" onclick="event.stopPropagation(); chkSet('${ex.uid}',${i})">${s.done?'✓':'○'}</button>
+    // HEADER: Titolo, Volume, 1RM
+    h += `<div class="eh">
+            <div class="ei" onclick="event.stopPropagation(); showProgression('${ex.exerciseId}', '${ex.name.replace(/'/g, "\\'")}')" style="cursor:pointer">
+                <h4>${ex.name} 📈</h4>
+                <div class="em">
+                    <span style="color:${mColor}; font-weight:bold;">${d ? d.bp : 'Muscolo'}</span> • 
+                    ${d ? d.eq : 'Attrezzatura'}
+                    ${bestRM > 0 ? ` • <span class="rm-badge">1RM ≈ ${bestRM}kg</span>` : ''}
+                </div>
+                <div style="margin-top:4px;">
+                    <span class="badge" style="background:var(--pur); color:#fff;">Volume: ${vol} kg</span>
+                </div>
+            </div>
+            <div class="ea">
+                ${hasVideo ? `<button onclick="event.stopPropagation(); togVid('${ex.uid}')" style="font-size:1.4rem;">🎬</button>` : ''}
+                <button onclick="event.stopPropagation(); togEx('${ex.uid}')" style="font-size:1.2rem;">⚙️</button>
+            </div>
         </div>`;
-    });
 
-    h += `<div style="display:flex;gap:8px;margin-top:10px;">
-        <button onclick="event.stopPropagation();addSet('${ex.uid}')" class="bs" style="flex:1; font-size:0.75rem;">+ Serie</button>
-        <button onclick="event.stopPropagation();loadL('${ex.uid}')" class="bp" style="flex:1; font-size:0.75rem;">⟲ Carica Ultimo</button>
-    </div>
-    <div style="text-align:center;margin-top:8px;font-size:0.7rem;color:var(--acc);font-weight:bold;">
-        PROGRESSO: ${completedSets} / ${ex.sd.length}
-    </div></div>`;
-    h+=`</div>`;
+    // VIDEO PLAYER (Nascosto di default)
+    if (hasVideo) {
+        h += `<div class="egif" id="vid-cont-${ex.uid}" style="display:none; padding:10px;">
+                <video id="video-${ex.uid}" loop muted playsinline style="width:100%; border-radius:12px; background:#000; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                    <source src="${MEDIA_PATH + d.video}" type="video/mp4">
+                </video>
+              </div>`;
+    }
 
-    // Extra
-    h+=`<div class="eex" id="eex-${ex.uid}">
-        <label>📌 Piolo / Sedile</label>
-        <input value="${ex.seat||''}" onchange="uEx('${ex.uid}','seat',this.value)" onclick="event.stopPropagation()" placeholder="Es: piolo 3, sedile 5...">
-    </div>`;
+    // SEZIONE SET
+    h += `<div class="sets-header">
+            <span>SET</span><span>PESO (kg)</span><span>REPS</span><span>OK</span>
+          </div>
+          <div class="sets-track">`;
+    
+    if (ex.sd && ex.sd.length) {
+        ex.sd.forEach((s, i) => {
+            const isDone = s.done ? 'done' : '';
+            h += `
+            <div class="set-row ${isDone}">
+                <div class="set-num">${i + 1}</div>
+                <input type="number" value="${s.w}" step="0.5" oninput="updSet('${ex.uid}',${i},'w',this.value)" placeholder="kg">
+                <div class="set-x">×</div>
+                <input type="number" value="${s.r}" oninput="updSet('${ex.uid}',${i},'r',this.value)" placeholder="reps">
+                <button class="set-chk" onclick="chkSet('${ex.uid}',${i})">${s.done ? '✓' : ''}</button>
+            </div>`;
+        });
+    }
 
-    h+=`</div>`;return h;
+    h += `<button class="add-set-btn" onclick="addSet('${ex.uid}')">+ Aggiungi Serie</button>
+          </div></div>`;
+    
+    return h;
 }
 function calcVolume(ex){
 
@@ -729,7 +716,14 @@ v+=s.w*s.r;
 return v;
 
 }
-
+function getMuscleColor(bp) {
+    const map = {
+        'Chest': '#ff4757', 'Back': '#2f3542', 'Shoulders': '#ffa502', 
+        'Upper Arms': '#ff6b81', 'Lower Arms': '#a4b0be', 'Upper Legs': '#2ed573', 
+        'Lower Legs': '#7bed9f', 'Waist': '#eccc68', 'Cardio': '#70a1ff'
+    };
+    return map[bp] || 'var(--brd)'; // Colore di default se non trova il match
+}
 function getEmoji(bp) {
     const em = {'Petto':'🍒','Schiena':'🐢','Spalle':'🦅','Bicipiti':'💪','Tricipiti':'🐎','Gambe':'🍗','Core':'🧱'};
     return em[bp] || '🏋️';
@@ -780,17 +774,24 @@ function getLast(eid){
 
 // SET-BY-SET
 function updSet(u,i,f,v){const e=fEx(u);if(!e||!e.sd[i])return;e.sd[i][f]=v;save();renDay();}
-function chkSet(u, i) {
-    const e = fEx(u);
-    if (!e || !e.sd[i]) return;
-    e.sd[i].done = !e.sd[i].done;
-    save();
-    renDay();
-    // UX: Se la serie è completata, attiva il rest e fallo partire subito
-    if (e.sd[i].done) {
-        openTmr(e.rest || 90);
+function chkSet(exUid, sIdx) {
+    const day = gD();
+    const ex = day.exs.find(e => e.uid === exUid);
+    const s = ex.sd[sIdx];
+    s.done = !s.done;
+
+    if (s.done) {
+        const r = parseInt(s.r) || 0;
+        let t = 90; // default
+        if (r <= 5) t = 180;      // Forza
+        else if (r <= 8) t = 120; // Ipertrofia
+        else if (r > 12) t = 60;  // Pompaggio
+        
+        openTmr(t);
         tStart();
     }
+    save();
+    renDay();
 }
 function addSet(u){const e=fEx(u);if(!e)return;const last=e.sd.length?e.sd[e.sd.length-1]:{r:10,w:0};e.sd.push({r:last.r,w:last.w,done:false});save();renDay();}
 function remSet(u,i){const e=fEx(u);if(!e||e.sd.length<=1)return;e.sd.splice(i,1);save();renDay();}
@@ -1213,6 +1214,34 @@ function toggleTheme(){
     document.getElementById('vHome').style.display='block';
     renderAll();
 })();
+let myChart = null;
+function showProgression(id, name) {
+    document.getElementById('mProg').style.display = 'flex';
+    document.getElementById('progT').textContent = name;
+    
+    const data = D.hist.map(h => {
+        const e = h.exs.find(ex => ex.exerciseId === id);
+        return e ? { d: h.date, v: calcVolEx(e) } : null;
+    }).filter(x => x).sort((a,b) => new Date(a.d) - new Date(b.d));
+
+    const ctx = document.getElementById('chartC').getContext('2d');
+    if (myChart) myChart.destroy();
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(x => new Date(x.d).toLocaleDateString()),
+            datasets: [{ label: 'Volume (kg)', data: data.map(x => x.v), borderColor: '#03dac6', tension: 0.2 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
 </script>
+<div id="mProg" class="modal">
+    <div class="mc" style="max-width:500px;">
+        <h2 id="progT"></h2>
+        <div style="height:250px;"><canvas id="chartC"></canvas></div>
+        <button class="bs" onclick="document.getElementById('mProg').style.display='none'" style="width:100%;margin-top:10px;">Chiudi</button>
+    </div>
+</div>
 </body>
 </html>
