@@ -474,11 +474,18 @@
 		}
 		.body-svg { width:44%;max-width:155px;height:auto; }
 		.body-svg .body-outline {
-		    fill:#161616;stroke:#3a3a3a;stroke-width:1.2;
-		    stroke-linejoin:round;stroke-linecap:round;
+			fill:#181818;stroke:#3a3a3a;stroke-width:1;
+			stroke-linejoin:round;stroke-linecap:round;
 		}
 		[data-theme="light"] .body-svg .body-outline {
-		    fill:#e4e4e4;stroke:#c0c0c0;stroke-width:1.2;
+			fill:#e2e2e2;stroke:#bbb;stroke-width:1;
+		}
+		.body-svg .limb {
+			fill:#181818;stroke:#3a3a3a;stroke-width:0.8;
+			stroke-linejoin:round;stroke-linecap:round;
+		}
+		[data-theme="light"] .body-svg .limb {
+			fill:#e2e2e2;stroke:#bbb;stroke-width:0.8;
 		}
 		
 		/* Muscoli inattivi */
@@ -794,82 +801,120 @@ const BODY_FRONT = `
   <text x="100" y="14" text-anchor="middle" fill="#666" font-size="10" font-weight="bold">ANTERIORE</text>
 
   <!-- Testa -->
-  <ellipse cx="100" cy="42" rx="16" ry="20" class="body-outline"/>
+  <ellipse cx="100" cy="38" rx="14" ry="18" class="body-outline"/>
   <!-- Collo -->
-  <rect x="93" y="61" width="14" height="11" rx="4" class="body-outline"/>
+  <rect x="94" y="55" width="12" height="11" rx="3" class="body-outline"/>
 
-  <!-- Corpo -->
+  <!-- Torso -->
   <path class="body-outline" d="
-    M93,72 L82,72 Q60,75 54,90 C50,102 46,118 44,140
-    C42,160 42,176 47,188 Q52,194 61,196
-    L65,204 C65,220 63,240 61,262
-    C59,288 57,314 59,338 C61,356 67,376 75,386 L86,386
-    C90,370 94,348 98,324 L100,312 L102,324
-    C106,348 110,370 114,386 L125,386
-    C133,376 139,356 141,338 C143,314 141,288 139,262
-    C137,240 135,220 135,204 L139,196
-    Q148,194 153,188 C158,176 158,160 156,140
-    C154,118 150,102 146,90 Q140,75 118,72 L107,72 Z"/>
+    M94,66 L78,68 Q64,72 62,88
+    C60,110 62,138 70,162
+    C68,180 68,196 72,212
+    L90,218 L100,222 L110,218 L128,212
+    C132,196 132,180 130,162
+    C138,138 140,110 138,88
+    Q136,72 122,68 L106,66 Z"/>
 
-  <!-- Deltoidi anteriori - a goccia, seguono la spalla -->
+  <!-- Braccio sinistro superiore -->
+  <path class="limb" d="
+    M54,80 C48,78 44,86 42,98
+    C40,118 38,138 40,154
+    C42,160 50,162 52,156
+    C54,140 56,118 56,98 C56,88 56,82 54,80Z"/>
+  <!-- Avambraccio sinistro -->
+  <path class="limb" d="
+    M40,168 C36,180 34,194 36,206
+    C38,212 46,214 48,208
+    C50,196 50,182 48,170Z"/>
+
+  <!-- Braccio destro superiore -->
+  <path class="limb" d="
+    M146,80 C152,78 156,86 158,98
+    C160,118 162,138 160,154
+    C158,160 150,162 148,156
+    C146,140 144,118 144,98 C144,88 144,82 146,80Z"/>
+  <!-- Avambraccio destro -->
+  <path class="limb" d="
+    M160,168 C164,180 166,194 164,206
+    C162,212 154,214 152,208
+    C150,196 150,182 152,170Z"/>
+
+  <!-- Gamba sinistra coscia -->
+  <path class="limb" d="
+    M74,220 C70,242 68,270 66,298
+    C64,316 68,324 72,328
+    L90,328 C92,324 94,316 92,298
+    C90,270 88,242 86,220Z"/>
+  <!-- Gamba sinistra polpaccio -->
+  <path class="limb" d="
+    M72,334 C68,352 66,372 68,388
+    C70,396 78,398 82,394
+    C86,386 84,368 82,350
+    C80,340 76,334 72,334Z"/>
+
+  <!-- Gamba destra coscia -->
+  <path class="limb" d="
+    M126,220 C130,242 132,270 134,298
+    C136,316 132,324 128,328
+    L110,328 C108,324 106,316 108,298
+    C110,270 112,242 114,220Z"/>
+  <!-- Gamba destra polpaccio -->
+  <path class="limb" d="
+    M128,334 C132,352 134,372 132,388
+    C130,396 122,398 118,394
+    C114,386 116,368 118,350
+    C120,340 124,334 128,334Z"/>
+
+  <!-- ===== MUSCOLI ===== -->
+  <!-- Deltoidi anteriori -->
   <path data-muscle="front_delts" class="m-area" d="
-    M62,80 C56,78 50,84 48,94 C46,104 50,112 58,108 C64,104 66,90 62,80Z"/>
+    M56,78 C50,76 46,84 44,94 C42,104 48,110 54,106 C58,100 58,86 56,78Z"/>
   <path data-muscle="front_delts" class="m-area" d="
-    M138,80 C144,78 150,84 152,94 C154,104 150,112 142,108 C136,104 134,90 138,80Z"/>
+    M144,78 C150,76 154,84 156,94 C158,104 152,110 146,106 C142,100 142,86 144,78Z"/>
 
-  <!-- Pettorali - ventaglio, dal centro verso la spalla -->
+  <!-- Pettorali -->
   <path data-muscle="pectorals" class="m-area" d="
-    M68,94 C74,88 88,86 99,94 L99,100
-    C97,114 92,120 86,122 C76,124 68,118 64,110 C62,104 64,98 68,94Z"/>
+    M68,88 C74,82 90,80 99,90 L99,100 C96,112 90,118 82,120 C74,120 66,114 64,104 C64,96 66,90 68,88Z"/>
   <path data-muscle="pectorals" class="m-area" d="
-    M132,94 C126,88 112,86 101,94 L101,100
-    C103,114 108,120 114,122 C124,124 132,118 136,110 C138,104 136,98 132,94Z"/>
+    M132,88 C126,82 110,80 101,90 L101,100 C104,112 110,118 118,120 C126,120 134,114 136,104 C136,96 134,90 132,88Z"/>
 
-  <!-- Bicipiti - fuso, parte interna del braccio -->
+  <!-- Bicipiti -->
   <path data-muscle="biceps" class="m-area" d="
-    M49,112 C46,122 44,136 44,152 C44,160 48,162 50,156
-    C52,142 52,126 51,114Z"/>
+    M48,108 C46,120 44,136 44,150 C44,156 50,156 50,150 C52,136 52,122 50,110Z"/>
   <path data-muscle="biceps" class="m-area" d="
-    M151,112 C154,122 156,136 156,152 C156,160 152,162 150,156
-    C148,142 148,126 149,114Z"/>
+    M152,108 C154,120 156,136 156,150 C156,156 150,156 150,150 C148,136 148,122 150,110Z"/>
 
   <!-- Avambracci -->
   <path data-muscle="forearms" class="m-area" d="
-    M44,166 C42,176 42,188 46,196 C48,198 50,196 50,190
-    C50,180 48,172 46,166Z"/>
+    M42,172 C40,182 38,194 40,204 C42,208 46,206 46,200 C48,190 46,180 44,172Z"/>
   <path data-muscle="forearms" class="m-area" d="
-    M156,166 C158,176 158,188 154,196 C152,198 150,196 150,190
-    C150,180 152,172 154,166Z"/>
+    M158,172 C160,182 162,194 160,204 C158,208 154,206 154,200 C152,190 154,180 156,172Z"/>
 
-  <!-- Addominali - 6 blocchi separati (six-pack) -->
-  <rect data-muscle="abs" x="90" y="126" width="8.5" height="10" rx="2" class="m-area"/>
-  <rect data-muscle="abs" x="101.5" y="126" width="8.5" height="10" rx="2" class="m-area"/>
-  <rect data-muscle="abs" x="90" y="139" width="8.5" height="10" rx="2" class="m-area"/>
-  <rect data-muscle="abs" x="101.5" y="139" width="8.5" height="10" rx="2" class="m-area"/>
-  <rect data-muscle="abs" x="90" y="152" width="8.5" height="10" rx="2" class="m-area"/>
-  <rect data-muscle="abs" x="101.5" y="152" width="8.5" height="10" rx="2" class="m-area"/>
+  <!-- Addominali 6-pack -->
+  <rect data-muscle="abs" x="90" y="124" width="8" height="10" rx="2" class="m-area"/>
+  <rect data-muscle="abs" x="102" y="124" width="8" height="10" rx="2" class="m-area"/>
+  <rect data-muscle="abs" x="90" y="137" width="8" height="10" rx="2" class="m-area"/>
+  <rect data-muscle="abs" x="102" y="137" width="8" height="10" rx="2" class="m-area"/>
+  <rect data-muscle="abs" x="90" y="150" width="8" height="10" rx="2" class="m-area"/>
+  <rect data-muscle="abs" x="102" y="150" width="8" height="10" rx="2" class="m-area"/>
 
-  <!-- Obliqui - diagonali ai lati degli addominali -->
+  <!-- Obliqui -->
   <path data-muscle="obliques" class="m-area" d="
-    M82,128 C78,140 76,156 80,172 C82,176 86,170 86,156 C86,142 84,132 82,128Z"/>
+    M82,126 C78,140 76,158 80,174 C82,178 86,172 86,158 C86,142 84,132 82,126Z"/>
   <path data-muscle="obliques" class="m-area" d="
-    M118,128 C122,140 124,156 120,172 C118,176 114,170 114,156 C114,142 116,132 118,128Z"/>
+    M118,126 C122,140 124,158 120,174 C118,178 114,172 114,158 C114,142 116,132 118,126Z"/>
 
-  <!-- Quadricipiti - goccia allungata lungo la coscia -->
+  <!-- Quadricipiti -->
   <path data-muscle="quads" class="m-area" d="
-    M76,236 C72,256 68,280 66,306 C64,318 72,324 82,324
-    C92,324 96,318 94,308 C92,282 88,258 84,236Z"/>
+    M76,224 C72,248 70,276 68,302 C66,316 72,322 82,322 C90,322 92,316 90,302 C88,276 86,248 84,224Z"/>
   <path data-muscle="quads" class="m-area" d="
-    M124,236 C128,256 132,280 134,306 C136,318 128,324 118,324
-    C108,324 104,318 106,308 C108,282 112,258 116,236Z"/>
+    M124,224 C128,248 130,276 132,302 C134,316 128,322 118,322 C110,322 108,316 110,302 C112,276 114,248 116,224Z"/>
 
-  <!-- Tibiale anteriore -->
+  <!-- Tibiale -->
   <path data-muscle="tibialis" class="m-area" d="
-    M72,336 C70,348 70,362 72,376 C74,380 78,378 78,372
-    C80,358 78,344 76,336Z"/>
+    M74,338 C72,350 72,368 74,382 C76,386 80,384 80,378 C80,364 78,348 76,338Z"/>
   <path data-muscle="tibialis" class="m-area" d="
-    M128,336 C130,348 130,362 128,376 C126,380 122,378 122,372
-    C120,358 122,344 124,336Z"/>
+    M126,338 C128,350 128,368 126,382 C124,386 120,384 120,378 C120,364 122,348 124,338Z"/>
 </svg>`;
 
 const BODY_BACK = `
@@ -877,79 +922,124 @@ const BODY_BACK = `
   <text x="100" y="14" text-anchor="middle" fill="#666" font-size="10" font-weight="bold">POSTERIORE</text>
 
   <!-- Testa -->
-  <ellipse cx="100" cy="42" rx="16" ry="20" class="body-outline"/>
+  <ellipse cx="100" cy="38" rx="14" ry="18" class="body-outline"/>
   <!-- Collo -->
-  <rect x="93" y="61" width="14" height="11" rx="4" class="body-outline"/>
+  <rect x="94" y="55" width="12" height="11" rx="3" class="body-outline"/>
 
-  <!-- Corpo (identico al front) -->
+  <!-- Torso -->
   <path class="body-outline" d="
-    M93,72 L82,72 Q60,75 54,90 C50,102 46,118 44,140
-    C42,160 42,176 47,188 Q52,194 61,196
-    L65,204 C65,220 63,240 61,262
-    C59,288 57,314 59,338 C61,356 67,376 75,386 L86,386
-    C90,370 94,348 98,324 L100,312 L102,324
-    C106,348 110,370 114,386 L125,386
-    C133,376 139,356 141,338 C143,314 141,288 139,262
-    C137,240 135,220 135,204 L139,196
-    Q148,194 153,188 C158,176 158,160 156,140
-    C154,118 150,102 146,90 Q140,75 118,72 L107,72 Z"/>
+    M94,66 L78,68 Q64,72 62,88
+    C60,110 62,138 70,162
+    C68,180 68,196 72,212
+    L90,218 L100,222 L110,218 L128,212
+    C132,196 132,180 130,162
+    C138,138 140,110 138,88
+    Q136,72 122,68 L106,66 Z"/>
 
-  <!-- Trapezio - diamante dal collo alle spalle -->
+  <!-- Braccio sinistro superiore -->
+  <path class="limb" d="
+    M54,80 C48,78 44,86 42,98
+    C40,118 38,138 40,154
+    C42,160 50,162 52,156
+    C54,140 56,118 56,98 C56,88 56,82 54,80Z"/>
+  <!-- Avambraccio sinistro -->
+  <path class="limb" d="
+    M40,168 C36,180 34,194 36,206
+    C38,212 46,214 48,208
+    C50,196 50,182 48,170Z"/>
+
+  <!-- Braccio destro superiore -->
+  <path class="limb" d="
+    M146,80 C152,78 156,86 158,98
+    C160,118 162,138 160,154
+    C158,160 150,162 148,156
+    C146,140 144,118 144,98 C144,88 144,82 146,80Z"/>
+  <!-- Avambraccio destro -->
+  <path class="limb" d="
+    M160,168 C164,180 166,194 164,206
+    C162,212 154,214 152,208
+    C150,196 150,182 152,170Z"/>
+
+  <!-- Gamba sinistra coscia -->
+  <path class="limb" d="
+    M74,220 C70,242 68,270 66,298
+    C64,316 68,324 72,328
+    L90,328 C92,324 94,316 92,298
+    C90,270 88,242 86,220Z"/>
+  <!-- Gamba sinistra polpaccio -->
+  <path class="limb" d="
+    M72,334 C68,352 66,372 68,388
+    C70,396 78,398 82,394
+    C86,386 84,368 82,350
+    C80,340 76,334 72,334Z"/>
+
+  <!-- Gamba destra coscia -->
+  <path class="limb" d="
+    M126,220 C130,242 132,270 134,298
+    C136,316 132,324 128,328
+    L110,328 C108,324 106,316 108,298
+    C110,270 112,242 114,220Z"/>
+  <!-- Gamba destra polpaccio -->
+  <path class="limb" d="
+    M128,334 C132,352 134,372 132,388
+    C130,396 122,398 118,394
+    C114,386 116,368 118,350
+    C120,340 124,334 128,334Z"/>
+
+  <!-- ===== MUSCOLI ===== -->
+  <!-- Trapezio -->
   <path data-muscle="traps" class="m-area" d="
-    M86,74 C92,70 100,68 100,68 C100,68 108,70 114,74
-    L130,88 C132,92 126,98 118,98 L100,96 L82,98
-    C74,98 68,92 70,88 Z"/>
+    M82,74 C90,70 100,68 100,68 C100,68 110,70 118,74
+    L132,86 C128,96 118,98 100,96 C82,98 72,96 68,86Z"/>
 
   <!-- Deltoidi posteriori -->
   <path data-muscle="rear_delts" class="m-area" d="
-    M62,80 C56,78 50,84 48,94 C46,104 50,112 58,108 C64,104 66,90 62,80Z"/>
+    M56,78 C50,76 46,84 44,94 C42,104 48,110 54,106 C58,100 58,86 56,78Z"/>
   <path data-muscle="rear_delts" class="m-area" d="
-    M138,80 C144,78 150,84 152,94 C154,104 150,112 142,108 C136,104 134,90 138,80Z"/>
+    M144,78 C150,76 154,84 156,94 C158,104 152,110 146,106 C142,100 142,86 144,78Z"/>
 
-  <!-- Dorsali - grande V dalla spalla al centro schiena -->
+  <!-- Dorsali -->
   <path data-muscle="lats" class="m-area" d="
-    M68,100 C64,112 62,132 64,154 C66,164 76,168 84,162
-    C90,156 88,132 84,112 C82,104 76,98 68,100Z"/>
+    M66,100 C64,114 62,134 64,156 C66,164 76,168 84,160
+    C88,154 86,130 82,112 C80,104 74,98 66,100Z"/>
   <path data-muscle="lats" class="m-area" d="
-    M132,100 C136,112 138,132 136,154 C134,164 124,168 116,162
-    C110,156 112,132 116,112 C118,104 124,98 132,100Z"/>
+    M134,100 C136,114 138,134 136,156 C134,164 124,168 116,160
+    C112,154 114,130 118,112 C120,104 126,98 134,100Z"/>
 
-  <!-- Bassa schiena - ovale al centro -->
+  <!-- Bassa schiena -->
   <path data-muscle="lower_back" class="m-area" d="
-    M90,164 C86,170 86,182 90,190 C96,196 104,196 110,190
-    C114,182 114,170 110,164 C106,158 94,158 90,164Z"/>
+    M88,162 C86,170 86,182 90,190 C96,196 104,196 110,190
+    C114,182 114,170 112,162 C106,156 94,156 88,162Z"/>
 
-  <!-- Tricipiti - fuso, parte esterna del braccio -->
+  <!-- Tricipiti -->
   <path data-muscle="triceps" class="m-area" d="
-    M49,112 C46,122 44,136 44,152 C44,160 48,162 50,156
-    C52,142 52,126 51,114Z"/>
+    M48,108 C46,120 44,136 44,150 C44,156 50,156 50,150 C52,136 52,122 50,110Z"/>
   <path data-muscle="triceps" class="m-area" d="
-    M151,112 C154,122 156,136 156,152 C156,160 152,162 150,156
-    C148,142 148,126 149,114Z"/>
+    M152,108 C154,120 156,136 156,150 C156,156 150,156 150,150 C148,136 148,122 150,110Z"/>
 
-  <!-- Glutei - arrotondati, due sfere -->
+  <!-- Glutei -->
   <path data-muscle="glutes" class="m-area" d="
-    M74,204 C68,210 66,222 72,232 C78,240 90,240 96,232
-    C100,226 100,216 96,210 C90,204 80,200 74,204Z"/>
+    M74,206 C70,212 68,224 74,232 C80,238 90,238 96,232
+    C100,226 98,216 94,210 C88,204 80,202 74,206Z"/>
   <path data-muscle="glutes" class="m-area" d="
-    M126,204 C132,210 134,222 128,232 C122,240 110,240 104,232
-    C100,226 100,216 104,210 C110,204 120,200 126,204Z"/>
+    M126,206 C130,212 132,224 126,232 C120,238 110,238 104,232
+    C100,226 102,216 106,210 C112,204 120,202 126,206Z"/>
 
-  <!-- Femorali - goccia allungata lungo la coscia -->
+  <!-- Femorali -->
   <path data-muscle="hamstrings" class="m-area" d="
-    M76,242 C72,260 68,284 66,308 C64,320 72,326 82,326
-    C92,326 96,320 94,310 C92,284 88,260 84,242Z"/>
+    M76,244 C72,266 70,290 68,310 C66,320 72,324 82,324
+    C90,324 92,320 90,310 C88,290 86,266 84,244Z"/>
   <path data-muscle="hamstrings" class="m-area" d="
-    M124,242 C128,260 132,284 134,308 C136,320 128,326 118,326
-    C108,326 104,320 106,310 C108,284 112,260 116,242Z"/>
+    M124,244 C128,266 130,290 132,310 C134,320 128,324 118,324
+    C110,324 108,320 110,310 C112,290 114,266 116,244Z"/>
 
-  <!-- Polpacci - forma a diamante (gastrocnemio) -->
+  <!-- Polpacci -->
   <path data-muscle="calves" class="m-area" d="
-    M72,332 C66,344 64,358 68,372 C70,378 78,378 82,372
-    C86,358 84,344 78,332Z"/>
+    M74,338 C68,350 66,366 70,380 C72,386 80,386 82,380
+    C86,366 84,350 78,338Z"/>
   <path data-muscle="calves" class="m-area" d="
-    M128,332 C134,344 136,358 132,372 C130,378 122,378 118,372
-    C114,358 116,344 122,332Z"/>
+    M126,338 C132,350 134,366 130,380 C128,386 120,386 118,380
+    C114,366 116,350 122,338Z"/>
 </svg>`;
 
 // Peso fittizio per esercizi a corpo libero (plank, push-up, ecc.)
@@ -1105,6 +1195,48 @@ function updateModeUI() {
 // ============================================================
 // 🏠 RENDER ALL (Home)
 // ============================================================
+// ===== DATI LIVE (set segnati come "done" ma workout non completato) =====
+function getLiveStats() {
+    let liveSets = 0;
+    const liveMuscles = {};
+    const liveMuscleSets = {};
+    let liveVol = 0;
+
+    D.days.forEach(day => {
+        day.exs.forEach(ex => {
+            if (!ex.sd) return;
+            const done = ex.sd.filter(s => s.done);
+            if (!done.length) return;
+
+            liveSets += done.length;
+
+            const def = exDef(ex.exerciseId);
+            if (!def) return;
+
+            done.forEach(s => {
+                const w = (parseFloat(s.w) > 0) ? parseFloat(s.w) : BW_FACTOR;
+                const r = parseInt(s.r) || 0;
+                const v = w * r;
+                liveVol += v;
+
+                const addM = (name) => {
+                    if (!name) return;
+                    liveMuscles[name] = (liveMuscles[name] || 0) + v;
+                    liveMuscleSets[name] = (liveMuscleSets[name] || 0) + 1;
+                };
+
+                addM(MUSCLE_MAP[def.bp]);
+                if (def.tgt && Array.isArray(def.tgt)) {
+                    def.tgt.forEach(t => addM(MUSCLE_MAP[t]));
+                } else if (def.tgt && typeof def.tgt === 'string') {
+                    addM(MUSCLE_MAP[def.tgt]);
+                }
+            });
+        });
+    });
+
+    return { liveSets, liveMuscles, liveMuscleSets, liveVol };
+}
 function renderAll() {
     if (!D) return;
     try { renSt(); } catch(e) { console.error('renSt:', e); }
@@ -1117,8 +1249,9 @@ function renderAll() {
 
 function renSt() {
     const s = D.st;
+    const live = getLiveStats();
     document.getElementById('s0').textContent = s.tw || 0;
-    document.getElementById('s1').textContent = s.ts || 0;
+    document.getElementById('s1').textContent = (s.ts || 0) + live.liveSets;
     document.getElementById('s2').textContent = s.sk || 0;
     document.getElementById('s3').textContent = Object.keys(s.pr || {}).length;
 }
@@ -1906,10 +2039,14 @@ function renVol() {
             D.hist.forEach(l => {
                 if (!l.dt) return;
                 if (toLocalDate(l.dt) === key) {
-                    const peso = (l.w && l.w > 0) ? l.w : BW_FACTOR;
-                    vol += (l.s || 0) * (l.r || 0) * peso;
+                    var p = (l.w && l.w > 0) ? l.w : BW_FACTOR;
+                    vol += (l.s || 0) * (l.r || 0) * p;
                 }
             });
+        }
+        // Aggiungi volume live per oggi
+        if (key === todayStr) {
+            vol += getLiveStats().liveVol;
         }
         days.push({label: labels[i], vol, isToday: key === todayStr});
     }
@@ -1957,8 +2094,10 @@ function renMuscle() {
 
     const today = toLocalDate(new Date());
     const todayLogs = D.hist ? D.hist.filter(l => toLocalDate(l.dt) === today) : [];
+    const live = getLiveStats();
+    const hasLive = live.liveSets > 0;
 
-    if (!todayLogs.length) {
+    if (!todayLogs.length && !hasLive) {
         c.innerHTML = '<div class="emp" style="padding:15px;"><div class="eic">💪</div>Allena oggi per vedere la mappa muscolare</div>';
         return;
     }
@@ -1990,7 +2129,13 @@ function renMuscle() {
             addMuscle(MUSCLE_MAP[def.tgt], vol, sets);
         }
     });
-
+    // Unisci dati live (set in corso, non ancora completati)
+    Object.entries(live.liveMuscles).forEach(([muscle, vol]) => {
+        muscleVol[muscle] = (muscleVol[muscle] || 0) + vol;
+    });
+    Object.entries(live.liveMuscleSets).forEach(([muscle, sets]) => {
+        muscleSets[muscle] = (muscleSets[muscle] || 0) + sets;
+    });
     const maxVol = Math.max(...Object.values(muscleVol), 1);
 
     // Inserisci SVG
