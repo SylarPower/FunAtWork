@@ -395,7 +395,7 @@ async function loadExDB() {
     goHome();
 }
 
-// Calcola il volume della singola istanza esercizio
+// Calcola il volume (usato per il grafico e i dati)
 function calcVolEx(ex) {
     if (!ex || !ex.sd) return 0;
     return ex.sd.reduce((acc, s) => s.done ? acc + (parseFloat(s.w || 0) * parseInt(s.r || 0)) : acc, 0);
@@ -586,14 +586,12 @@ function renDay() {
     if(!cont) return;
     cont.innerHTML = '';
     
-    console.log("Esercizi trovati nel giorno:", day.exs);
-
     if (!day.exs || day.exs.length === 0) {
         cont.innerHTML = '<p class="emp">Nessun esercizio. Aggiungine uno!</p>';
         return;
     }
 
-    // PANORAMICA MUSCOLARE
+    // PANORAMICA MUSCOLARE (Corretta per non andare in errore)
     const muscles = [...new Set(day.exs.map(e => {
         const d = exDef(e.exerciseId);
         return d ? d.bp : null;
@@ -603,13 +601,17 @@ function renDay() {
     <div style="background:var(--c1); padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid var(--brd);">
         <div style="color:var(--tx2); font-size:0.7rem; text-transform:uppercase; margin-bottom:8px;">Focus Muscolare:</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            ${muscles.map(m => `<span style="background:var(--c2); color:var(--acc); padding:4px 10px; border-radius:20px; font-size:0.8rem; border:1px solid var(--acc)">${m}</span>`).join('')}
+            ${muscles.length > 0 ? muscles.map(m => `<span style="background:var(--c2); color:var(--acc); padding:4px 10px; border-radius:20px; font-size:0.8rem; border:1px solid var(--acc)">${m}</span>`).join('') : '<span style="color:var(--tx3)">Generale</span>'}
         </div>
     </div>`;
     
-    // Ciclo per aggiungere gli esercizi
+    // Genera l'HTML di ogni esercizio
     day.exs.forEach(ex => { 
-        h += renEC(ex); 
+        try {
+            h += renEC(ex); 
+        } catch(e) {
+            console.error("Errore nel rendering dell'esercizio:", ex, e);
+        }
     });
     
     cont.innerHTML = h;
@@ -674,13 +676,14 @@ v+=s.w*s.r;
 return v;
 
 }
+// Calcola il colore in base al gruppo muscolare
 function getMuscleColor(bp) {
     const map = {
         'Chest': '#ff4757', 'Back': '#2f3542', 'Shoulders': '#ffa502', 
-        'Upper Arms': '#ff6b81', 'Lower Arms': '#a4b0be', 'Upper Legs': '#2ed573', 
-        'Lower Legs': '#7bed9f', 'Waist': '#eccc68', 'Cardio': '#70a1ff'
+        'Upper Arms': '#ff6b81', 'Upper Legs': '#2ed573', 'Lower Legs': '#7bed9f', 
+        'Waist': '#eccc68'
     };
-    return map[bp] || 'var(--brd)'; // Colore di default se non trova il match
+    return map[bp] || '#03dac6'; // Colore di default (Accento)
 }
 function getEmoji(bp) {
     const em = {'Petto':'🍒','Schiena':'🐢','Spalle':'🦅','Bicipiti':'💪','Tricipiti':'🐎','Gambe':'🍗','Core':'🧱'};
@@ -759,9 +762,11 @@ function updSetSilent(exUid, sIdx, field, val) {
 function chkSet(btn, exUid, sIdx) {
     const day = gD();
     const ex = day.exs.find(e => e.uid === exUid);
+    if(!ex) return;
     const s = ex.sd[sIdx];
     s.done = !s.done;
 
+    // Cambia lo stile del bottone al volo
     if (s.done) {
         btn.style.background = "var(--acc)";
         btn.style.borderColor = "var(--acc)";
