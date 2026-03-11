@@ -1,6 +1,6 @@
 [
   {"id":"barbell_bench_press","name":"Barbell Bench Press","bp":"Petto","eq":"Barbell","tgt":["chest","triceps","front_delts"],"media":["barbell_bench_press.mp4"]},
-  {"id":"incline_barbell_bench_press","name":"Incline Barbell Bench Press","bp":"Petto","eq":"Barbell","tgt":["upper_chest","triceps","front_delts"],"media":["https://media.musclewiki.com/media/uploads/videos/branded/male-Barbell-barbell-incline-bench-press-side.mp4","https://media.musclewiki.com/media/uploads/videos/branded/male-Barbell-barbell-incline-bench-press-front.mp4"]},
+  {"id":"incline_barbell_bench_press","name":"Incline Barbell Bench Press","bp":"Petto","eq":"Barbell","tgt":["upper_chest","triceps","front_delts"],"media":["https://media.musclewiki.com/media/uploads/videos/branded/male-Barbell-barbell-incline-bench-press-front.mp4","https://media.musclewiki.com/media/uploads/videos/branded/male-Barbell-barbell-incline-bench-press-side.mp4"]},
   {"id":"decline_barbell_bench_press","name":"Decline Barbell Bench Press","bp":"Petto","eq":"Barbell","tgt":["lower_chest","triceps","front_delts"],"media":["decline_barbell_bench_press.mp4"]},
   {"id":"dumbbell_bench_press","name":"Dumbbell Bench Press","bp":"Petto","eq":"Dumbbell","tgt":["chest","triceps","front_delts"],"media":["dumbbell_bench_press.mp4"]},
   {"id":"incline_dumbbell_bench_press","name":"Incline Dumbbell Bench Press","bp":"Petto","eq":"Dumbbell","tgt":["upper_chest","triceps","front_delts"],"media":["incline_dumbbell_bench_press.mp4"]},
@@ -36,7 +36,7 @@
   {"id":"chest_supported_dumbbell_row","name":"Chest Supported Dumbbell Row","bp":"Schiena","eq":"Dumbbell","tgt":["mid_back","rhomboids","rear_delts"],"media":["chest_supported_dumbbell_row.mp4"]},
   {"id":"seated_cable_row","name":"Seated Cable Row","bp":"Schiena","eq":"Cable","tgt":["mid_back","lats","rhomboids","biceps"],"media":["seated_cable_row.mp4"]},
   {"id":"wide_grip_cable_row","name":"Wide Grip Cable Row","bp":"Schiena","eq":"Cable","tgt":["upper_back","rhomboids","rear_delts"],"media":["wide_grip_cable_row.mp4"]},
-  {"id":"lat_pulldown","name":"Lat Pulldown","bp":"Schiena","eq":"Cable","tgt":["lats","biceps","teres_major"],"media":["lat_pulldown.mp4"]},
+  {"id":"lat_pulldown","name":"Lat Pulldown","bp":"Schiena","eq":"Cable","tgt":["lats","biceps","teres_major"],"media":["https://media.musclewiki.com/media/uploads/videos/branded/male-machine-pulldown-front.mp4","https://media.musclewiki.com/media/uploads/videos/branded/male-machine-pulldown-side.mp4"]},
   {"id":"wide_grip_lat_pulldown","name":"Wide Grip Lat Pulldown","bp":"Schiena","eq":"Cable","tgt":["lats","teres_major","rear_delts"],"media":["wide_grip_lat_pulldown.mp4"]},
   {"id":"close_grip_lat_pulldown","name":"Close Grip Lat Pulldown","bp":"Schiena","eq":"Cable","tgt":["lats","biceps","lower_lats"],"media":["close_grip_lat_pulldown.mp4"]},
   {"id":"reverse_grip_lat_pulldown","name":"Reverse Grip Lat Pulldown","bp":"Schiena","eq":"Cable","tgt":["lower_lats","biceps"],"media":["reverse_grip_lat_pulldown.mp4"]},
