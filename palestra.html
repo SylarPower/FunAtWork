@@ -443,9 +443,12 @@
 				 box-shadow:0 2px 12px rgba(3,218,198,.3);
 			}
 			.chips {
-				 display:flex;overflow-x:auto;gap:6px;padding:8px 0 12px;
-				 -webkit-overflow-scrolling:touch;
-				 border-bottom:1px solid var(--brd);margin-bottom:4px;
+			    display:flex;overflow-x:auto;gap:6px;padding:8px 0 12px;
+			    -webkit-overflow-scrolling:touch;
+			    border-bottom:1px solid var(--brd);margin-bottom:4px;
+			    flex-shrink:0;
+			    min-height:52px;
+			    align-items:center;
 			}
 			.chips::-webkit-scrollbar { display:none; }
 
@@ -1997,13 +2000,15 @@ function sesCheck() {
 
     if (allExDone) {
         sesRender();
-        setTimeout(() => sesShowSummary(), 800); // Ridotto a 800ms per non far aspettare
+        setTimeout(() => sesShowSummary(), 500);
     } else if (nextExIdx !== sesExIdx && nextExIdx !== -1) {
+        // Superserie → transizione rapida, esercizio normale → un po' più lenta
+        const delay = ex.ssG ? 150 : 400;
         sesRender();
         setTimeout(() => {
             sesExIdx = nextExIdx;
             sesRender();
-        }, 800); // Transizione più veloce
+        }, delay);
     } else {
         sesRender();
     }
