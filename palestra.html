@@ -878,6 +878,38 @@ body.in-session .ctn { padding:0;max-width:100%; }
     <button class="bs" onclick="document.getElementById('mProgManager').style.display='none'" style="width:100%;margin-top:16px;padding:14px;">Annulla</button>
 </div>
 </div>
+<!-- MODAL: SCELTA SESSIONE PARZIALE -->
+<div id="mSesChoice" class="modal" onclick="if(event.target===this)sesChoiceCancel()">
+<div class="mc" style="max-width:500px;">
+    <h2>🏋️ Allenamento in corso</h2>
+    <p style="text-align:center;color:var(--tx2);font-size:.85rem;margin-bottom:16px;">
+        Hai <strong style="color:var(--acc);"><span id="sesChoiceDone">0</span>/<span id="sesChoiceTotal">0</span></strong> serie già completate.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="sesChoiceContinue()" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--acc);">
+            <span style="font-size:1.5rem;">▶️</span>
+            <div>
+                <div style="font-weight:700;color:var(--acc);">Continua da dove eri</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Riprendi dall'ultima serie non completata.</div>
+            </div>
+        </button>
+        <button onclick="sesChoiceReset()" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--yel);">
+            <span style="font-size:1.5rem;">🔄</span>
+            <div>
+                <div style="font-weight:700;color:var(--yel);">Ricomincia da capo</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Azzera tutte le serie e ricomincia.</div>
+            </div>
+        </button>
+        <button onclick="sesChoiceCancel()" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--red);">
+            <span style="font-size:1.5rem;">✕</span>
+            <div>
+                <div style="font-weight:700;color:var(--red);">Annulla</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Torna alla scheda senza iniziare.</div>
+            </div>
+        </button>
+    </div>
+</div>
+</div>
 <!-- MODAL: PROGRESSIONE -->
 <div id="mProg" class="modal" onclick="if(event.target===this)this.style.display='none'">
 <div class="mc" style="max-width:500px;">
@@ -1736,7 +1768,6 @@ function startSession() {
         return;
     }
 
-    // Conta i set totali e fatti
     const totalSets = day.exs.reduce((a, e) => a + (e.sd ? e.sd.length : 0), 0);
     const doneSets = day.exs.reduce((a, e) => a + (e.sd ? e.sd.filter(s => s.done).length : 0), 0);
 
@@ -1745,18 +1776,43 @@ function startSession() {
         return;
     }
 
-    // Se l'allenamento è già tutto spuntato (es. fatto in precedenza), lo azzera in automatico
+    // Tutto completato → reset automatico e via
     if (doneSets === totalSets) {
         day.exs.forEach(e => { if (e.sd) e.sd.forEach(s => s.done = false); });
         save();
-    } 
-    // Se c'è un parziale, chiede all'utente
-    else if (doneSets > 0) {
-        if (confirm('Hai delle serie già completate. Vuoi azzerarle per ricominciare da capo?')) {
-            day.exs.forEach(e => { if (e.sd) e.sd.forEach(s => s.done = false); });
-            save();
-        }
+        launchSession();
     }
+    // Parziale → mostra modal con 3 scelte
+    else if (doneSets > 0) {
+        document.getElementById('sesChoiceDone').textContent = doneSets;
+        document.getElementById('sesChoiceTotal').textContent = totalSets;
+        document.getElementById('mSesChoice').style.display = 'flex';
+    }
+    // Nessuna serie fatta → parti subito
+    else {
+        launchSession();
+    }
+}
+
+function sesChoiceContinue() {
+    document.getElementById('mSesChoice').style.display = 'none';
+    launchSession();
+}
+
+function sesChoiceReset() {
+    document.getElementById('mSesChoice').style.display = 'none';
+    const day = gD();
+    day.exs.forEach(e => { if (e.sd) e.sd.forEach(s => s.done = false); });
+    save();
+    launchSession();
+}
+
+function sesChoiceCancel() {
+    document.getElementById('mSesChoice').style.display = 'none';
+}
+
+function launchSession() {
+    const day = gD();
 
     sesActive = true;
     sesExIdx = 0;
@@ -1764,6 +1820,11 @@ function startSession() {
 
     const firstUndone = day.exs.findIndex(ex => ex.sd && ex.sd.some(s => !s.done));
     if (firstUndone >= 0) sesExIdx = firstUndone;
+
+    // ← FIX CRITICO: Reset UI sessione precedente
+    document.getElementById('sesSummary').style.display = 'none';
+    document.getElementById('sesExCard').style.display = '';
+    document.querySelector('.ses-nav').style.display = '';
 
     document.body.classList.add('in-session');
     document.getElementById('vDay').style.display = 'none';
