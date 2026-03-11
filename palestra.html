@@ -793,18 +793,18 @@ body.in-session .ctn { padding:0;max-width:100%; }
         </div>
     </div>
 
-    <!-- Navigazione esercizi -->
-    <div class="ses-nav">
-        <button class="ses-nav-btn" onclick="sesPrevEx()">
-            <span>◀</span><small>Precedente</small>
-        </button>
-        <button class="ses-nav-end" onclick="sesFinish()">
-            🏁 Termina
-        </button>
-        <button class="ses-nav-btn" onclick="sesNextEx()">
-            <small>Successivo</small><span>▶</span>
-        </button>
-    </div>
+	<!-- Navigazione esercizi -->
+	<div class="ses-nav">
+	    <button class="ses-nav-btn" id="sesBtnPrev" onclick="sesPrevEx()">
+	        <span>◀</span><small>Precedente</small>
+	    </button>
+	    <button class="ses-nav-end" onclick="sesFinish()">
+	        🏁 Termina
+	    </button>
+	    <button class="ses-nav-btn" id="sesBtnNext" onclick="sesNextEx()">
+	        <small>Successivo</small><span>▶</span>
+	    </button>
+	</div>
 
     <!-- Summary (mostrato alla fine) -->
     <div class="ses-summary" id="sesSummary" style="display:none;">
@@ -1874,6 +1874,10 @@ function sesRender() {
 
 	document.getElementById('sesProgFill').style.width = globalPct + '%';
 	document.getElementById('sesExCount').textContent = (sesExIdx + 1) + '/' + exs.length;
+	
+	// Nascondi prev/next ai limiti
+	document.getElementById('sesBtnPrev').style.visibility = sesExIdx === 0 ? 'hidden' : 'visible';
+	document.getElementById('sesBtnNext').style.visibility = sesExIdx === exs.length - 1 ? 'hidden' : 'visible';
 
     // Nome esercizio
     document.getElementById('sesExName').textContent = ex.name;
