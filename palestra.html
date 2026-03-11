@@ -1134,6 +1134,9 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2,
 const exDef = id => EX_DB.find(e => e.id === id);
 
 const BPARTS = ['all','back','cardio','chest','lower arms','lower legs','neck','shoulders','upper arms','upper legs','waist'];
+// Peso fittizio per esercizi a corpo libero (plank, push-up, ecc.)
+const BW_FACTOR = 15;
+	
 // ===== SVG CORPO + MAPPATURA MUSCOLI =====
 const BODY_FRONT = `
 <svg viewBox="0 0 200 440" class="body-svg">
@@ -1614,9 +1617,6 @@ const BODY_BACK = `
     C132,390 124,392 120,386
     C116,374 118,354 122,340Z"/>
 </svg>`;
-
-// Peso fittizio per esercizi a corpo libero (plank, push-up, ecc.)
-const BW_FACTOR = 15;
 	
 // Mappa: nomi usati nei JSON → nome del muscolo nell'SVG
 const MUSCLE_MAP = {
@@ -3211,12 +3211,27 @@ function toggleTheme() {
 // 🚀 INIT
 // ============================================================
 (async function() {
-    await loadExDB();
-    await load();
-    document.getElementById('vLoad').style.display = 'none';
-    document.getElementById('vHome').style.display = 'block';
-    renderAll();
-    toast('👋 Ciao ' + MIO + '!', 'info', 2000);
+    try {
+        console.log('1. Loading exercises...');
+        await loadExDB();
+        console.log('2. Loading user data...');
+        await load();
+        console.log('3. Hiding loader...');
+        document.getElementById('vLoad').style.display = 'none';
+        document.getElementById('vHome').style.display = 'block';
+        console.log('4. Rendering...');
+        renderAll();
+        console.log('5. Done!');
+        toast('👋 Ciao ' + MIO + '!', 'info', 2000);
+    } catch(e) {
+        console.error('❌ ERRORE INIT:', e);
+        document.getElementById('vLoad').innerHTML = `
+            <div style="color:var(--red);font-size:.85rem;padding:20px;text-align:left;">
+                <b>❌ Errore di caricamento:</b><br><br>
+                <code style="font-size:.75rem;color:var(--tx2);word-break:break-all;">${e.message}</code><br><br>
+                <small>Apri la console (F12) per dettagli</small>
+            </div>`;
+    }
 })();
 </script>
 </body>
