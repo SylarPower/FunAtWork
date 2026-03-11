@@ -505,28 +505,6 @@ body.in-session .ctn { padding:0;max-width:100%; }
     white-space:nowrap;
 }
 
-/* Motivazione */
-.ses-motiv-area {
-    text-align:center;padding:16px 20px 8px;
-}
-.ses-pct {
-    font-size:2.2rem;font-weight:900;color:var(--acc);
-    font-family:'SF Mono',Menlo,monospace;
-    line-height:1;
-}
-.ses-motiv {
-    font-size:.88rem;font-weight:600;color:var(--tx2);
-    margin-top:4px;min-height:24px;
-    transition:opacity .3s;
-}
-.ses-motiv.flash {
-    animation:motivFlash .5s ease;
-}
-@keyframes motivFlash {
-    0%{opacity:0;transform:translateY(8px);}
-    100%{opacity:1;transform:translateY(0);}
-}
-
 /* Esercizio corrente */
 .ses-exercise {
     flex:1;padding:12px 20px;
@@ -785,12 +763,6 @@ body.in-session .ctn { padding:0;max-width:100%; }
         <span class="ses-counter" id="sesExCount">1/5</span>
     </div>
 
-    <!-- Percentuale + motivazione -->
-    <div class="ses-motiv-area">
-        <div class="ses-pct" id="sesPct">0%</div>
-        <div class="ses-motiv" id="sesMotiv">💪 Pronto? Spacca tutto!</div>
-    </div>
-
     <!-- Esercizio corrente -->
     <div class="ses-exercise" id="sesExCard">
         <div class="ses-ex-name" id="sesExName">—</div>
@@ -881,6 +853,41 @@ body.in-session .ctn { padding:0;max-width:100%; }
     </div>
 </div>
 </div>
+<!-- MODAL: PROGRESSION MANAGER -->
+<div id="mProgManager" class="modal" onclick="if(event.target===this)this.style.display='none'">
+<div class="mc" style="max-width:500px;">
+    <h2 id="pmTitle">⚡ Progressione</h2>
+    <p style="font-size:.75rem;color:var(--tx2);text-align:center;margin-bottom:16px;">Scegli la strategia di sovraccarico per le prossime serie.</p>
+    
+    <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="applyProgType('weight')" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--acc);">
+            <span style="font-size:1.5rem;">🏋️</span>
+            <div>
+                <div style="font-weight:700;color:var(--acc);">Overload di Carico</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Aumenta il peso di 2.5kg, riduce 1 Rep. Ideale per la forza.</div>
+            </div>
+        </button>
+        
+        <button onclick="applyProgType('volume')" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--yel);">
+            <span style="font-size:1.5rem;">📈</span>
+            <div>
+                <div style="font-weight:700;color:var(--yel);">Overload di Volume</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Mantieni il peso attuale, aggiungi 1 Rep. Ideale per ipertrofia.</div>
+            </div>
+        </button>
+        
+        <button onclick="applyProgType('deload')" style="display:flex;align-items:center;text-align:left;gap:12px;padding:16px;background:var(--c2);border:1px solid var(--red);">
+            <span style="font-size:1.5rem;">📉</span>
+            <div>
+                <div style="font-weight:700;color:var(--red);">Scarico (Deload)</div>
+                <div style="font-size:.7rem;color:var(--tx2);font-weight:400;margin-top:2px;">Riduci il peso del 10%. Utile per recuperare o curare la tecnica.</div>
+            </div>
+        </button>
+    </div>
+    
+    <button class="bs" onclick="document.getElementById('mProgManager').style.display='none'" style="width:100%;margin-top:16px;padding:14px;">Annulla</button>
+</div>
+</div>
 <!-- MODAL: PROGRESSIONE -->
 <div id="mProg" class="modal" onclick="if(event.target===this)this.style.display='none'">
 <div class="mc" style="max-width:500px;">
@@ -949,6 +956,7 @@ function toLocalDate(d) {
 // ============================================================
 let D = null, EX_DB = [], curDay = null, mf = 'all';
 let ssTarget = null;
+let progTargetUid = null;
 
 // Session state
 let sesActive = false;
@@ -1298,7 +1306,8 @@ function renEC(ex) {
     }
     h += `<button class="btn-icon" onclick="event.stopPropagation();showProgression('${ex.exerciseId}','${safeName}')">📈</button>`;
     h += `<button class="btn-icon" onclick="event.stopPropagation();openSSModal('${ex.uid}')" style="color:var(--pur2);">${ex.ssG ? '🔗✓' : '🔗'}</button>`;
-    h += `<button class="btn-icon" onclick="event.stopPropagation();remEx('${ex.uid}')" style="color:var(--red);">🗑️</button>`;
+	h += `<button class="btn-icon" onclick="event.stopPropagation();openProgManager('${ex.uid}')" style="color:var(--yel);" title="Gestisci Progressione">⚡</button>`;
+	h += `<button class="btn-icon" onclick="event.stopPropagation();remEx('${ex.uid}')" style="color:var(--red);">🗑️</button>`;
     h += `<div class="reorder-btns">
         <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',-1)">▲</button>
         <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',1)">▼</button>
@@ -1576,6 +1585,44 @@ function moveEx(exUid, dir) {
     save(); renDay();
     if (navigator.vibrate) navigator.vibrate(15);
 }
+// ===== PROGRESSION MANAGER =====
+function openProgManager(exUid) {
+    const ex = fEx(exUid);
+    if (!ex || !ex.sd || ex.sd.length === 0) return;
+    
+    progTargetUid = exUid;
+    document.getElementById('pmTitle').textContent = '⚡ ' + ex.name;
+    document.getElementById('mProgManager').style.display = 'flex';
+}
+
+function applyProgType(type) {
+    const ex = fEx(progTargetUid);
+    if (!ex || !ex.sd) return;
+
+    ex.sd.forEach(s => {
+        let w = parseFloat(s.w) || 0;
+        let r = parseInt(s.r) || 0;
+
+        if (type === 'weight') {
+            s.w = (w + 2.5).toFixed(1); // +2.5kg
+            s.r = Math.max(1, r - 1);   // -1 Rep
+        } else if (type === 'volume') {
+            s.r = r + 1;                // +1 Rep, stesso peso
+        } else if (type === 'deload') {
+            s.w = (w * 0.9).toFixed(1); // -10% peso
+        }
+        
+        // Rimuove gli .0 inutili (es. 80.0 diventa 80)
+        if (s.w % 1 === 0) s.w = parseInt(s.w);
+        s.done = false; // Resetta le spunte per eseguirle
+    });
+
+    save();
+    renDay();
+    document.getElementById('mProgManager').style.display = 'none';
+    toast('⚡ Parametri aggiornati!', 'ok');
+    if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
+}
 function remEx(u) {
     const ex = fEx(u);
     if (!ex) return;
@@ -1729,18 +1776,6 @@ function showProgression(exId, exName) {
 // ============================================================
 // 🏋️ SESSION MODE
 // ============================================================
-const SES_MSGS = {
-    set: ["💪 Vai così!","🔥 Fuoco!","⚡ Forza!","👊 Grande!","🎯 Preciso!","💣 Boom!","🚀 Inarrestabile!","😤 Bestia!","⭐ Perfetto!","🔱 Dominante!","💥 Spacca!","🦁 Leone!"],
-    exDone: ["✅ Completato!","🎯 Fatto! Avanti!","💪 Uno in meno!","🔥 Distrutto!"],
-    mile25: "⚡ 25%! Buon inizio!",
-    mile50: "🔥 Metà strada! Non mollare!",
-    mile75: "🏁 75%! Dacci dentro!",
-    last: "💣 Ultimo! Dai tutto!",
-    start: "💪 Pronto? Spacca tutto!",
-    done: "🎉 Sessione completata! Sei una bestia!"
-};
-
-function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function startSession() {
     const day = gD();
@@ -1788,11 +1823,14 @@ function startSession() {
 
 function exitSession() {
     if (!confirm('Uscire dalla sessione?\nI progressi sono salvati.')) return;
-    sesCleanup();
+    
+    // Ripristina la UI alla schermata della giornata
     document.getElementById('vSession').style.display = 'none';
     document.getElementById('vDay').style.display = 'block';
     document.body.classList.remove('in-session');
     sesActive = false;
+    
+    // Ricarica la vista aggiornata
     renDay();
 }
 
@@ -1879,41 +1917,12 @@ function sesRender() {
         document.getElementById('sesReps').value = s.r || '';
         document.getElementById('sesKg').value = s.w || '';
     }
-
-    // Motivazione (solo aggiorna se non è appena stata flashata)
-    sesUpdateMotivation(globalPct, exs);
 }
 
 function sesGetCurrentSetIdx(ex) {
     if (!ex.sd) return 0;
     const idx = ex.sd.findIndex(s => !s.done);
     return idx >= 0 ? idx : ex.sd.length - 1;
-}
-
-function sesUpdateMotivation(pct, exs) {
-    const el = document.getElementById('sesMotiv');
-    let msg = '';
-    if (pct === 0) msg = SES_MSGS.start;
-    else if (pct >= 75 && pct < 100) msg = SES_MSGS.mile75;
-    else if (pct >= 50) msg = SES_MSGS.mile50;
-    else if (pct >= 25) msg = SES_MSGS.mile25;
-
-    if (sesExIdx === exs.length - 1 && pct < 100) msg = SES_MSGS.last;
-
-    if (msg && el.textContent !== msg) {
-        el.textContent = msg;
-        el.classList.remove('flash');
-        void el.offsetWidth;
-        el.classList.add('flash');
-    }
-}
-
-function sesFlashMotivation(msg) {
-    const el = document.getElementById('sesMotiv');
-    el.textContent = msg;
-    el.classList.remove('flash');
-    void el.offsetWidth;
-    el.classList.add('flash');
 }
 
 // ===== Check set (con Logica Superserie Alternate) =====
@@ -1971,20 +1980,15 @@ function sesCheck() {
     }
 
     if (allExDone) {
-        sesFlashMotivation(randomFrom(SES_MSGS.exDone));
         sesRender();
-        setTimeout(() => sesShowSummary(), 1500);
+        setTimeout(() => sesShowSummary(), 800); // Ridotto a 800ms per non far aspettare
     } else if (nextExIdx !== sesExIdx && nextExIdx !== -1) {
-        // Stiamo cambiando esercizio (o per superserie o per esercizio successivo)
-        sesFlashMotivation(ex.ssG ? "🔄 Superserie! Passa all'altro!" : randomFrom(SES_MSGS.exDone));
         sesRender();
         setTimeout(() => {
             sesExIdx = nextExIdx;
             sesRender();
-        }, 1500);
+        }, 800); // Transizione più veloce
     } else {
-        // Stesso esercizio, prossima serie
-        sesFlashMotivation(randomFrom(SES_MSGS.set));
         sesRender();
     }
 }
