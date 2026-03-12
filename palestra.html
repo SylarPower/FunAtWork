@@ -312,16 +312,26 @@
 			    border-radius:10px;padding:0 12px;font-size:.78rem;
 			    min-width:auto;width:auto;height:38px;
 			}
-			.reorder-btns {
-			    display:flex;gap:3px;margin-left:auto;
-			}
-			.reorder-btn {
-			    width:34px;height:28px;border-radius:8px;border:1px solid var(--brd);
-			    background:var(--c2);color:var(--tx2);font-size:.72rem;
+			/* ===== DRAG & DROP ===== */
+			.drag-handle {
 			    display:flex;align-items:center;justify-content:center;
-			    cursor:pointer;padding:0;transition:all .15s;min-height:28px;
+			    width:36px;height:36px;border-radius:10px;
+			    color:var(--tx3);font-size:1.1rem;cursor:grab;
+			    touch-action:none;user-select:none;-webkit-user-select:none;
+			    transition:all .15s;flex-shrink:0;
 			}
-			.reorder-btn:active { background:var(--acc);color:#000;transform:scale(.9); }
+			.drag-handle:active { color:var(--acc);transform:scale(.9); }
+			.drag-ghost {
+			    position:fixed;z-index:99998;pointer-events:none;
+			    opacity:.88;border-radius:16px;
+			    box-shadow:0 12px 40px rgba(0,0,0,.5);
+			    transform:scale(1.02);
+			}
+			[data-theme="light"] .drag-ghost { box-shadow:0 12px 40px rgba(0,0,0,.2); }
+			.drag-source { opacity:.25!important;transition:opacity .15s; }
+			.drag-target { box-shadow:0 -3px 0 0 var(--acc)!important;transition:box-shadow .1s; }
+			body.is-dragging { overflow:hidden!important;overscroll-behavior:none; }
+			body.is-dragging * { cursor:grabbing!important; }
         /* ===== PROGRESS COUNTER ===== */
         .progress-info {
             display:flex;justify-content:space-between;align-items:center;
@@ -1462,12 +1472,13 @@ function renDays() {
         c.innerHTML = '<div class="emp"><div class="eic">📋</div>Nessuna giornata creata.<br><small style="color:var(--tx3)">Scrivi un nome e premi "+ Giorno"</small></div>';
         return;
     }
-	c.innerHTML = D.days.map(d => {
+	c.innerHTML = D.days.map((d, i) => {
 		 const n = d.exs ? d.exs.length : 0;
 		 const doneWeek = isDoneThisWeek(d.id);
 		 return `
-		 <div class="dc fade-in ${doneWeek ? 'dc-done' : ''}" onclick="goDay('${d.id}')">
-			  <div>
+		 <div class="dc fade-in ${doneWeek ? 'dc-done' : ''}" data-drag-idx="${i}" onclick="goDay('${d.id}')">
+			  <span class="drag-handle" ontouchstart="dragStart(event,'day')" onmousedown="dragStart(event,'day')" onclick="event.stopPropagation()">☰</span>
+			  <div style="flex:1;min-width:0;">
 					<h4>${doneWeek ? '✅' : '📅'} ${d.name}</h4>
 					<span>${n} eserciz${n === 1 ? 'io' : 'i'}${doneWeek ? ' • fatto questa settimana' : ''}</span>
 			  </div>
@@ -1587,23 +1598,27 @@ function renDay() {
 
     // Exercise cards (con raggruppamento superserie)
     const rendered = new Set();
+    let dragIdx = 0;
     day.exs.forEach(ex => {
         if (rendered.has(ex.uid)) return;
         if (ex.ssG) {
             const group = day.exs.filter(e => e.ssG === ex.ssG);
-            h += `<div class="ss-group fade-in">`;
+            h += `<div class="ss-group fade-in" data-drag-idx="${dragIdx}">`;
             h += `<div class="ss-header">
+                <span class="drag-handle" ontouchstart="dragStart(event,'ex')" onmousedown="dragStart(event,'ex')" onclick="event.stopPropagation()">☰</span>
                 <span class="ss-label">🔗 Superserie (${group.length})</span>
                 <button class="ss-break" onclick="breakSS('${ex.ssG}')">Sciogli</button>
             </div>`;
             group.forEach(gex => {
-                try { h += renEC(gex); } catch(e) { console.error(e); }
+                try { h += renEC(gex, false); } catch(e) { console.error(e); }
                 rendered.add(gex.uid);
             });
             h += `</div>`;
+            dragIdx++;
         } else {
-            try { h += renEC(ex); } catch(e) { console.error(e); }
+            try { h += renEC(ex, true, dragIdx); } catch(e) { console.error(e); }
             rendered.add(ex.uid);
+            dragIdx++;
         }
     });
 
@@ -1628,7 +1643,7 @@ function renDay() {
 // ============================================================
 // 🏋️ EXERCISE CARD RENDER
 // ============================================================
-function renEC(ex) {
+function renEC(ex, showDrag, dragIdx) {
     const d = exDef(ex.exerciseId);
     const mColor = d ? getMuscleColor(d.group) : 'var(--acc)';
     const safeName = (ex.name || '').replace(/'/g, "\\'");
@@ -1641,15 +1656,18 @@ function renEC(ex) {
     const allDone = done === total && total > 0;
     const isOpen = openExercises.has(ex.uid);
 
-    let h = `<div class="ex-card fade-in" style="border-left:5px solid ${mColor};">`;
+    const dragAttr = (showDrag && dragIdx !== undefined) ? ` data-drag-idx="${dragIdx}"` : '';
+    let h = `<div class="ex-card fade-in"${dragAttr} style="border-left:5px solid ${mColor};">`;
 
     // === HEADER (sempre visibile, cliccabile) ===
+    const dragHandle = showDrag ? `<span class="drag-handle" ontouchstart="dragStart(event,'ex')" onmousedown="dragStart(event,'ex')" onclick="event.stopPropagation()">☰</span>` : '';
     h += `<div class="ex-header" onclick="togEx('${ex.uid}')" style="cursor:pointer;">
         <div class="ex-info">
             <h4 style="margin:0;font-size:1.05rem;">${ex.name}</h4>
             <small>${d ? d.group : ''}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
+            ${dragHandle}
             <span class="ex-summary-badge ${allDone ? 'done-badge' : 'todo-badge'}">
                 ${allDone ? '✅' : done + '/' + total}
             </span>
@@ -1672,10 +1690,6 @@ function renEC(ex) {
     h += `<button class="btn-icon" onclick="event.stopPropagation();openSSModal('${ex.uid}')" style="color:var(--pur2);">${ex.ssG ? '🔗✓' : '🔗'}</button>`;
 	h += `<button class="btn-icon" onclick="event.stopPropagation();openProgManager('${ex.uid}')" style="color:var(--yel);" title="Gestisci Progressione">⚡</button>`;
 	h += `<button class="btn-icon" onclick="event.stopPropagation();remEx('${ex.uid}')" style="color:var(--red);">🗑️</button>`;
-    h += `<div class="reorder-btns">
-        <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',-1)">▲</button>
-        <button class="reorder-btn" onclick="event.stopPropagation();moveEx('${ex.uid}',1)">▼</button>
-    </div>`;
     h += `</div>`;
 
     // Media (video)
@@ -2065,15 +2079,151 @@ function breakSS(groupId) {
     save(); renDay();
     toast('🔗 Superserie sciolta', 'info');
 }
-function moveEx(exUid, dir) {
+// ============================================================
+// 🔀 DRAG & DROP SYSTEM
+// ============================================================
+let dragState = null;
+
+function dragStart(e, type) {
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+
+    const ptr = e.touches ? e.touches[0] : e;
+    const handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+    const item = handle.closest('[data-drag-idx]');
+    if (!item) return;
+
+    const container = item.parentElement;
+    const rect = item.getBoundingClientRect();
+
+    const ghost = item.cloneNode(true);
+    ghost.className = 'drag-ghost';
+    ghost.style.width = rect.width + 'px';
+    ghost.style.top = rect.top + 'px';
+    ghost.style.left = rect.left + 'px';
+    document.body.appendChild(ghost);
+
+    item.classList.add('drag-source');
+    document.body.classList.add('is-dragging');
+
+    dragState = {
+        type, item, ghost, container,
+        fromIdx: parseInt(item.getAttribute('data-drag-idx')),
+        targetIdx: parseInt(item.getAttribute('data-drag-idx')),
+        offsetY: ptr.clientY - rect.top
+    };
+
+    document.addEventListener('touchmove', dragMove, { passive: false });
+    document.addEventListener('touchend', dragEnd);
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+
+    if (navigator.vibrate) navigator.vibrate(20);
+}
+
+function dragMove(e) {
+    if (!dragState) return;
+    if (e.cancelable) e.preventDefault();
+
+    const ptr = e.touches ? e.touches[0] : e;
+    dragState.ghost.style.top = (ptr.clientY - dragState.offsetY) + 'px';
+
+    // Auto-scroll near edges
+    const zone = 60;
+    if (ptr.clientY < zone) window.scrollBy(0, -10);
+    else if (ptr.clientY > window.innerHeight - zone) window.scrollBy(0, 10);
+
+    // Find target
+    const items = [...dragState.container.querySelectorAll(':scope > [data-drag-idx]')];
+    let targetIdx = dragState.fromIdx;
+
+    items.forEach(el => {
+        el.classList.remove('drag-target');
+        const r = el.getBoundingClientRect();
+        if (ptr.clientY >= r.top && ptr.clientY <= r.bottom) {
+            targetIdx = parseInt(el.getAttribute('data-drag-idx'));
+            if (targetIdx !== dragState.fromIdx) el.classList.add('drag-target');
+        }
+    });
+
+    dragState.targetIdx = targetIdx;
+}
+
+function dragEnd(e) {
+    if (!dragState) return;
+
+    dragState.ghost.remove();
+    dragState.item.classList.remove('drag-source');
+    document.body.classList.remove('is-dragging');
+
+    const items = [...dragState.container.querySelectorAll(':scope > [data-drag-idx]')];
+    items.forEach(el => el.classList.remove('drag-target'));
+
+    document.removeEventListener('touchmove', dragMove);
+    document.removeEventListener('touchend', dragEnd);
+    document.removeEventListener('mousemove', dragMove);
+    document.removeEventListener('mouseup', dragEnd);
+
+    const from = dragState.fromIdx;
+    const to = dragState.targetIdx;
+    const type = dragState.type;
+    dragState = null;
+
+    if (from !== to) {
+        if (type === 'ex') applyExReorder(from, to);
+        else if (type === 'day') applyDayReorder(from, to);
+    }
+}
+
+// ===== Helpers per riordinamento esercizi =====
+function getExGroups(day) {
+    const groups = [];
+    const seen = new Set();
+    day.exs.forEach(ex => {
+        if (seen.has(ex.uid)) return;
+        if (ex.ssG) {
+            const members = day.exs.filter(e => e.ssG === ex.ssG);
+            members.forEach(m => seen.add(m.uid));
+            groups.push(members.map(m => m.uid));
+        } else {
+            seen.add(ex.uid);
+            groups.push([ex.uid]);
+        }
+    });
+    return groups;
+}
+
+function applyExReorder(fromIdx, toIdx) {
     const day = gD();
     if (!day) return;
-    const idx = day.exs.findIndex(e => e.uid === exUid);
-    if (idx < 0) return;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= day.exs.length) return;
-    [day.exs[idx], day.exs[newIdx]] = [day.exs[newIdx], day.exs[idx]];
-    save(); renDay();
+    const groups = getExGroups(day);
+    if (fromIdx < 0 || fromIdx >= groups.length || toIdx < 0 || toIdx >= groups.length) return;
+
+    const [moved] = groups.splice(fromIdx, 1);
+    groups.splice(toIdx, 0, moved);
+
+    const newExs = [];
+    groups.forEach(uids => {
+        uids.forEach(uid => {
+            const ex = day.exs.find(e => e.uid === uid);
+            if (ex) newExs.push(ex);
+        });
+    });
+    day.exs = newExs;
+    save();
+    renDay();
+    toast('✅ Ordine aggiornato', 'info', 1000);
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function applyDayReorder(fromIdx, toIdx) {
+    if (fromIdx < 0 || fromIdx >= D.days.length || toIdx < 0 || toIdx >= D.days.length) return;
+    const [moved] = D.days.splice(fromIdx, 1);
+    D.days.splice(toIdx, 0, moved);
+    save();
+    renDays();
+    toast('✅ Ordine aggiornato', 'info', 1000);
     if (navigator.vibrate) navigator.vibrate(15);
 }
 // ===== PROGRESSION MANAGER =====
