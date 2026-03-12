@@ -2871,7 +2871,13 @@ function toggleTheme() {
         renderAll();
         console.log('5. Done!');
         toast('👋 Ciao ' + MIO + '!', 'info', 2000);
-    } catch(e) {
+        // Registra Service Worker per PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('✅ Service Worker registrato'))
+                .catch(err => console.warn('SW error:', err));
+        }
+		} catch(e) {
         console.error('❌ ERRORE INIT:', e);
 
         const loader = document.getElementById('vLoad');
