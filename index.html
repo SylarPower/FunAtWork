@@ -529,6 +529,9 @@
 						<div class="game-card" onclick="selezionaGioco('pictionary', this)" id="game-pictionary">
 						    <span style="font-size:2rem;">🎨</span><br>Pictionary
 						</div>
+						<div class="game-card" onclick="selezionaGioco('gameof15', this)" id="game-gameof15">
+						    <span style="font-size:2rem;">🧩</span><br>Gioco del 15
+						</div>
 						<div class="game-card" onclick="window.location.href='palestra.html'" id="game-palestra">
 						    <span style="font-size:2rem;">🏋️</span><br>Palestra
 						</div>
@@ -641,7 +644,8 @@
 			let partiteCache = {
 			    ruzzle: [],
 			    pictionary: [],
-			    neonwar: []
+			    neonwar: [],
+			    gameof15: []
 			};
 			// ✅ CONFIGURAZIONE GIOCHI (aggiungi qui nuovi giochi)
 			const GIOCHI_CONFIG = {
@@ -758,6 +762,41 @@ pictionary: {
         { id: "guessit", label: "GUESS IT! 🔮", colore: "#9b59b6", testo: "white" }
     ],
     minGiocatori: 2,
+    maxGiocatori: 8
+},
+gameof15: {
+    nome: "Gioco del 15",
+    icona: "🧩",
+    opzioni: [
+        {
+            id: "durata",
+            label: "Tempo Limite",
+            default: "180",
+            valori: [
+                { value: "120", label: "2 min (Sprint)" },
+                { value: "180", label: "3 min (Standard)" },
+                { value: "300", label: "5 min (Relax)" },
+                { value: "600", label: "10 min (Zen)" }
+            ]
+        },
+        {
+            id: "griglia",
+            label: "Griglia",
+            default: "4",
+            valori: [
+                { value: "3", label: "3×3 (Facile)" },
+                { value: "4", label: "4×4 (Classico)" },
+                { value: "5", label: "5×5 (Difficile)" },
+                { value: "6", label: "6×6 (Estremo)" }
+            ]
+        }
+    ],
+    modalita: [
+        { id: "numbers", label: "NUMERI 🔢", colore: "#00ccff", testo: "#000" },
+        { id: "image", label: "IMMAGINE 🖼️", colore: "#ff6600", testo: "white" },
+        { id: "emoji", label: "EMOJI 😀", colore: "#ffd700", testo: "#000" }
+    ],
+    minGiocatori: 1,
     maxGiocatori: 8
 },
 			  // Aggiungerai qui altri giochi in futuro
@@ -915,15 +954,18 @@ function listen() {
         .onSnapshot(snap => {
             partiteCache.ruzzle = [];
             partiteCache.neonwar = [];
-            
-            snap.forEach(doc => {
-                const data = { id: doc.id, ...doc.data() };
-                if (data.gioco === 'neonwar') {
-                    partiteCache.neonwar.push(data);
-                } else {
-                    partiteCache.ruzzle.push(data);
-                }
-            });
+            partiteCache.gameof15 = [];
+			
+	        snap.forEach(doc => {
+	            const data = { id: doc.id, ...doc.data() };
+	            if (data.gioco === 'neonwar') {
+	                partiteCache.neonwar.push(data);
+	            } else if (data.gioco === 'gameof15') {
+	                partiteCache.gameof15.push(data);  // ✅ AGGIUNTO
+	            } else {
+	                partiteCache.ruzzle.push(data);
+	            }
+	        });
             
             renderTutteLePartite();
         });
@@ -1006,6 +1048,9 @@ function renderTutteLePartite() {
     
     // Render NeonWar
     partiteCache.neonwar.forEach(p => renderPartitaRuzzle(p, div));
+    
+    // Render Gioco del 15  ← ✅ AGGIUNTO
+    partiteCache.gameof15.forEach(p => renderPartitaRuzzle(p, div));
     
     // Render Pictionary
     partiteCache.pictionary.forEach(p => renderPartitaPictionary(p, div));
@@ -1878,6 +1923,3 @@ if (giocoSelezionato === 'pictionary') {
 		</script>
 	</body>
 </html>
-
-
-
