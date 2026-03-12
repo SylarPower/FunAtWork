@@ -692,10 +692,8 @@ body.in-session .ctn { padding:0;max-width:100%; }
     display:flex;gap:4px;justify-content:center;position:relative;
 }
 .muscle-map-wrap svg { width:auto; }
-.mm-svg [data-group] { fill:var(--c3);transition:fill .4s ease,filter .4s ease; }
-.mm-svg .mm-body path,
-.mm-svg .mm-body line { stroke:var(--tx3); }
-[data-theme="light"] .mm-svg [data-group] { fill:#ddd; }
+.mm-svg { display:block; }
+.mm-svg [data-group] { transition:fill .4s ease,filter .4s ease; }
 .mm-legend {
     display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:10px 0 4px;
 }
@@ -786,11 +784,11 @@ body.in-session .ctn { padding:0;max-width:100%; }
             </div>
         </div>
 
-        <div class="sg" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+        <div class="sg" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px;">
             <div class="sb"><div class="sn" id="wkDays">0</div><div class="sd">Giorni</div></div>
             <div class="sb"><div class="sn" id="wkExs">0</div><div class="sd">Esercizi</div></div>
-            <div class="sb"><div class="sn" id="wkDone">0</div><div class="sd">Fatti (sett.)</div></div>
         </div>
+        <div id="missingGroups" style="margin-bottom:16px;"></div>
 
         <div class="mm-bg">
             <div class="mm-breathe" id="weeklyMuscleMap"></div>
@@ -1364,7 +1362,6 @@ function renderWeeklyOverview() {
     // Stats
     document.getElementById('wkDays').textContent = wd.totalDays;
     document.getElementById('wkExs').textContent = wd.totalExercises;
-    document.getElementById('wkDone').textContent = wd.weekDaysDone;
 
     // Coverage ring
     const pct = wd.coverage;
@@ -1377,18 +1374,48 @@ function renderWeeklyOverview() {
     const covCount = document.getElementById('covCount');
     if (covCount) covCount.textContent = wd.allGroups.length + '/' + wd.totalPossibleGroups + ' gruppi';
 
+    // Gruppi mancanti
+    const allPossible = Object.keys(MUSCLE_COLORS);
+    const missing = allPossible.filter(g => !wd.allGroups.includes(g));
+    const missingEl = document.getElementById('missingGroups');
+    if (missingEl) {
+        if (wd.allGroups.length === 0) {
+            missingEl.innerHTML = `<div style="text-align:center;padding:10px;color:var(--tx3);font-size:.8rem;">
+                Aggiungi esercizi per vedere la copertura muscolare
+            </div>`;
+        } else if (missing.length === 0) {
+            missingEl.innerHTML = `<div style="text-align:center;padding:10px;color:var(--grn);font-size:.8rem;font-weight:600;">
+                ✅ Tutti i gruppi muscolari coperti!
+            </div>`;
+        } else {
+            missingEl.innerHTML = `
+                <div style="font-size:.72rem;color:var(--tx2);margin-bottom:8px;font-weight:600;">
+                    ⚠️ Gruppi non coperti dalla scheda:
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    ${missing.map(g => `<span style="padding:4px 12px;border-radius:12px;font-size:.7rem;
+                        font-weight:600;background:rgba(207,102,121,.1);color:var(--red);
+                        border:1px solid rgba(207,102,121,.2);">${g}</span>`).join('')}
+                </div>`;
+        }
+    }
+
     // Muscle map
     renderMuscleMap('weeklyMuscleMap', wd.allGroups, 220);
 
     // Legend
     const legendEl = document.getElementById('mmLegend');
     if (legendEl) {
-        legendEl.innerHTML = wd.allGroups.map(g =>
-            `<div class="mm-legend-item">
-                <div class="mm-legend-dot" style="background:${MUSCLE_COLORS[g] || '#03dac6'}"></div>
-                <span>${g}</span>
-            </div>`
-        ).join('');
+        if (wd.allGroups.length > 0) {
+            legendEl.innerHTML = wd.allGroups.map(g =>
+                `<div class="mm-legend-item">
+                    <div class="mm-legend-dot" style="background:${MUSCLE_COLORS[g] || '#03dac6'}"></div>
+                    <span>${g}</span>
+                </div>`
+            ).join('');
+        } else {
+            legendEl.innerHTML = '';
+        }
     }
 }
 function renderAll() {
@@ -1672,28 +1699,44 @@ h += `<div class="sets-grid-header"><span>SET</span><span>REPS</span><span>KG</s
 // ============================================================
 function renderMuscleMap(container, activeGroups, height) {
     const tpl = document.getElementById('muscleMapTpl');
-    if (!tpl) return;
-    const svgs = tpl.querySelectorAll('svg');
-    if (svgs.length < 2) return;
+    if (!tpl) { console.warn('MM: template non trovato'); return; }
+    const svgs = tpl.querySelectorAll('svg.mm-svg');
+    if (svgs.length < 2) { console.warn('MM: servono 2 SVG, trovati:', svgs.length); return; }
 
     if (typeof container === 'string') container = document.getElementById(container);
-    if (!container) return;
+    if (!container) { console.warn('MM: container non trovato'); return; }
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const inactiveColor = isDark ? '#353550' : '#ccd0d8';
+    const bodyStroke = isDark ? '#484a68' : '#9a9ab0';
+    const aspectRatio = 660.46 / 1206.46;
+    const svgW = Math.round(height * aspectRatio);
 
     const wrap = document.createElement('div');
     wrap.className = 'muscle-map-wrap';
 
     for (let i = 0; i < 2; i++) {
         const svg = svgs[i].cloneNode(true);
-        svg.style.height = height + 'px';
-        svg.style.width = 'auto';
+        svg.removeAttribute('fill');
+        svg.setAttribute('width', svgW);
+        svg.setAttribute('height', height);
+        svg.style.display = 'block';
+
         svg.querySelectorAll('[data-group]').forEach(g => {
             const group = g.getAttribute('data-group');
             if (activeGroups.includes(group)) {
                 const c = MUSCLE_COLORS[group] || '#03dac6';
-                g.style.fill = c;
-                g.style.filter = 'drop-shadow(0 0 4px ' + c + ')';
+                g.setAttribute('fill', c);
+                g.style.filter = 'drop-shadow(0 0 6px ' + c + '80)';
+            } else {
+                g.setAttribute('fill', inactiveColor);
             }
         });
+
+        svg.querySelectorAll('.mm-body path, .mm-body line').forEach(el => {
+            el.setAttribute('stroke', bodyStroke);
+        });
+
         wrap.appendChild(svg);
     }
 
@@ -2553,6 +2596,8 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('gym-theme', next);
     document.getElementById('thBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+    // Rigenera muscle map con i colori del nuovo tema
+    if (D) { try { renderWeeklyOverview(); } catch(e) {} }
 }
 (function() {
     const t = localStorage.getItem('gym-theme') || 'dark';
