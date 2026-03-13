@@ -588,7 +588,21 @@ body.in-session .ctn { padding:0;max-width:100%; }
 }
 .ses-ex-done-icon { font-size:3rem;margin-bottom:8px; }
 .ses-ex-done-text { font-size:1rem;color:var(--grn);font-weight:700; }
-
+.ses-exercise.ses-superserie {
+    border:2px solid rgba(155,89,182,.5);
+    border-radius:20px;margin:0 8px;
+    background:rgba(155,89,182,.03);
+}
+.ses-ss-badge {
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 12px;border-radius:12px;margin-top:6px;
+    font-size:.68rem;font-weight:700;color:var(--pur2);
+    background:rgba(155,89,182,.1);border:1px solid rgba(155,89,182,.25);
+}
+.ses-ss-badge::before {
+    content:'';width:7px;height:7px;border-radius:50%;
+    background:var(--pur2);display:inline-block;
+}
 /* Set area */
 .ses-set-area { width:100%;max-width:380px; }
 .ses-set-label {
@@ -623,14 +637,14 @@ body.in-session .ctn { padding:0;max-width:100%; }
 }
 @media(max-width:360px) { .ses-input-sep { display:none; } }
 .ses-adj-row {
-    display:flex;gap:6px;align-items:center;
+    display:flex;flex-direction:column;gap:4px;align-items:center;
 }
 .ses-adj-btn {
-    width:40px;height:52px;border-radius:12px;border:2px solid var(--brd);
-    background:var(--c2);color:var(--acc);font-size:1.3rem;font-weight:800;
+    width:100%;height:36px;border-radius:10px;border:2px solid var(--brd);
+    background:var(--c2);color:var(--acc);font-size:1.2rem;font-weight:800;
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;padding:0;transition:all .15s;flex-shrink:0;
-    min-height:40px;user-select:none;-webkit-user-select:none;
+    min-height:36px;user-select:none;-webkit-user-select:none;
 }
 .ses-adj-btn:active { background:var(--acc);color:#000;transform:scale(.9);border-color:var(--acc); }
 
@@ -2456,6 +2470,7 @@ function launchSession() {
 
     sesActive = true;
     sesExIdx = 0;
+    sesLastExIdx = -1;
     sesStartTime = Date.now();
 
     const firstUndone = day.exs.findIndex(ex => ex.sd && ex.sd.some(s => !s.done));
@@ -2495,15 +2510,19 @@ function sesClose() {
 }
 
 // ===== Rendering sessione =====
+let sesLastExIdx = -1;
+
 function sesRender() {
     const day = gD();
     if (!day) return;
-    // Ferma tutti i video del precedente esercizio
-    document.querySelectorAll('#sesVideoArea video').forEach(v => v.pause());
+
     const exs = day.exs;
     const ex = exs[sesExIdx];
     if (!ex) return;
     const def = exDef(ex.exerciseId);
+
+    const sameExercise = sesExIdx === sesLastExIdx;
+    sesLastExIdx = sesExIdx;
 
     // Progress globale
     let totalSets = 0, doneSets = 0;
@@ -2514,46 +2533,68 @@ function sesRender() {
     });
     const globalPct = totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
 
-	document.getElementById('sesProgFill').style.width = globalPct + '%';
-	document.getElementById('sesExCount').textContent = (sesExIdx + 1) + '/' + exs.length;
-	
-	// Nascondi prev/next ai limiti
-	document.getElementById('sesBtnPrev').style.visibility = sesExIdx === 0 ? 'hidden' : 'visible';
-	document.getElementById('sesBtnNext').style.visibility = sesExIdx === exs.length - 1 ? 'hidden' : 'visible';
+    document.getElementById('sesProgFill').style.width = globalPct + '%';
+    document.getElementById('sesExCount').textContent = (sesExIdx + 1) + '/' + exs.length;
 
-    // Nome esercizio
-    document.getElementById('sesExName').textContent = ex.name;
-    document.getElementById('sesExDetail').textContent = def ? (def.group + ' • ' + def.eq) : '';
+    // Nascondi prev/next ai limiti
+    document.getElementById('sesBtnPrev').style.visibility = sesExIdx === 0 ? 'hidden' : 'visible';
+    document.getElementById('sesBtnNext').style.visibility = sesExIdx === exs.length - 1 ? 'hidden' : 'visible';
 
-    // Video area (sotto il pulsante fatto)
-    const videoArea = document.getElementById('sesVideoArea');
-    if (videoArea) {
-        if (def && def.media && def.media.length) {
-            const multi = def.media.length > 1;
-            videoArea.innerHTML = `
-                <div class="ses-video-scroll">
-                    ${def.media.map(url =>
-                        `<div class="ses-video-box">
-                            <video loop muted playsinline preload="metadata"
-                                poster="" onclick="sesToggleVideo(this)">
-                                <source src="${url}" type="video/mp4">
-                            </video>
-                        </div>`
-                    ).join('')}
-                </div>
-                ${multi ? '<div class="ses-video-hint">⟵ Scorri per altre angolazioni ⟶</div>' : ''}
-            `;
-        } else {
-            videoArea.innerHTML = '';
+    // Superserie: bordo viola
+    const sesExCard = document.getElementById('sesExCard');
+    if (ex.ssG) {
+        sesExCard.classList.add('ses-superserie');
+    } else {
+        sesExCard.classList.remove('ses-superserie');
+    }
+
+    // Solo se cambia esercizio: aggiorna nome, dettagli, video
+    if (!sameExercise) {
+        // Ferma video precedenti
+        document.querySelectorAll('#sesVideoArea video').forEach(v => v.pause());
+
+        // Nome
+        document.getElementById('sesExName').textContent = ex.name;
+
+        // Dettaglio + badge superserie
+        let detailHTML = def ? (def.group + ' • ' + def.eq) : '';
+        if (ex.ssG) {
+            const ssGroup = day.exs.filter(e => e.ssG === ex.ssG);
+            const ssNames = ssGroup.map(e => e.name);
+            const myPos = ssGroup.findIndex(e => e.uid === ex.uid) + 1;
+            detailHTML += `<div class="ses-ss-badge">Superserie ${myPos}/${ssGroup.length}: ${ssNames.join(' + ')}</div>`;
+        }
+        document.getElementById('sesExDetail').innerHTML = detailHTML;
+
+        // Video
+        const videoArea = document.getElementById('sesVideoArea');
+        if (videoArea) {
+            if (def && def.media && def.media.length) {
+                const multi = def.media.length > 1;
+                videoArea.innerHTML = `
+                    <div class="ses-video-scroll">
+                        ${def.media.map(url =>
+                            `<div class="ses-video-box">
+                                <video loop muted playsinline preload="metadata"
+                                    onclick="sesToggleVideo(this)">
+                                    <source src="${url}" type="video/mp4">
+                                </video>
+                            </div>`
+                        ).join('')}
+                    </div>
+                    ${multi ? '<div class="ses-video-hint">⟵ Scorri per altre angolazioni ⟶</div>' : ''}
+                `;
+            } else {
+                videoArea.innerHTML = '';
+            }
         }
     }
 
-    // Set dots
-    const dotsEl = document.getElementById('sesSetDots');
+    // Set dots (aggiorna sempre)
     const curSetIdx = sesGetCurrentSetIdx(ex);
     const allSetsDone = ex.sd.every(s => s.done);
 
-    dotsEl.innerHTML = ex.sd.map((s, i) => {
+    document.getElementById('sesSetDots').innerHTML = ex.sd.map((s, i) => {
         let cls = 'ses-dot ';
         if (s.done) cls += 'done';
         else if (i === curSetIdx) cls += 'current';
