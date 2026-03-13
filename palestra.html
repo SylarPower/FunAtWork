@@ -1268,14 +1268,18 @@ function deduplicateExDB() {
             }
         }
     });
-    // Assicura che ogni esercizio abbia un gruppo valido
+
     EX_DB = Object.values(map);
     EX_DB.forEach(e => { if (!e.group) e.group = 'Altro'; });
-    const GROUP_ORDER = ['Spalle','Petto','Tricipiti','Bicipiti','Avambracci','Core','Schiena','Gambe','Cardio'];
+
+    const GROUP_ORDER = ['Spalle','Petto','Bicipiti','Tricipiti','Avambracci','Schiena','Core','Gambe','Cardio'];
     const allGroups = [...new Set(EX_DB.map(e => e.group))];
     const ordered = GROUP_ORDER.filter(g => allGroups.includes(g));
     allGroups.forEach(g => { if (!ordered.includes(g) && g !== 'Altro') ordered.push(g); });
     BPARTS = ['all', ...ordered];
+
+    console.log('Gruppi trovati:', allGroups);
+    console.log('BPARTS:', BPARTS);
 }
 
 // ============================================================
