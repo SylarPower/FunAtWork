@@ -421,9 +421,9 @@
 		}
 		.ses-rpe-input {
 		    width:60px;padding:14px 4px;text-align:center;border-radius:14px;
-		    border:2px solid var(--brd);background:var(--c2);color:var(--yel);
+		    border:2px solid var(--brd);background:var(--c2);color:var(--tx);
 		    font-size:1.3rem;font-weight:800;font-family:'SF Mono',Menlo,monospace;
-		    transition:border-color .2s;
+		    transition:all .2s;
 		}
 		.ses-rpe-input:focus { border-color:var(--yel); }
 		.ses-rpe-adj {
@@ -568,7 +568,9 @@ body.in-session .topbar { display:none; }
 body.in-session .bn { display:none; }
 body.in-session { padding-bottom:0; }
 body.in-session .ctn { padding:0;max-width:100%; }
-
+.ses-nav { display:none; }
+body.in-session .ses-nav { display:flex; }
+		
 #vSession {
     min-height:100vh;min-height:100dvh;
     display:flex;flex-direction:column;
@@ -606,8 +608,9 @@ body.in-session .ctn { padding:0;max-width:100%; }
 
 /* Esercizio corrente */
 .ses-exercise {
-    flex:1;padding:12px 20px;
+    flex:1;padding:8px 16px;
     display:flex;flex-direction:column;align-items:center;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .ses-ex-name {
     font-size:1.4rem;font-weight:800;color:var(--tx);
@@ -630,6 +633,7 @@ body.in-session .ctn { padding:0;max-width:100%; }
 }
 .ses-video-box video {
     width:100%;display:block;border-radius:14px;max-height:220px;
+    object-fit:contain;
 }
 .ses-video-scroll {
     display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;
@@ -1030,7 +1034,7 @@ body.in-session .ctn { padding:0;max-width:100%; }
                 </div>
                 <div class="ses-rpe-wrap">
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',1)">+</button>
-                    <input type="number" inputmode="numeric" id="sesRpe" class="ses-rpe-input" placeholder="-" min="1" max="10">
+                     <input type="number" inputmode="numeric" id="sesRpe" class="ses-rpe-input" placeholder="-" min="1" max="10" oninput="updateRpeColor(this)">
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',-1)">−</button>
                     <label>RPE</label>
                 </div>
@@ -1043,7 +1047,7 @@ body.in-session .ctn { padding:0;max-width:100%; }
         </div>
 
         <!-- Video sotto il pulsante fatto -->
-        <div id="sesVideoArea" style="width:100%;max-width:380px;margin-top:16px;"></div>
+        <div id="sesVideoArea" style="width:100%;max-width:380px;margin-top:10px;"></div>
     </div>
 
 	<!-- Navigazione esercizi -->
@@ -1668,23 +1672,26 @@ function isDeloadWeek(week) {
 
 function editProgramStart() {
     const current = D.st.programStart || '';
-    const val = prompt('Data inizio programma (YYYY-MM-DD):', current || toLocalDate(new Date()));
+    const today = toLocalDate(new Date());
+    const val = prompt('📅 Data inizio programma (AAAA-MM-GG):\n\nEsempio: ' + today, current || today);
     if (val === null) return;
     if (val === '') {
-        D.st.programStart = null;
-        save();
-        renderPhaseIndicator();
-        toast('📅 Fase rimossa', 'info');
+        delete D.st.programStart;
+        save().then(() => {
+            renderPhaseIndicator();
+            toast('📅 Fase rimossa', 'info');
+        });
         return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-        toast('❌ Formato: YYYY-MM-DD', 'err');
+        toast('❌ Formato non valido. Usa: AAAA-MM-GG', 'err');
         return;
     }
     D.st.programStart = val;
-    save();
-    renderPhaseIndicator();
-    toast('📅 Programma impostato!', 'ok');
+    save().then(() => {
+        renderPhaseIndicator();
+        toast('📅 Programma impostato dal ' + val + '!', 'ok');
+    });
 }
 
 function renderPhaseIndicator() {
@@ -2019,14 +2026,39 @@ function renEC(ex, showDrag, dragIdx) {
             <button class="set-del" onclick="remSet('${ex.uid}',${i})" title="Elimina serie">✕</button>
         </div>`;
     });
-    // Campo tempo
-    h += `<div class="tempo-field">
-        <label>⏱️ Tempo:</label>
-        <input type="text" value="${ex.tempo || ''}" placeholder="es. 3-1-2"
-            oninput="updTempo('${ex.uid}',this.value)"
-            style="font-size:.85rem;">
-        <button class="tb" onclick="event.stopPropagation();document.getElementById('mLegend').style.display='flex'"
-            style="padding:4px 8px;font-size:.65rem;min-height:28px;">❓</button>
+    // Campo tempo smart
+    const tp = (ex.tempo || '').split('-');
+    const tEcc = tp[0] || '';
+    const tPau = tp[1] || '';
+    const tCon = tp[2] || '';
+    h += `<div style="margin-top:8px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:.75rem;font-weight:700;color:var(--tx2);">⏱️ Tempo</span>
+            <button class="tb" onclick="event.stopPropagation();document.getElementById('mLegend').style.display='flex'"
+                style="padding:2px 6px;font-size:.6rem;min-height:22px;border-radius:6px;">❓</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+            <div style="flex:1;text-align:center;">
+                <input type="number" inputmode="numeric" class="set-input" value="${tEcc}"
+                    placeholder="0" min="0" max="10" style="font-size:.9rem;padding:8px 2px;"
+                    oninput="updTempoField('${ex.uid}',0,this.value)">
+                <div style="font-size:.58rem;color:var(--tx3);margin-top:3px;">Eccentrica</div>
+            </div>
+            <span style="color:var(--tx3);font-weight:700;">-</span>
+            <div style="flex:1;text-align:center;">
+                <input type="number" inputmode="numeric" class="set-input" value="${tPau}"
+                    placeholder="0" min="0" max="10" style="font-size:.9rem;padding:8px 2px;"
+                    oninput="updTempoField('${ex.uid}',1,this.value)">
+                <div style="font-size:.58rem;color:var(--tx3);margin-top:3px;">Pausa</div>
+            </div>
+            <span style="color:var(--tx3);font-weight:700;">-</span>
+            <div style="flex:1;text-align:center;">
+                <input type="number" inputmode="numeric" class="set-input" value="${tCon}"
+                    placeholder="0" min="0" max="10" style="font-size:.9rem;padding:8px 2px;"
+                    oninput="updTempoField('${ex.uid}',2,this.value)">
+                <div style="font-size:.58rem;color:var(--tx3);margin-top:3px;">Concentrica</div>
+            </div>
+        </div>
     </div>`;
 	// Campo note
     const noteVal = (ex.note || '').replace(/"/g, '&quot;');
@@ -2229,12 +2261,16 @@ function togVid(exUid) {
 // ✏️ SET OPERATIONS
 // ============================================================
 function fEx(u) { const d = gD(); return d?.exs?.find(e => e.uid === u); }
-function updTempo(exUid, val) {
+function updTempoField(exUid, partIdx, val) {
     const ex = fEx(exUid);
-    if (ex) {
-        ex.tempo = val;
-        save();
-    }
+    if (!ex) return;
+    const parts = (ex.tempo || '0-0-0').split('-');
+    while (parts.length < 3) parts.push('0');
+    parts[partIdx] = val || '0';
+    ex.tempo = parts.join('-');
+    // Se tutto è 0, svuota
+    if (parts.every(p => p === '0' || p === '')) ex.tempo = '';
+    save();
 }
 function updNote(exUid, val) {
     const ex = fEx(exUid);
@@ -2975,7 +3011,9 @@ function sesRender() {
         document.getElementById('sesSetLabel').textContent = 'SET ' + (curSetIdx + 1);
         document.getElementById('sesReps').value = s.r || '';
         document.getElementById('sesKg').value = s.w || '';
-        document.getElementById('sesRpe').value = s.rpe || '';
+        const rpeEl = document.getElementById('sesRpe');
+        rpeEl.value = s.rpe || '';
+        updateRpeColor(rpeEl);
 
         // Suggerimento
         const sugEl = document.getElementById('sesSuggestion');
@@ -3149,6 +3187,28 @@ function sesToggleVideo(videoEl) {
         videoEl.pause();
     }
 }
+function updateRpeColor(el) {
+    const val = parseInt(el.value) || 0;
+    if (val === 0) {
+        el.style.color = 'var(--tx)';
+        el.style.borderColor = 'var(--brd)';
+    } else if (val <= 6) {
+        el.style.color = '#27ae60';
+        el.style.borderColor = '#27ae60';
+    } else if (val <= 7) {
+        el.style.color = '#03dac6';
+        el.style.borderColor = '#03dac6';
+    } else if (val <= 8) {
+        el.style.color = '#f1c40f';
+        el.style.borderColor = '#f1c40f';
+    } else if (val <= 9) {
+        el.style.color = '#e67e22';
+        el.style.borderColor = '#e67e22';
+    } else {
+        el.style.color = '#cf6679';
+        el.style.borderColor = '#cf6679';
+    }
+}
 function sesAdj(inputId, delta) {
     const el = document.getElementById(inputId);
     let val = parseFloat(el.value) || 0;
@@ -3159,6 +3219,7 @@ function sesAdj(inputId, delta) {
         val = Math.max(0, val);
     }
     el.value = val % 1 === 0 ? parseInt(val) : parseFloat(val.toFixed(1));
+    if (inputId === 'sesRpe') updateRpeColor(el);
     if (navigator.vibrate) navigator.vibrate(10);
 }
 
