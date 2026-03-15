@@ -901,7 +901,14 @@ body.in-session .ses-nav { display:flex; }
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <h3>📅 Fase di Allenamento</h3>
-            <button class="tb" onclick="editProgramStart()" style="font-size:.7rem;">⚙️ Imposta</button>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <input type="date" id="programDateInput" 
+                    style="padding:6px 10px;border-radius:8px;border:1px solid var(--brd);
+                    background:var(--c2);color:var(--tx);font-size:.75rem;font-family:inherit;
+                    min-height:34px;max-width:140px;"
+                    onchange="setProgramDate(this.value)">
+                <button class="tb" onclick="clearProgramDate()" style="padding:6px 8px;font-size:.65rem;min-height:34px;" title="Rimuovi">✕</button>
+            </div>
         </div>
         <div id="phaseIndicator"></div>
     </div>
@@ -1670,33 +1677,33 @@ function isDeloadWeek(week) {
     return week % 4 === 0;
 }
 
-function editProgramStart() {
-    const current = D.st.programStart || '';
-    const today = toLocalDate(new Date());
-    const val = prompt('📅 Data inizio programma (AAAA-MM-GG):\n\nEsempio: ' + today, current || today);
-    if (val === null) return;
-    if (val === '') {
-        delete D.st.programStart;
-        save().then(() => {
-            renderPhaseIndicator();
-            toast('📅 Fase rimossa', 'info');
-        });
-        return;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-        toast('❌ Formato non valido. Usa: AAAA-MM-GG', 'err');
-        return;
-    }
+function setProgramDate(val) {
+    if (!val) return;
     D.st.programStart = val;
     save().then(() => {
         renderPhaseIndicator();
-        toast('📅 Programma impostato dal ' + val + '!', 'ok');
+        toast('📅 Programma dal ' + val, 'ok');
+    });
+}
+
+function clearProgramDate() {
+    if (!D.st.programStart) return;
+    if (!confirm('Rimuovere la data di inizio programma?')) return;
+    delete D.st.programStart;
+    const input = document.getElementById('programDateInput');
+    if (input) input.value = '';
+    save().then(() => {
+        renderPhaseIndicator();
+        toast('📅 Fase rimossa', 'info');
     });
 }
 
 function renderPhaseIndicator() {
     const el = document.getElementById('phaseIndicator');
     if (!el) return;
+    // Sync input date
+    const dateInput = document.getElementById('programDateInput');
+    if (dateInput) dateInput.value = D.st.programStart || '';
     const week = getProgramWeek();
     if (!week) {
         el.innerHTML = `<div style="text-align:center;color:var(--tx3);font-size:.8rem;padding:8px;">
