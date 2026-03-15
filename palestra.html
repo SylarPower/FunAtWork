@@ -571,6 +571,9 @@ body.in-session .ctn { padding:0;max-width:100%; }
 body.in-session .ses-nav { display:flex; }
 .ses-nav {
     display:none;gap:8px;padding:12px 16px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+    background:var(--c1);border-top:1px solid var(--brd);
+}
 		
 #vSession {
     min-height:100vh;min-height:100dvh;
