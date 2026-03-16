@@ -608,9 +608,10 @@ body.in-session .ses-nav { display:flex; }
 
 /* Esercizio corrente */
 .ses-exercise {
-    flex:1;min-height:0;padding:8px 16px;
+    flex:1;min-height:0;padding:8px 16px 0;
     display:flex;flex-direction:column;align-items:center;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
+    gap:2px;
 }
 .ses-ex-name {
     font-size:1.4rem;font-weight:800;color:var(--tx);
@@ -740,7 +741,7 @@ body.in-session .ses-nav { display:flex; }
 
 /* Check button */
 .ses-check-btn {
-    width:100%;padding:14px;margin-top:10px;
+    width:100%;padding:14px;margin-top:6px;
     border-radius:16px;border:none;
     background:var(--acc);color:#000;
     font-size:1.1rem;font-weight:800;
@@ -780,8 +781,8 @@ body.in-session .ses-nav { display:flex; }
 /* Summary */
 .ses-summary {
     flex:1;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    padding:30px 20px;text-align:center;
+    align-items:center;justify-content:flex-start;
+    padding:40px 20px 30px;text-align:center;
 }
 .ses-summary-icon { font-size:4rem;margin-bottom:12px; }
 .ses-summary-title {
@@ -1033,7 +1034,12 @@ body.in-session .ses-nav { display:flex; }
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',1)">+</button>
                      <input type="number" inputmode="numeric" id="sesRpe" class="ses-rpe-input" placeholder="-" min="1" max="10" oninput="updateRpeColor(this)">
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',-1)">−</button>
-                    <label>RPE</label>
+                    <label style="display:flex;align-items:center;justify-content:center;gap:3px;">
+                        RPE
+                        <span onclick="document.getElementById('mLegend').style.display='flex'" 
+                            style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:1px 4px;
+                            border-radius:4px;border:1px solid var(--brd);cursor:pointer;">❓</span>
+                    </label>
                 </div>
             </div>
             </div>
@@ -2937,10 +2943,14 @@ function sesRender() {
             noteArea.style.display = ex.note ? 'block' : 'none';
         }
         // Tempo
-        const tempoStr = ex.tempo ? '⏱️ Tempo: ' + ex.tempo : '';
-        if (tempoStr) {
+        if (ex.tempo) {
             document.getElementById('sesExDetail').innerHTML += 
-                `<div style="margin-top:4px;font-size:.72rem;color:var(--yel);font-weight:600;">${tempoStr}</div>`;
+                `<div style="margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <span style="font-size:.72rem;color:var(--yel);font-weight:600;">⏱️ Tempo: ${ex.tempo}</span>
+                    <span onclick="document.getElementById('mLegend').style.display='flex'" 
+                        style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:2px 6px;
+                        border-radius:6px;border:1px solid var(--brd);cursor:pointer;">❓</span>
+                </div>`;
         }
         // Video
         const videoArea = document.getElementById('sesVideoArea');
@@ -3061,8 +3071,15 @@ function buildSuggestionHTML(dayId, ex, setIdx) {
     if (!sug) return '';
 
     const rpeStr = sug.lastRpe ? ' @ RPE ' + sug.lastRpe : '';
+    const lastDate = new Date(last.dt);
+    const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    const giorno = giorni[lastDate.getDay()];
+    const dateStr = giorno + ' ' + lastDate.getDate() + '/' + (lastDate.getMonth()+1);
+    const daysAgo = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+    const agoStr = daysAgo === 0 ? 'oggi' : daysAgo === 1 ? 'ieri' : daysAgo + 'gg fa';
+
     return `<div class="ses-suggestion">
-        <div class="ses-sug-last">📊 Ultima volta: ${sug.lastR} reps × ${sug.lastW}kg${rpeStr}</div>
+        <div class="ses-sug-last">📊 ${dateStr} (${agoStr}): ${sug.lastR} reps × ${sug.lastW}kg${rpeStr}</div>
         <div class="ses-sug-tip">${sug.sugText}</div>
     </div>`;
 }
@@ -3270,11 +3287,11 @@ function sesShowSummary() {
     // Nascondi UI Sessione e mostra il Summary
     const exCard = document.getElementById('sesExCard');
     const sesNav = document.querySelector('.ses-nav');
-    const motivArea = document.querySelector('.ses-motiv-area');
+    const videoArea = document.getElementById('sesVideoArea');
     
     if (exCard) exCard.style.display = 'none';
     if (sesNav) sesNav.style.display = 'none';
-    if (motivArea) motivArea.style.display = 'none';
+    if (videoArea) videoArea.innerHTML = '';
 
     document.getElementById('sesSumMsg').textContent = 'Ottimo lavoro! 💪';
 
