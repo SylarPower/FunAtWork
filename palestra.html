@@ -1720,9 +1720,12 @@ function renderWeeklyOverview() {
                     ⚠️ Gruppi non coperti dalla scheda:
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    ${missing.map(g => `<span style="padding:4px 12px;border-radius:12px;font-size:.7rem;
-                        font-weight:600;background:rgba(207,102,121,.1);color:var(--red);
-                        border:1px solid rgba(207,102,121,.2);">${g}</span>`).join('')}
+                    ${missing.map(g => {
+                        const range = VOLUME_RANGES[g] || { mev:4, mav:10, mrv:16 };
+                        return `<span style="padding:4px 12px;border-radius:12px;font-size:.7rem;
+                            font-weight:600;background:rgba(207,102,121,.1);color:var(--red);
+                            border:1px solid rgba(207,102,121,.2);">${g} <span style="font-size:.55rem;opacity:.7;">(MEV: ${range.mev}+ serie)</span></span>`;
+                    }).join('')}
                 </div>`;
         }
     }
@@ -1735,18 +1738,26 @@ function renderWeeklyOverview() {
     if (legendEl) {
         const sortedGroups = Object.entries(fatigue).sort((a, b) => b[1] - a[1]);
         if (sortedGroups.length > 0) {
-            let legendHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;width:100%;justify-content:center;">
-                <span style="font-size:.6rem;color:var(--tx3);">Basso</span>
-                <div style="height:8px;width:100px;border-radius:4px;
-                    background:linear-gradient(90deg,hsl(48,85%,58%),hsl(24,90%,52%),hsl(0,95%,48%));"></div>
-                <span style="font-size:.6rem;color:var(--tx3);">Alto</span>
+            let legendHTML = `<div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;width:100%;justify-content:center;flex-wrap:wrap;">
+                <span style="font-size:.55rem;color:var(--tx3);">0</span>
+                <div style="height:8px;flex:1;max-width:180px;border-radius:4px;
+                    background:linear-gradient(90deg,hsl(0,0%,45%),hsl(120,65%,42%) 10%,hsl(80,85%,52%) 40%,hsl(40,90%,48%) 70%,hsl(0,95%,42%));"></div>
+                <span style="font-size:.55rem;color:var(--tx3);">MRV</span>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:6px;width:100%;">
+                <span style="font-size:.5rem;color:var(--grn);">● &lt;MEV</span>
+                <span style="font-size:.5rem;color:var(--yel);">● MAV ✓</span>
+                <span style="font-size:.5rem;color:var(--red);">● &gt;MRV ⚠️</span>
             </div>`;
-            legendHTML += sortedGroups.map(([g, ratio]) =>
-                `<div class="mm-legend-item">
+            legendHTML += sortedGroups.map(([g, ratio]) => {
+                const range = VOLUME_RANGES[g] || { mev:4, mav:10, mrv:16 };
+                const setsNum = Math.round(ratio * range.mrv * 10) / 10;
+                const zone = ratio <= 0.4 ? 'sotto MEV' : ratio <= 0.7 ? 'zona MAV ✓' : 'vicino MRV ⚠️';
+                return `<div class="mm-legend-item">
                     <div class="mm-legend-dot" style="background:${fatigueColor(ratio)}"></div>
-                    <span>${g}</span>
-                </div>`
-            ).join('');
+                    <span>${g} <span style="color:var(--tx3);font-size:.55rem;">(~${setsNum} serie, ${zone})</span></span>
+                </div>`;
+            }).join('');
             legendEl.innerHTML = legendHTML;
         } else {
             legendEl.innerHTML = '';
@@ -2210,89 +2221,131 @@ function renEC(ex, showDrag, dragIdx) {
 // ============================================================
 // 🎨 HELPERS
 // ============================================================
+// Range settimanali ottimali (serie dirette per gruppo)
+// MEV = Minimum Effective Volume, MAV = Maximum Adaptive Volume, MRV = Maximum Recoverable Volume
+// Fonte: Renaissance Periodization / Dr. Mike Israetel
+const VOLUME_RANGES = {
+    'Petto':    { mev:8,  mav:14, mrv:20 },
+    'Schiena':  { mev:10, mav:16, mrv:22 },
+    'Spalle':   { mev:6,  mav:12, mrv:18 },
+    'Gambe':    { mev:8,  mav:14, mrv:20 },
+    'Bicipiti': { mev:4,  mav:10, mrv:16 },
+    'Tricipiti':{ mev:4,  mav:10, mrv:14 },
+    'Core':     { mev:0,  mav:8,  mrv:16 },
+    'Avambracci':{ mev:0, mav:6,  mrv:12 },
+};
+
+// Quanto un esercizio compound contribuisce ai muscoli secondari
+const SECONDARY_CREDIT = 0.5;
+
 function getMuscleFatigue() {
-    const GROUP_EFFORT = {
-        'Gambe':1.0, 'Schiena':1.1, 'Petto':1.4, 'Spalle':2.0,
-        'Core':2.5, 'Tricipiti':2.8, 'Bicipiti':3.2, 'Avambracci':4.0,
-    };
-
-    // Soglie di volume "alto" per gruppo (reps × kg × fattore per settimana tipica)
-    const HIGH_VOLUME = {
-        'Gambe':6000, 'Schiena':5500, 'Petto':5000, 'Spalle':3500,
-        'Core':2500, 'Tricipiti':2500, 'Bicipiti':2200, 'Avambracci':1800,
-    };
-
-    const volume = {};
+    const sets = {};
 
     D.days.forEach(day => {
         day.exs.forEach(ex => {
             const def = exDef(ex.exerciseId);
-            if (!def || !def.group || def.group === 'Cardio') return;
-            const factor = GROUP_EFFORT[def.group] || 1.0;
-            if (!ex.sd) return;
+            if (!def || def.group === 'Cardio') return;
+            if (!ex.sd || !ex.sd.length) return;
 
-            ex.sd.forEach(s => {
-                const r = parseInt(s.r) || 0;
-                const w = parseFloat(s.w) || 0;
-                const effectiveW = w > 0 ? w : (r > 0 ? 8 : 0);
-                if (r > 0) {
-                    volume[def.group] = (volume[def.group] || 0) + (r * effectiveW * factor);
-                } else {
-                    volume[def.group] = (volume[def.group] || 0) + factor;
-                }
-            });
-        });
-    });
+            const numSets = ex.sd.length;
 
-    const fatigue = {};
-    Object.keys(volume).forEach(g => {
-        const threshold = HIGH_VOLUME[g] || 3000;
-        fatigue[g] = Math.min(1, volume[g] / threshold);
-    });
-    return fatigue;
-}
-function getDayFatigue(day) {
-    const GROUP_EFFORT = {
-        'Gambe':1.0, 'Schiena':1.1, 'Petto':1.4, 'Spalle':2.0,
-        'Core':2.5, 'Tricipiti':2.8, 'Bicipiti':3.2, 'Avambracci':4.0,
-    };
-    const HIGH_VOLUME = {
-        'Gambe':6000, 'Schiena':5500, 'Petto':5000, 'Spalle':3500,
-        'Core':2500, 'Tricipiti':2500, 'Bicipiti':2200, 'Avambracci':1800,
-    };
+            // RPE intensity factor: RPE 6=0.7, 7=0.8, 8=0.9, 9=1.0, 10=1.1
+            const rpes = ex.sd.map(s => parseInt(s.rpe) || 0).filter(r => r > 0);
+            let rpeFactor = 1.0;
+            if (rpes.length > 0) {
+                const avgRpe = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+                rpeFactor = 0.5 + (avgRpe / 10) * 0.6; // RPE 5→0.8, 7→0.92, 8→0.98, 9→1.04, 10→1.1
+            }
 
-    const volume = {};
-    if (!day || !day.exs) return volume;
+            const effectiveSets = numSets * rpeFactor;
 
-    day.exs.forEach(ex => {
-        const def = exDef(ex.exerciseId);
-        if (!def || !def.group || def.group === 'Cardio') return;
-        const factor = GROUP_EFFORT[def.group] || 1.0;
-        if (!ex.sd) return;
-        ex.sd.forEach(s => {
-            const r = parseInt(s.r) || 0;
-            const w = parseFloat(s.w) || 0;
-            const effectiveW = w > 0 ? w : (r > 0 ? 8 : 0);
-            if (r > 0) {
-                volume[def.group] = (volume[def.group] || 0) + (r * effectiveW * factor);
-            } else {
-                volume[def.group] = (volume[def.group] || 0) + factor;
+            // Gruppo primario: credito pieno
+            if (def.group) {
+                sets[def.group] = (sets[def.group] || 0) + effectiveSets;
+            }
+
+            // Gruppi secondari: credito parziale (compound)
+            if (def.groups && def.groups.length > 1) {
+                def.groups.forEach(g => {
+                    if (g !== def.group && g !== 'Cardio') {
+                        sets[g] = (sets[g] || 0) + effectiveSets * SECONDARY_CREDIT;
+                    }
+                });
             }
         });
     });
 
     const fatigue = {};
-    Object.keys(volume).forEach(g => {
-        const threshold = HIGH_VOLUME[g] || 3000;
-        fatigue[g] = Math.min(1, volume[g] / threshold);
+    Object.keys(sets).forEach(g => {
+        const range = VOLUME_RANGES[g] || { mev:4, mav:10, mrv:16 };
+        // 0→nessun volume, ~0.5→a MAV (ottimale), 1.0→a MRV (limite recupero)
+        fatigue[g] = Math.min(1, sets[g] / range.mrv);
+    });
+    return fatigue;
+}
+function getDayFatigue(day) {
+    const sets = {};
+    if (!day || !day.exs) return sets;
+
+    day.exs.forEach(ex => {
+        const def = exDef(ex.exerciseId);
+        if (!def || def.group === 'Cardio') return;
+        if (!ex.sd || !ex.sd.length) return;
+
+        const numSets = ex.sd.length;
+
+        const rpes = ex.sd.map(s => parseInt(s.rpe) || 0).filter(r => r > 0);
+        let rpeFactor = 1.0;
+        if (rpes.length > 0) {
+            const avgRpe = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+            rpeFactor = 0.5 + (avgRpe / 10) * 0.6;
+        }
+
+        const effectiveSets = numSets * rpeFactor;
+
+        if (def.group) {
+            sets[def.group] = (sets[def.group] || 0) + effectiveSets;
+        }
+
+        if (def.groups && def.groups.length > 1) {
+            def.groups.forEach(g => {
+                if (g !== def.group && g !== 'Cardio') {
+                    sets[g] = (sets[g] || 0) + effectiveSets * SECONDARY_CREDIT;
+                }
+            });
+        }
+    });
+
+    const fatigue = {};
+    Object.keys(sets).forEach(g => {
+        const range = VOLUME_RANGES[g] || { mev:4, mav:10, mrv:16 };
+        fatigue[g] = Math.min(1, sets[g] / range.mrv);
     });
     return fatigue;
 }
 function fatigueColor(ratio) {
-    // 0 = giallo (hue 48), 1 = rosso (hue 0)
-    const hue = Math.round(48 * (1 - ratio));
-    const sat = 85 + Math.round(10 * ratio);
-    const lum = 58 - Math.round(10 * ratio);
+    // 0→grigio (nessun volume), 0-0.4→verde (sotto MAV), 0.4-0.7→giallo (zona MAV ottimale), 0.7-1→rosso (vicino MRV)
+    let hue, sat, lum;
+    if (ratio <= 0.05) {
+        return 'hsl(0,0%,45%)'; // grigio — nessun lavoro
+    } else if (ratio <= 0.4) {
+        // Verde (hue 120) → giallo-verde (hue 80)
+        hue = 120 - Math.round(40 * (ratio / 0.4));
+        sat = 65 + Math.round(20 * (ratio / 0.4));
+        lum = 42 + Math.round(10 * (ratio / 0.4));
+    } else if (ratio <= 0.7) {
+        // Giallo-verde (hue 80) → giallo-arancio (hue 40)
+        const t = (ratio - 0.4) / 0.3;
+        hue = 80 - Math.round(40 * t);
+        sat = 85 + Math.round(10 * t);
+        lum = 52 - Math.round(4 * t);
+    } else {
+        // Arancio (hue 40) → rosso (hue 0)
+        const t = (ratio - 0.7) / 0.3;
+        hue = 40 - Math.round(40 * t);
+        sat = 90 + Math.round(5 * t);
+        lum = 48 - Math.round(6 * t);
+    }
     return 'hsl(' + hue + ',' + sat + '%,' + lum + '%)';
 }
 
