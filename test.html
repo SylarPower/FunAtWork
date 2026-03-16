@@ -635,7 +635,7 @@ body.in-session .ses-nav { display:flex; }
     background:#000;position:relative;
 }
 .ses-video-box video {
-    width:100%;display:block;border-radius:14px;max-height:100px;
+    width:100%;display:block;border-radius:14px;max-height:190px;
     object-fit:contain;
 }
 .ses-video-scroll {
@@ -911,7 +911,20 @@ body.in-session .ses-nav { display:flex; }
     font-family:inherit;
 }
 .ses-timer-skip:active { transform:scale(.95);opacity:.85; }
-        /* ===== MISC ===== */
+/* ===== TIMER TOGGLE ===== */
+.ses-timer-toggle {
+    width:40px;height:40px;border-radius:50%;border:2px solid var(--brd);
+    background:var(--c2);color:var(--tx3);font-size:1rem;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;padding:0;min-height:40px;transition:all .2s;
+    flex-shrink:0;
+}
+.ses-timer-toggle.active {
+    border-color:var(--acc);color:var(--acc);
+    background:rgba(3,218,198,.1);
+    box-shadow:0 0 10px rgba(3,218,198,.2);
+}
+		/* ===== MISC ===== */
         #confetti { position:fixed;inset:0;z-index:99999;pointer-events:none; }
         .emp { text-align:center;padding:30px;color:var(--tx3); }
         .emp .eic { font-size:2.5rem;margin-bottom:8px; }
@@ -1027,6 +1040,7 @@ body.in-session .ses-nav { display:flex; }
             </div>
         </div>
         <span class="ses-counter" id="sesExCount">1/5</span>
+        <button class="ses-timer-toggle" id="sesTimerToggle" onclick="toggleSesTimer()">⏱️</button>
     </div>
     <!-- Rest Timer Overlay -->
     <div class="ses-timer" id="sesTimer" style="display:none;">
@@ -1050,11 +1064,6 @@ body.in-session .ses-nav { display:flex; }
     <div class="ses-exercise" id="sesExCard">
         <div class="ses-ex-name" id="sesExName">—</div>
         <div class="ses-ex-detail" id="sesExDetail">—</div>
-        <div id="sesNote" style="display:none;margin-top:8px;padding:8px 14px;
-            border-radius:10px;background:var(--c2);border:1px solid var(--brd);
-            font-size:.75rem;color:var(--tx2);text-align:center;max-width:380px;
-            white-space:pre-wrap;">
-        </div>
         <!-- Dots dei set -->
         <div class="ses-set-dots" id="sesSetDots"></div>
 
@@ -1098,6 +1107,13 @@ body.in-session .ses-nav { display:flex; }
                     </label>
                 </div>
             </div>
+            <div id="sesTempoInfo" style="display:none;text-align:center;margin-top:6px;
+                padding:4px 8px;border-radius:8px;background:rgba(241,196,15,.08);
+                border:1px solid rgba(241,196,15,.15);max-width:380px;width:100%;"></div>
+            <div id="sesNoteInline" style="display:none;margin-top:4px;padding:6px 12px;
+                border-radius:10px;background:var(--c2);border:1px solid var(--brd);
+                font-size:.72rem;color:var(--tx2);text-align:center;max-width:380px;
+                width:100%;white-space:pre-wrap;"></div>
             <button class="ses-check-btn" id="sesCheckBtn" onclick="sesCheck()">
                 <span class="ses-check-icon">✓</span>
                 <span>FATTO</span>
@@ -2089,6 +2105,19 @@ function renEC(ex, showDrag, dragIdx) {
             </div>
         </div>
     </div>`;
+    // Campo recupero
+    h += `<div style="margin-top:8px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:.75rem;font-weight:700;color:var(--tx2);">⏱️ Recupero tra serie</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" inputmode="numeric" class="set-input" value="${ex.rest || ''}"
+                placeholder="—" min="0" max="600"
+                style="font-size:16px;padding:8px;max-width:100px;text-align:center;"
+                oninput="updRest('${ex.uid}',this.value)">
+            <span style="font-size:.75rem;color:var(--tx3);">secondi</span>
+        </div>
+    </div>`;
 	// Campo note
     const noteVal = (ex.note || '').replace(/"/g, '&quot;');
     h += `<div style="margin-top:10px;">
@@ -2305,6 +2334,13 @@ function updNote(exUid, val) {
     const ex = fEx(exUid);
     if (ex) {
         ex.note = val;
+        save();
+    }
+}
+function updRest(exUid, val) {
+    const ex = fEx(exUid);
+    if (ex) {
+        ex.rest = parseInt(val) || 0;
         save();
     }
 }
@@ -2765,7 +2801,7 @@ function addEx(eid) {
         : [{r:10,w:0,done:false}, {r:10,w:0,done:false}, {r:10,w:0,done:false}];
     day.exs.push({
         uid: uid(), exerciseId: eid, name: d.name, sd,
-        rest: l?.rest || 90, seat: l?.seat || '',
+        rest: l?.rest || 0, seat: l?.seat || '',
         ssG: null, pF: false, note: l?.note || '',
         tempo: l?.tempo || ''
     });
@@ -2897,6 +2933,7 @@ function launchSession() {
     document.getElementById('vDay').style.display = 'none';
     document.getElementById('vSession').style.display = 'flex';
 
+    updateTimerToggleUI();
     sesRender();
     if (navigator.vibrate) navigator.vibrate(30);
 }
@@ -2978,24 +3015,6 @@ function sesRender() {
             detailHTML += `<div class="ses-ss-badge">Superserie ${myPos}/${ssGroup.length}: ${ssNames.join(' + ')}</div>`;
         }
         document.getElementById('sesExDetail').innerHTML = detailHTML;
-        // Nota esercizio
-        const noteArea = document.getElementById('sesNote');
-        if (noteArea) {
-            noteArea.textContent = ex.note || '';
-            noteArea.style.display = ex.note ? 'block' : 'none';
-        }
-        // Tempo
-        if (ex.tempo) {
-            const tParts = ex.tempo.split('-');
-            const tDesc = (tParts[0]||'0') + ' negativa - ' + (tParts[1]||'0') + ' pausa - ' + (tParts[2]||'0') + ' positiva';
-            document.getElementById('sesExDetail').innerHTML += 
-                `<div style="margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
-                    <span style="font-size:.72rem;color:var(--yel);font-weight:600;">⏱️ ${tDesc}</span>
-                    <span onclick="document.getElementById('mLegend').style.display='flex'" 
-                        style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:2px 6px;
-                        border-radius:6px;border:1px solid var(--brd);cursor:pointer;">❓</span>
-                </div>`;
-        }
         // Video
         const videoArea = document.getElementById('sesVideoArea');
         if (videoArea) {
@@ -3026,6 +3045,36 @@ let restTimerId = null;
 let restTimeLeft = 0;
 let restTimeTotal = 0;
 
+// ============================================================
+// ⏱️ TIMER TOGGLE
+// ============================================================
+let sesTimerEnabled = localStorage.getItem('gym-timer') === '1';
+
+function toggleSesTimer() {
+    sesTimerEnabled = !sesTimerEnabled;
+    localStorage.setItem('gym-timer', sesTimerEnabled ? '1' : '0');
+    updateTimerToggleUI();
+    toast(sesTimerEnabled ? '⏱️ Timer recupero abilitato' : '⏱️ Timer recupero disabilitato', 'info', 1500);
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function updateTimerToggleUI() {
+    const btn = document.getElementById('sesTimerToggle');
+    if (btn) {
+        btn.classList.toggle('active', sesTimerEnabled);
+    }
+}
+
+function tryStartRestTimer(ex) {
+    if (!sesTimerEnabled) return;
+    const restTime = parseInt(ex.rest) || 0;
+    if (restTime <= 0) {
+        toast('⏱️ Recupero non impostato per "' + ex.name + '"', 'warn');
+        return;
+    }
+    startRestTimer(restTime);
+}
+	
 function startRestTimer(seconds) {
     if (seconds <= 0) return;
     restTimeTotal = seconds;
@@ -3126,6 +3175,34 @@ function adjRestTimer(delta) {
         const sugEl = document.getElementById('sesSuggestion');
         if (sugEl) {
             sugEl.innerHTML = buildSuggestionHTML(curDay, ex, curSetIdx);
+        }
+
+        // Tempo sotto i controlli
+        const tempoEl = document.getElementById('sesTempoInfo');
+        if (tempoEl) {
+            if (ex.tempo && ex.tempo !== '0-0-0' && ex.tempo !== '--') {
+                const tParts = ex.tempo.split('-');
+                const tDesc = (tParts[0]||'0') + ' negativa - ' + (tParts[1]||'0') + ' pausa - ' + (tParts[2]||'0') + ' positiva';
+                tempoEl.innerHTML = `
+                    <span style="font-size:.72rem;color:var(--yel);font-weight:600;">⏱️ ${tDesc}</span>
+                    <span onclick="document.getElementById('mLegend').style.display='flex'" 
+                        style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:2px 6px;
+                        border-radius:6px;border:1px solid var(--brd);cursor:pointer;margin-left:6px;">❓</span>`;
+                tempoEl.style.display = 'block';
+            } else {
+                tempoEl.style.display = 'none';
+            }
+        }
+
+        // Note sotto il tempo
+        const noteInline = document.getElementById('sesNoteInline');
+        if (noteInline) {
+            if (ex.note) {
+                noteInline.textContent = '📝 ' + ex.note;
+                noteInline.style.display = 'block';
+            } else {
+                noteInline.style.display = 'none';
+            }
         }
     }
 }
@@ -3268,11 +3345,11 @@ function sesCheck() {
         setTimeout(() => {
             sesExIdx = nextExIdx;
             sesRender();
-            startRestTimer(ex.ssG ? 15 : (ex.rest || 90));
+            tryStartRestTimer(ex);
         }, delay);
     } else {
         sesRender();
-        startRestTimer(ex.rest || 90);
+        tryStartRestTimer(ex);
     }
 }
 
