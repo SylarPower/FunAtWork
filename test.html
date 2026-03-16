@@ -570,11 +570,6 @@ body.in-session .bn { display:none; }
 body.in-session { padding-bottom:0; }
 body.in-session .ctn { padding:0;max-width:100%; }
 body.in-session .ses-nav { display:flex; }
-.ses-nav {
-    display:none;gap:8px;padding:12px 16px;
-    padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
-    background:var(--c1);border-top:1px solid var(--brd);
-}
 		
 #vSession {
     min-height:100vh;min-height:100dvh;
@@ -613,7 +608,7 @@ body.in-session .ses-nav { display:flex; }
 
 /* Esercizio corrente */
 .ses-exercise {
-    padding:8px 16px;
+    flex:1;min-height:0;padding:8px 16px;
     display:flex;flex-direction:column;align-items:center;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
@@ -637,7 +632,7 @@ body.in-session .ses-nav { display:flex; }
     background:#000;position:relative;
 }
 .ses-video-box video {
-    width:100%;display:block;border-radius:14px;max-height:220px;
+    width:100%;display:block;border-radius:14px;max-height:140px;
     object-fit:contain;
 }
 .ses-video-scroll {
@@ -761,7 +756,7 @@ body.in-session .ses-nav { display:flex; }
 
 /* Navigazione */
 .ses-nav {
-    display:flex;gap:8px;padding:12px 16px;
+    display:none;gap:8px;padding:12px 16px;
     padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
     background:var(--c1);border-top:1px solid var(--brd);
 }
@@ -1049,7 +1044,7 @@ body.in-session .ses-nav { display:flex; }
         </div>
 
         <!-- Video sotto il pulsante fatto -->
-        <div id="sesVideoArea" style="width:100%;max-width:380px;margin-top:10px;"></div>
+        <div id="sesVideoArea" style="width:100%;max-width:340px;margin-top:4px;align-self:center;"></div>
     </div>
 
 	<!-- Navigazione esercizi -->
@@ -1953,12 +1948,12 @@ function renEC(ex, showDrag, dragIdx) {
     // === HEADER (sempre visibile, cliccabile) ===
     const dragHandle = showDrag ? `<span class="drag-handle" ontouchstart="dragStart(event,'ex')" onmousedown="dragStart(event,'ex')" onclick="event.stopPropagation()">☰</span>` : '';
     h += `<div class="ex-header" onclick="togEx('${ex.uid}')" style="cursor:pointer;">
-        <div class="ex-info">
+        ${dragHandle}
+        <div class="ex-info" style="flex:1;min-width:0;">
             <h4 style="margin:0;font-size:1.05rem;">${ex.name}</h4>
             <small>${d ? d.group : ''}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-            ${dragHandle}
             <span class="ex-summary-badge ${allDone ? 'done-badge' : 'todo-badge'}">
                 ${allDone ? '✅' : done + '/' + total}
             </span>
