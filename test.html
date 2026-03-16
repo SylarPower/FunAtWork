@@ -610,13 +610,9 @@ body.in-session .ses-nav { display:flex; }
 
 /* Esercizio corrente */
 .ses-exercise {
-    flex:1;
-    padding:10px 16px 4px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:space-between;
-    overflow:hidden;
+    flex:1;min-height:0;padding:8px 16px 0;
+    display:flex;flex-direction:column;align-items:center;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .ses-ex-name {
     font-size:1.4rem;font-weight:800;color:var(--tx);
@@ -638,10 +634,7 @@ body.in-session .ses-nav { display:flex; }
     background:#000;position:relative;
 }
 .ses-video-box video {
-    width:100%;
-    display:block;
-    border-radius:14px;
-    max-height:150px;
+    width:100%;display:block;border-radius:14px;max-height:140px;
     object-fit:contain;
 }
 .ses-video-scroll {
@@ -659,7 +652,7 @@ body.in-session .ses-nav { display:flex; }
 /* Dots dei set */
 .ses-set-dots {
     display:flex;gap:8px;justify-content:center;
-    margin:10px 0 6px;flex-wrap:wrap;
+    margin:16px 0 12px;flex-wrap:wrap;
 }
 .ses-dot {
     width:14px;height:14px;border-radius:50%;
@@ -707,7 +700,7 @@ body.in-session .ses-nav { display:flex; }
 .ses-set-label {
     text-align:center;font-size:.75rem;font-weight:800;
     color:var(--tx3);text-transform:uppercase;letter-spacing:2px;
-    margin-bottom:6px;
+    margin-bottom:12px;
 }
 .ses-inputs {
     display:flex;gap:12px;align-items:center;justify-content:center;
@@ -721,10 +714,8 @@ body.in-session .ses-nav { display:flex; }
     letter-spacing:1px;margin-top:6px;
 }
 .ses-input {
-    width:100%;
-    padding:10px 4px;
-    text-align:center;
-    border-radius:14px;border:2px solid var(--brd);
+    width:100%;padding:14px 4px;text-align:center;
+    border-radius:16px;border:2px solid var(--brd);
     background:var(--c2);color:var(--tx);
     font-size:1.5rem;font-weight:800;
     font-family:'SF Mono',Menlo,monospace;
@@ -791,12 +782,9 @@ body.in-session .ses-nav { display:flex; }
 
 /* Summary */
 .ses-summary {
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:20px 20px 20px;
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:flex-start;
+    padding:40px 20px 30px;text-align:center;
 }
 .ses-summary-icon { font-size:4rem;margin-bottom:12px; }
 .ses-summary-title {
@@ -1039,18 +1027,12 @@ body.in-session .ses-nav { display:flex; }
                     </label>
                 </div>
             </div>
-            </div>
-			<div class="ses-ex-name" id="sesExName">—</div>
-			<div class="ses-ex-detail" id="sesExDetail">—</div>
-			
-			<!-- VIDEO QUI -->
-			<div id="sesVideoArea" style="width:100%;max-width:340px;margin-top:8px;"></div>
-			
-			<div id="sesNote" style="display:none;margin-top:8px;padding:8px 14px;
-			    border-radius:10px;background:var(--c2);border:1px solid var(--brd);
-			    font-size:.75rem;color:var(--tx2);text-align:center;max-width:380px;
-			    white-space:pre-wrap;">
-			</div>
+            <button class="ses-check-btn" id="sesCheckBtn" onclick="sesCheck()">
+                <span class="ses-check-icon">✓</span>
+                <span>FATTO</span>
+            </button>
+            <!-- Video sotto il pulsante fatto -->
+            <div id="sesVideoArea" style="width:100%;max-width:340px;margin:4px auto 0;"></div>
         </div>
     </div>
 
