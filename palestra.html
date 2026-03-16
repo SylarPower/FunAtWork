@@ -420,17 +420,17 @@
 		    text-transform:uppercase;letter-spacing:1px;margin-top:6px;
 		}
 		.ses-rpe-input {
-		    width:60px;padding:14px 4px;text-align:center;border-radius:14px;
+		    width:100%;padding:10px 4px;text-align:center;border-radius:16px;
 		    border:2px solid var(--brd);background:var(--c2);color:var(--tx);
 		    font-size:1.3rem;font-weight:800;font-family:'SF Mono',Menlo,monospace;
 		    transition:all .2s;
 		}
 		.ses-rpe-input:focus { border-color:var(--yel); }
 		.ses-rpe-adj {
-		    width:60px;height:36px;border-radius:8px;border:2px solid var(--brd);
-		    background:var(--c2);color:var(--yel);font-size:1rem;font-weight:800;
+		    width:100%;height:50px;border-radius:10px;border:2px solid var(--brd);
+		    background:var(--c2);color:var(--yel);font-size:1.1rem;font-weight:800;
 		    display:flex;align-items:center;justify-content:center;
-		    cursor:pointer;padding:0;min-height:36px;
+		    cursor:pointer;padding:0;min-height:50px;
 		}
 		.ses-rpe-adj:active { background:var(--yel);color:#000; }
 		/* ===== PHASE INDICATOR ===== */
@@ -571,6 +571,7 @@ body.in-session .bn { display:none; }
 body.in-session { padding-bottom:0; }
 body.in-session .ctn { padding:0;max-width:100%; }
 body.in-session .ses-nav { display:flex; }
+#vSession { touch-action:pan-y;overflow-x:hidden; }
 		
 #vSession {
     height:100vh;height:100dvh;
@@ -610,9 +611,8 @@ body.in-session .ses-nav { display:flex; }
 
 /* Esercizio corrente */
 .ses-exercise {
-    flex:1;min-height:0;padding:4px 12px 0;
+    flex:1;min-height:0;padding:8px 16px 0;
     display:flex;flex-direction:column;align-items:center;
-    justify-content:center;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .ses-ex-name {
@@ -635,7 +635,7 @@ body.in-session .ses-nav { display:flex; }
     background:#000;position:relative;
 }
 .ses-video-box video {
-    width:100%;display:block;border-radius:14px;max-height:100px;
+    width:100%;display:block;border-radius:14px;max-height:190px;
     object-fit:contain;
 }
 .ses-video-scroll {
@@ -733,17 +733,17 @@ body.in-session .ses-nav { display:flex; }
     display:flex;flex-direction:column;gap:4px;align-items:center;
 }
 .ses-adj-btn {
-    width:100%;height:30px;border-radius:10px;border:2px solid var(--brd);
+    width:100%;height:50px;border-radius:10px;border:2px solid var(--brd);
     background:var(--c2);color:var(--acc);font-size:1.1rem;font-weight:800;
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;padding:0;transition:all .15s;flex-shrink:0;
-    min-height:30px;user-select:none;-webkit-user-select:none;
+    min-height:50px;user-select:none;-webkit-user-select:none;
 }
 .ses-adj-btn:active { background:var(--acc);color:#000;transform:scale(.9);border-color:var(--acc); }
 
 /* Check button */
 .ses-check-btn {
-    width:100%;padding:10px;margin-top:4px;
+    width:100%;padding:10px;margin-top:24px;margin-bottom:24px;
     border-radius:16px;border:none;
     background:var(--acc);color:#000;
     font-size:1rem;font-weight:800;
@@ -871,9 +871,7 @@ body.in-session .ses-nav { display:flex; }
     font-size:.7rem;font-weight:800;color:var(--tx3);
     text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;
 }
-.ses-timer-ring-wrap {
-    position:relative;width:200px;height:200px;
-}
+.ses-timer-ring-wrap { position:relative;width:200px;height:200px; }
 .ses-timer-ring-wrap svg { position:absolute;inset:0; }
 .ses-timer-svg { transform:rotate(-90deg); }
 .ses-timer-track { fill:none;stroke:var(--c3);stroke-width:8; }
@@ -899,19 +897,27 @@ body.in-session .ses-nav { display:flex; }
 .ses-timer-adj {
     padding:12px 20px;border-radius:12px;border:2px solid var(--brd);
     background:var(--c2);color:var(--tx);font-weight:700;
-    font-size:.85rem;cursor:pointer;min-height:48px;
-    font-family:inherit;
+    font-size:.85rem;cursor:pointer;min-height:48px;font-family:inherit;
 }
 .ses-timer-adj:active { background:var(--c3);transform:scale(.95); }
 .ses-timer-skip {
     padding:14px 36px;border-radius:14px;border:none;
     background:var(--acc);color:#000;font-weight:800;
     font-size:1rem;cursor:pointer;min-height:52px;
-    box-shadow:0 4px 20px rgba(3,218,198,.3);
-    font-family:inherit;
+    box-shadow:0 4px 20px rgba(3,218,198,.3);font-family:inherit;
 }
 .ses-timer-skip:active { transform:scale(.95);opacity:.85; }
-        /* ===== MISC ===== */
+.ses-timer-toggle {
+    width:40px;height:40px;border-radius:50%;border:2px solid var(--brd);
+    background:var(--c2);color:var(--tx3);font-size:1rem;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;padding:0;min-height:40px;transition:all .2s;flex-shrink:0;
+}
+.ses-timer-toggle.active {
+    border-color:var(--acc);color:var(--acc);
+    background:rgba(3,218,198,.1);box-shadow:0 0 10px rgba(3,218,198,.2);
+}
+		/* ===== MISC ===== */
         #confetti { position:fixed;inset:0;z-index:99999;pointer-events:none; }
         .emp { text-align:center;padding:30px;color:var(--tx3); }
         .emp .eic { font-size:2.5rem;margin-bottom:8px; }
@@ -1027,7 +1033,9 @@ body.in-session .ses-nav { display:flex; }
             </div>
         </div>
         <span class="ses-counter" id="sesExCount">1/5</span>
+        <button class="ses-timer-toggle" id="sesTimerToggle" onclick="toggleSesTimer()">⏱️</button>
     </div>
+
     <!-- Rest Timer Overlay -->
     <div class="ses-timer" id="sesTimer" style="display:none;">
         <div class="ses-timer-label">RECUPERO</div>
@@ -1037,7 +1045,7 @@ body.in-session .ses-nav { display:flex; }
                 <circle cx="100" cy="100" r="88" class="ses-timer-fill" id="sesTimerCircle"
                     stroke-dasharray="553" stroke-dashoffset="0"/>
             </svg>
-            <div class="ses-timer-time" id="sesTimerTime">1:30</div>
+            <div class="ses-timer-time" id="sesTimerTime">0:00</div>
         </div>
         <div class="ses-timer-next" id="sesTimerNext"></div>
         <div class="ses-timer-btns">
@@ -1050,11 +1058,6 @@ body.in-session .ses-nav { display:flex; }
     <div class="ses-exercise" id="sesExCard">
         <div class="ses-ex-name" id="sesExName">—</div>
         <div class="ses-ex-detail" id="sesExDetail">—</div>
-        <div id="sesNote" style="display:none;margin-top:8px;padding:8px 14px;
-            border-radius:10px;background:var(--c2);border:1px solid var(--brd);
-            font-size:.75rem;color:var(--tx2);text-align:center;max-width:380px;
-            white-space:pre-wrap;">
-        </div>
         <!-- Dots dei set -->
         <div class="ses-set-dots" id="sesSetDots"></div>
 
@@ -1090,14 +1093,16 @@ body.in-session .ses-nav { display:flex; }
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',1)">+</button>
                      <input type="number" inputmode="numeric" id="sesRpe" class="ses-rpe-input" placeholder="-" min="1" max="10" oninput="updateRpeColor(this)">
                     <button class="ses-rpe-adj" onclick="sesAdj('sesRpe',-1)">−</button>
-                    <label style="display:flex;align-items:center;justify-content:center;gap:3px;">
-                        RPE
-                        <span onclick="document.getElementById('mLegend').style.display='flex'" 
-                            style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:1px 4px;
-                            border-radius:4px;border:1px solid var(--brd);cursor:pointer;">❓</span>
-                    </label>
+                    <label>RPE</label>
                 </div>
             </div>
+            <div id="sesTempoInfo" style="display:flex;align-items:center;justify-content:center;
+                gap:8px;flex-wrap:wrap;margin-top:4px;padding:4px 8px;border-radius:8px;
+                max-width:380px;width:100%;"></div>
+            <div id="sesNoteInline" style="display:none;margin-top:4px;padding:6px 12px;
+                border-radius:10px;background:var(--c2);border:1px solid var(--brd);
+                font-size:.72rem;color:var(--tx2);text-align:center;max-width:380px;
+                width:100%;white-space:pre-wrap;"></div>
             <button class="ses-check-btn" id="sesCheckBtn" onclick="sesCheck()">
                 <span class="ses-check-icon">✓</span>
                 <span>FATTO</span>
@@ -2089,6 +2094,17 @@ function renEC(ex, showDrag, dragIdx) {
             </div>
         </div>
     </div>`;
+    // Campo recupero
+    h += `<div style="margin-top:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:.75rem;font-weight:700;color:var(--tx2);">⏱️ Recupero</span>
+            <input type="number" inputmode="numeric" class="set-input" value="${ex.rest || ''}"
+                placeholder="—" min="0" max="600"
+                style="font-size:16px;padding:8px;max-width:80px;text-align:center;"
+                oninput="updRest('${ex.uid}',this.value)">
+            <span style="font-size:.72rem;color:var(--tx3);">sec</span>
+        </div>
+    </div>`;
 	// Campo note
     const noteVal = (ex.note || '').replace(/"/g, '&quot;');
     h += `<div style="margin-top:10px;">
@@ -2308,6 +2324,13 @@ function updNote(exUid, val) {
         save();
     }
 }
+function updRest(exUid, val) {
+    const ex = fEx(exUid);
+    if (ex) {
+        ex.rest = parseInt(val) || 0;
+        save();
+    }
+}
 function updS(exUid, idx, field, val) {
     const ex = fEx(exUid);
     if (ex && ex.sd[idx]) {
@@ -2404,7 +2427,7 @@ function addSet(u) {
     const e = fEx(u);
     if (!e) return;
     const last = e.sd.length ? e.sd[e.sd.length - 1] : {r: 10, w: 0};
-    e.sd.push({r: last.r, w: last.w, done: false});
+    e.sd.push({r: last.r, w: last.w, rpe: last.rpe || null, done: false});
     save(); renDay();
 }
 // ===== SUPERSERIE =====
@@ -2762,10 +2785,10 @@ function addEx(eid) {
     const l = getLast(eid);
     const sd = l && l.sd
         ? l.sd.map(s => ({...s, done: false}))
-        : [{r:10,w:0,done:false}, {r:10,w:0,done:false}, {r:10,w:0,done:false}];
+        : [{r:10,w:0,done:false}];
     day.exs.push({
         uid: uid(), exerciseId: eid, name: d.name, sd,
-        rest: l?.rest || 90, seat: l?.seat || '',
+        rest: l?.rest || 0, seat: l?.seat || '',
         ssG: null, pF: false, note: l?.note || '',
         tempo: l?.tempo || ''
     });
@@ -2897,25 +2920,36 @@ function launchSession() {
     document.getElementById('vDay').style.display = 'none';
     document.getElementById('vSession').style.display = 'flex';
 
+    updateTimerToggleUI();
     sesRender();
     if (navigator.vibrate) navigator.vibrate(30);
 }
 
 function exitSession() {
     if (!confirm('Uscire dalla sessione?\nI progressi sono salvati.')) return;
-    
+
+    // Ferma timer se attivo
     clearInterval(restTimerId);
-    document.getElementById('sesTimer').style.display = 'none';
+    var timerEl = document.getElementById('sesTimer');
+    if (timerEl) timerEl.style.display = 'none';
+
+    // Rilascia wake lock se presente
+    if (typeof releaseWakeLock === 'function') releaseWakeLock();
+
+    sesActive = false;
+    document.body.classList.remove('in-session');
     document.getElementById('vSession').style.display = 'none';
     document.getElementById('vDay').style.display = 'block';
-    document.body.classList.remove('in-session');
-    sesActive = false;
-    
-    // Ricarica la vista aggiornata
+
     renDay();
 }
 
 function sesClose() {
+    clearInterval(restTimerId);
+    var timerEl = document.getElementById('sesTimer');
+    if (timerEl) timerEl.style.display = 'none';
+    if (typeof releaseWakeLock === 'function') releaseWakeLock();
+
     sesActive = false;
     document.body.classList.remove('in-session');
     document.getElementById('vSession').style.display = 'none';
@@ -2978,24 +3012,6 @@ function sesRender() {
             detailHTML += `<div class="ses-ss-badge">Superserie ${myPos}/${ssGroup.length}: ${ssNames.join(' + ')}</div>`;
         }
         document.getElementById('sesExDetail').innerHTML = detailHTML;
-        // Nota esercizio
-        const noteArea = document.getElementById('sesNote');
-        if (noteArea) {
-            noteArea.textContent = ex.note || '';
-            noteArea.style.display = ex.note ? 'block' : 'none';
-        }
-        // Tempo
-        if (ex.tempo) {
-            const tParts = ex.tempo.split('-');
-            const tDesc = (tParts[0]||'0') + ' negativa - ' + (tParts[1]||'0') + ' pausa - ' + (tParts[2]||'0') + ' positiva';
-            document.getElementById('sesExDetail').innerHTML += 
-                `<div style="margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
-                    <span style="font-size:.72rem;color:var(--yel);font-weight:600;">⏱️ ${tDesc}</span>
-                    <span onclick="document.getElementById('mLegend').style.display='flex'" 
-                        style="font-size:.55rem;background:var(--c2);color:var(--tx3);padding:2px 6px;
-                        border-radius:6px;border:1px solid var(--brd);cursor:pointer;">❓</span>
-                </div>`;
-        }
         // Video
         const videoArea = document.getElementById('sesVideoArea');
         if (videoArea) {
@@ -3019,78 +3035,7 @@ function sesRender() {
             }
         }
     }
-// ============================================================
-// ⏱️ REST TIMER
-// ============================================================
-let restTimerId = null;
-let restTimeLeft = 0;
-let restTimeTotal = 0;
 
-function startRestTimer(seconds) {
-    if (seconds <= 0) return;
-    restTimeTotal = seconds;
-    restTimeLeft = seconds;
-    const overlay = document.getElementById('sesTimer');
-    const circle = document.getElementById('sesTimerCircle');
-    const circumference = 2 * Math.PI * 88;
-    circle.style.transition = 'none';
-    circle.style.strokeDasharray = circumference;
-    circle.style.strokeDashoffset = '0';
-    circle.style.stroke = 'var(--acc)';
-    overlay.style.display = 'flex';
-
-    // Mostra prossimo esercizio/set
-    const day = gD();
-    if (day && day.exs[sesExIdx]) {
-        const nextEx = day.exs[sesExIdx];
-        const nextSetIdx = sesGetCurrentSetIdx(nextEx);
-        const allDone = nextEx.sd.every(s => s.done);
-        document.getElementById('sesTimerNext').textContent = allDone
-            ? 'Prossimo → ' + nextEx.name + ' ✅'
-            : 'Prossimo → ' + nextEx.name + ' • Set ' + (nextSetIdx + 1);
-    }
-
-    // Forza reflow per l'animazione
-    void circle.offsetWidth;
-    circle.style.transition = 'stroke-dashoffset 1s linear, stroke .3s';
-
-    updateTimerDisplay();
-    clearInterval(restTimerId);
-    restTimerId = setInterval(() => {
-        restTimeLeft--;
-        updateTimerDisplay();
-        if (restTimeLeft <= 0) {
-            clearInterval(restTimerId);
-            overlay.style.display = 'none';
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-        }
-    }, 1000);
-}
-
-function updateTimerDisplay() {
-    const mins = Math.floor(restTimeLeft / 60);
-    const secs = restTimeLeft % 60;
-    document.getElementById('sesTimerTime').textContent =
-        mins + ':' + String(secs).padStart(2, '0');
-    const circle = document.getElementById('sesTimerCircle');
-    const circumference = 2 * Math.PI * 88;
-    const progress = restTimeLeft / restTimeTotal;
-    circle.style.strokeDashoffset = circumference * (1 - progress);
-    circle.style.stroke = restTimeLeft <= 5 ? 'var(--red)' : 'var(--acc)';
-}
-
-function skipRestTimer() {
-    clearInterval(restTimerId);
-    document.getElementById('sesTimer').style.display = 'none';
-    if (navigator.vibrate) navigator.vibrate(15);
-}
-
-function adjRestTimer(delta) {
-    restTimeLeft = Math.max(5, restTimeLeft + delta);
-    if (restTimeLeft > restTimeTotal) restTimeTotal = restTimeLeft;
-    updateTimerDisplay();
-    if (navigator.vibrate) navigator.vibrate(10);
-}
     // Set dots (aggiorna sempre)
     const curSetIdx = sesGetCurrentSetIdx(ex);
     const allSetsDone = ex.sd.every(s => s.done);
@@ -3127,6 +3072,37 @@ function adjRestTimer(delta) {
         if (sugEl) {
             sugEl.innerHTML = buildSuggestionHTML(curDay, ex, curSetIdx);
         }
+
+        // Tempo + Help unificati
+        const tempoEl = document.getElementById('sesTempoInfo');
+        if (tempoEl) {
+            const helpBtn = `<span onclick="document.getElementById('mLegend').style.display='flex'" 
+                style="font-size:.6rem;background:var(--c2);color:var(--tx3);padding:3px 8px;
+                border-radius:6px;border:1px solid var(--brd);cursor:pointer;white-space:nowrap;">❓ Guida</span>`;
+
+            if (ex.tempo && ex.tempo.split('-').some(p => p && p !== '0')) {
+                const tParts = ex.tempo.split('-');
+                const tDesc = (tParts[0]||'0') + 's negativa - ' + (tParts[1]||'0') + 's pausa - ' + (tParts[2]||'0') + 's positiva';
+                tempoEl.innerHTML = `<span style="font-size:.72rem;color:var(--yel);font-weight:600;">⏱️ ${tDesc}</span>${helpBtn}`;
+                tempoEl.style.background = 'rgba(241,196,15,.08)';
+                tempoEl.style.border = '1px solid rgba(241,196,15,.15)';
+            } else {
+                tempoEl.innerHTML = helpBtn;
+                tempoEl.style.background = 'transparent';
+                tempoEl.style.border = 'none';
+            }
+        }
+
+        // Note sotto il tempo
+        const noteInline = document.getElementById('sesNoteInline');
+        if (noteInline) {
+            if (ex.note) {
+                noteInline.textContent = '📝 ' + ex.note;
+                noteInline.style.display = 'block';
+            } else {
+                noteInline.style.display = 'none';
+            }
+        }
     }
 }
 // ============================================================
@@ -3141,35 +3117,57 @@ function getLastSessionData(dayId, exerciseId) {
 }
 
 function generateSuggestion(lastData, setIdx) {
-    if (!lastData || !lastData.sd || !lastData.sd[setIdx]) return null;
-    const lastSet = lastData.sd[setIdx];
-    const lastR = parseInt(lastSet.r) || 0;
-    const lastW = parseFloat(lastSet.w) || 0;
-    const lastRpe = parseInt(lastSet.rpe) || 0;
+    if (!lastData || !lastData.sd) return null;
+
+    const allSets = lastData.sd;
+    const thisSet = allSets[setIdx];
+    if (!thisSet) return null;
+
+    const lastR = parseInt(thisSet.r) || 0;
+    const lastW = parseFloat(thisSet.w) || 0;
+    const lastRpe = parseInt(thisSet.rpe) || 0;
 
     const week = getProgramWeek();
     const deload = isDeloadWeek(week);
 
-    let sugR = lastR;
     let sugW = lastW;
+    let sugR = lastR;
     let sugText = '';
 
     if (deload) {
         sugW = Math.round(lastW * 0.85 * 2) / 2;
-        sugText = '📉 Deload: -15% carico';
-    } else if (lastRpe && lastRpe <= 7) {
-        sugW = lastW + 2.5;
-        sugText = '📈 RPE basso → prova +2.5kg';
-    } else if (lastRpe && lastRpe <= 8) {
-        sugW = lastW + 2.5;
-        sugText = '📈 Buono! Prova +2.5kg';
-    } else if (lastRpe && lastRpe >= 9) {
-        sugText = '➡️ RPE alto → consolida stesso carico';
-    } else if (lastW > 0) {
-        sugW = lastW + 2.5;
-        sugText = '📈 Prova +2.5kg';
+        sugText = '📉 Deload: -15% carico → ' + sugW + 'kg';
     } else {
-        sugText = '➡️ Completa e registra RPE per suggerimenti';
+        // Analisi pattern RPE dell'intera sessione precedente
+        const rpes = allSets.map(s => parseInt(s.rpe) || 0).filter(r => r > 0);
+        const reps = allSets.map(s => parseInt(s.r) || 0);
+        const targetReps = reps[0] || 0;
+
+        if (rpes.length === 0) {
+            sugText = '➡️ Registra RPE per suggerimenti mirati';
+        } else {
+            const avgRpe = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+            const maxRpe = Math.max(...rpes);
+            const allRepsDone = targetReps > 0 && reps.every(r => r >= targetReps);
+            const repsDropped = targetReps > 0 && reps.some((r, i) => i > 0 && r < targetReps);
+
+            if (avgRpe <= 6 && allRepsDone) {
+                sugW = lastW + 2.5;
+                sugText = '📈 Troppo leggero → sali subito a ' + sugW + 'kg';
+            } else if (avgRpe <= 7 && allRepsDone) {
+                sugW = lastW + 2.5;
+                sugText = '📈 Ottimo! Prova ' + sugW + 'kg';
+            } else if (maxRpe >= 9 && repsDropped) {
+                sugW = Math.max(0, lastW - 2.5);
+                sugText = '📉 Troppo pesante → scendi a ' + sugW + 'kg';
+            } else if (avgRpe <= 8 && !repsDropped) {
+                sugText = '➡️ Buono, consolida ancora con ' + lastW + 'kg';
+            } else if (maxRpe >= 9) {
+                sugText = '➡️ RPE alto → consolida ' + lastW + 'kg';
+            } else {
+                sugText = '➡️ Mantieni ' + lastW + 'kg';
+            }
+        }
     }
 
     return {
@@ -3197,6 +3195,109 @@ function buildSuggestionHTML(dayId, ex, setIdx) {
         <div class="ses-sug-last">📊 ${dateStr} (${agoStr}): ${sug.lastR} reps × ${sug.lastW}kg${rpeStr}</div>
         <div class="ses-sug-tip">${sug.sugText}</div>
     </div>`;
+}
+// ============================================================
+// ⏱️ REST TIMER (completo)
+// ============================================================
+let restTimerId = null;
+let restTimeLeft = 0;
+let restTimeTotal = 0;
+let sesTimerEnabled = localStorage.getItem('gym-timer') === '1';
+
+function toggleSesTimer() {
+    sesTimerEnabled = !sesTimerEnabled;
+    localStorage.setItem('gym-timer', sesTimerEnabled ? '1' : '0');
+    updateTimerToggleUI();
+    toast(sesTimerEnabled ? '⏱️ Timer recupero attivato' : '⏱️ Timer recupero disattivato', 'info', 1500);
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function updateTimerToggleUI() {
+    const btn = document.getElementById('sesTimerToggle');
+    if (btn) btn.classList.toggle('active', sesTimerEnabled);
+}
+
+function tryStartRestTimer(ex) {
+    if (!sesTimerEnabled) return;
+    const restTime = parseInt(ex.rest) || 0;
+    if (restTime <= 0) {
+        toast('⏱️ Recupero non impostato per "' + ex.name + '"', 'warn');
+        return;
+    }
+    startRestTimer(restTime);
+}
+
+function startRestTimer(seconds) {
+    if (seconds <= 0) return;
+    const overlay = document.getElementById('sesTimer');
+    const circle = document.getElementById('sesTimerCircle');
+    if (!overlay || !circle) return;
+
+    restTimeTotal = seconds;
+    restTimeLeft = seconds;
+
+    // Reset cerchio a pieno
+    circle.style.transition = 'none';
+    circle.style.strokeDashoffset = '0';
+    circle.style.stroke = 'var(--acc)';
+    void circle.offsetWidth; // force reflow
+    circle.style.transition = 'stroke-dashoffset 1s linear, stroke .3s';
+
+    overlay.style.display = 'flex';
+
+    // Info prossimo set/esercizio
+    const nextInfo = document.getElementById('sesTimerNext');
+    if (nextInfo) {
+        const day = gD();
+        if (day && day.exs[sesExIdx]) {
+            const nex = day.exs[sesExIdx];
+            const nsi = sesGetCurrentSetIdx(nex);
+            const allDone = nex.sd.every(s => s.done);
+            nextInfo.textContent = allDone
+                ? 'Prossimo esercizio...'
+                : nex.name + ' • Set ' + (nsi + 1);
+        }
+    }
+
+    updateTimerDisplay();
+    clearInterval(restTimerId);
+    restTimerId = setInterval(() => {
+        restTimeLeft--;
+        updateTimerDisplay();
+        if (restTimeLeft <= 0) {
+            clearInterval(restTimerId);
+            overlay.style.display = 'none';
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const m = Math.floor(restTimeLeft / 60);
+    const s = restTimeLeft % 60;
+    const el = document.getElementById('sesTimerTime');
+    if (el) el.textContent = m + ':' + String(s).padStart(2, '0');
+
+    const circle = document.getElementById('sesTimerCircle');
+    if (circle) {
+        const offset = 553 * (1 - restTimeLeft / restTimeTotal);
+        circle.style.strokeDashoffset = offset;
+        circle.style.stroke = restTimeLeft <= 5 ? 'var(--red)' : 'var(--acc)';
+    }
+}
+
+function skipRestTimer() {
+    clearInterval(restTimerId);
+    const el = document.getElementById('sesTimer');
+    if (el) el.style.display = 'none';
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function adjRestTimer(delta) {
+    restTimeLeft = Math.max(5, restTimeLeft + delta);
+    if (restTimeLeft > restTimeTotal) restTimeTotal = restTimeLeft;
+    updateTimerDisplay();
+    if (navigator.vibrate) navigator.vibrate(10);
 }
 function sesGetCurrentSetIdx(ex) {
     if (!ex.sd) return 0;
@@ -3268,11 +3369,11 @@ function sesCheck() {
         setTimeout(() => {
             sesExIdx = nextExIdx;
             sesRender();
-            startRestTimer(ex.ssG ? 15 : (ex.rest || 90));
+            tryStartRestTimer(ex);
         }, delay);
     } else {
         sesRender();
-        startRestTimer(ex.rest || 90);
+        tryStartRestTimer(ex);
     }
 }
 
@@ -3291,33 +3392,6 @@ function sesNextEx() {
         sesRender();
     }
 }
-// ============================================================
-// 👆 SWIPE GESTURES (Session)
-// ============================================================
-(function() {
-    let touchStartX = 0, touchStartY = 0, swiping = false;
-
-    document.addEventListener('touchstart', e => {
-        if (!sesActive) return;
-        // Ignora swipe su video e timer
-        if (e.target.closest('.ses-video-scroll, .ses-timer, .ses-inputs')) return;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        swiping = true;
-    }, { passive: true });
-
-    document.addEventListener('touchend', e => {
-        if (!swiping || !sesActive) return;
-        swiping = false;
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        // Solo swipe prevalentemente orizzontali e > 60px
-        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-            if (dx < 0) sesNextEx();  // swipe sinistra → prossimo
-            else sesPrevEx();          // swipe destra → precedente
-        }
-    }, { passive: true });
-})();
 function sesToggleVideo(videoEl) {
     if (videoEl.paused) {
         // Pausa tutti gli altri video nella sessione
