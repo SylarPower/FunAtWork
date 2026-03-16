@@ -1267,10 +1267,26 @@ body.in-session .ses-nav { display:flex; }
     <div class="legend-section">
         <h4>💡 Suggerimenti Progressione</h4>
         <table class="legend-table">
-            <tr><td>📈</td><td>Tutte le reps completate con RPE ≤ 8 → <b>+2.5kg</b> suggeriti</td></tr>
-            <tr><td>➡️</td><td>RPE 9 o reps mancate → <b>stesso carico</b>, consolida</td></tr>
-            <tr><td>📉</td><td>Settimana di deload (ogni 4ª) → <b>-15% carico</b></td></tr>
+            <tr><td>📈📈</td><td>RPE medio ≤ 6 + tutte le reps → <b>Troppo leggero, sali subito +2.5kg</b></td></tr>
+            <tr><td>📈</td><td>RPE medio ≤ 7 + tutte le reps → <b>Ottimo, +2.5kg prossima volta</b></td></tr>
+            <tr><td>➡️</td><td>RPE medio ≤ 8, reps ok → <b>Consolida, stesso carico</b></td></tr>
+            <tr><td>⚠️</td><td>RPE max ≥ 9, reps ok → <b>RPE alto, consolida</b></td></tr>
+            <tr><td>📉</td><td>RPE max ≥ 9 + reps calate → <b>Troppo pesante, -2.5kg</b></td></tr>
         </table>
+    </div>
+
+    <div class="legend-section">
+        <h4>📅 Fasi del Programma</h4>
+        <table class="legend-table">
+            <tr><td style="color:var(--acc);">F1</td><td>Sett. 1-4 • <b>Base</b> — RPE 7, tecnica e volume</td></tr>
+            <tr><td style="color:var(--acc);">F2</td><td>Sett. 5-8 • <b>Sviluppo</b> — RPE 8, +2.5-5kg compound</td></tr>
+            <tr><td style="color:var(--yel);">F3</td><td>Sett. 9-12 • <b>Intensificazione</b> — RPE 8-9, carichi alti</td></tr>
+            <tr><td style="color:var(--pur2);">F4</td><td>Sett. 13-16 • <b>Nuovi Stimoli</b> — RPE 7, esercizi diversi</td></tr>
+            <tr><td style="color:var(--red);">F5</td><td>Sett. 17-20 • <b>Peak Estetico</b> — RPE 8-9, drop set, rest-pause</td></tr>
+        </table>
+        <p style="font-size:.7rem;color:var(--tx3);margin-top:6px;">
+            ⚠️ Deload ogni 4ª settimana: -15% (F1,F2,F4) o -20% (F3,F5). -1 serie compound. RPE 5-6.
+        </p>
     </div>
 
     <div class="legend-section">
@@ -1720,7 +1736,22 @@ function isDeloadWeek(week) {
     if (!week) return false;
     return week % 4 === 0;
 }
+function getDeloadPercent(week) {
+    const phase = getProgramPhase(week);
+    // Fasi 3 e 5: -20%, altre: -15%
+    return (phase === 3 || phase === 5) ? 0.20 : 0.15;
+}
 
+function getPhaseInfo(phase) {
+    const phases = {
+        1: { name:'Base', rpe:'7', desc:'Costruisci tecnica e volume. Carichi moderati.' },
+        2: { name:'Sviluppo', rpe:'8', desc:'Aumenta carichi +2.5-5kg. Rep leggermente ridotte.' },
+        3: { name:'Intensificazione', rpe:'8-9', desc:'Carichi alti, rep basse. Spingi ai limiti.' },
+        4: { name:'Nuovi Stimoli', rpe:'7', desc:'Esercizi nuovi, RPE reset. Evita adattamento.' },
+        5: { name:'Peak Estetico', rpe:'8-9', desc:'Carichi alti + drop set e rest-pause. Massimo pump.' }
+    };
+    return phases[phase] || phases[1];
+}
 function setProgramDate(val) {
     if (!val) return;
     D.st.programStart = val;
@@ -1745,20 +1776,21 @@ function clearProgramDate() {
 function renderPhaseIndicator() {
     const el = document.getElementById('phaseIndicator');
     if (!el) return;
-    // Sync input date
     const dateInput = document.getElementById('programDateInput');
     if (dateInput) dateInput.value = D.st.programStart || '';
     const week = getProgramWeek();
     if (!week) {
         el.innerHTML = `<div style="text-align:center;color:var(--tx3);font-size:.8rem;padding:8px;">
-            Premi ⚙️ per impostare la data di inizio programma
+            Imposta la data di inizio programma per vedere la fase attuale
         </div>`;
         return;
     }
     const phase = getProgramPhase(week);
     const deload = isDeloadWeek(week);
     const weekInPhase = ((week - 1) % 4) + 1;
-    const totalPhases = 3;
+    const totalPhases = 5;
+    const info = getPhaseInfo(phase);
+    const dlPct = Math.round(getDeloadPercent(week) * 100);
 
     el.innerHTML = `
         <div class="phase-card">
@@ -1768,21 +1800,27 @@ function renderPhaseIndicator() {
             </div>
             <div class="phase-info">
                 <h4 style="color:${deload ? 'var(--yel)' : 'var(--acc)'}">
-                    ${deload ? '📉 Settimana di Deload' : 'Fase ' + phase + ' — Settimana ' + weekInPhase + '/4'}
+                    ${deload
+                        ? '📉 Deload — Fase ' + phase + ' (' + info.name + ')'
+                        : 'Fase ' + phase + ': ' + info.name + ' — Sett. ' + weekInPhase + '/4'}
                 </h4>
                 <small>${deload
-                    ? 'Riduci il carico del 15%. Stesse serie e reps. Recupero attivo.'
-                    : 'Settimana ' + week + ' del programma • Fase ' + phase + '/' + totalPhases
+                    ? 'Carico -' + dlPct + '%. -1 serie sui compound. RPE 5-6.'
+                    : info.desc + ' RPE target: ' + info.rpe
                 }</small>
             </div>
         </div>
-        <div style="display:flex;gap:4px;margin-top:8px;">
-            ${[1,2,3].map(p => {
+        <div style="display:flex;gap:3px;margin-top:8px;">
+            ${[1,2,3,4,5].map(p => {
                 const active = phase === p;
                 const done = phase > p;
-                return `<div style="flex:1;height:6px;border-radius:3px;
-                    background:${done ? 'var(--grn)' : active ? 'var(--acc)' : 'var(--c3)'};
-                    transition:all .3s;"></div>`;
+                return `<div style="flex:1;text-align:center;">
+                    <div style="height:6px;border-radius:3px;margin-bottom:3px;
+                        background:${done ? 'var(--grn)' : active ? 'var(--acc)' : 'var(--c3)'};
+                        transition:all .3s;"></div>
+                    <span style="font-size:.5rem;color:${active ? 'var(--acc)' : done ? 'var(--grn)' : 'var(--tx3)'};">
+                        F${p}</span>
+                </div>`;
             }).join('')}
         </div>
     `;
@@ -3152,8 +3190,11 @@ function generateSuggestion(lastData, setIdx) {
     let sugText = '';
 
     if (deload) {
-        sugW = Math.round(lastW * 0.85 * 2) / 2;
-        sugText = '📉 Deload: -15% carico → ' + sugW + 'kg';
+        const dlPct = getDeloadPercent(week);
+        const dlPctLabel = Math.round(dlPct * 100);
+        sugW = Math.round(lastW * (1 - dlPct) * 2) / 2;
+        sugR = lastR;
+        sugText = '📉 Deload (-' + dlPctLabel + '% = ' + sugW + 'kg). -1 serie sui compound, RPE 5-6';
     } else {
         // Analisi pattern RPE dell'intera sessione precedente
         const rpes = allSets.map(s => parseInt(s.rpe) || 0).filter(r => r > 0);
@@ -3217,7 +3258,17 @@ function buildSuggestionHTML(dayId, ex, setIdx) {
             ✅ Applica ${sug.sugW}kg × ${sug.sugR} reps</button>`
         : '';
 
+    const week = getProgramWeek();
+    const phaseTag = week ? (() => {
+        const p = getProgramPhase(week);
+        const info = getPhaseInfo(p);
+        const deload = isDeloadWeek(week);
+        if (deload) return `<span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:.6rem;font-weight:700;background:rgba(241,196,15,.15);color:var(--yel);margin-bottom:4px;">📉 DELOAD F${p}</span>`;
+        return `<span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:.6rem;font-weight:700;background:rgba(3,218,198,.1);color:var(--acc);margin-bottom:4px;">F${p}: ${info.name} — RPE ${info.rpe}</span>`;
+    })() : '';
+
     return `<div class="ses-suggestion">
+        ${phaseTag}
         <div class="ses-sug-last">📊 ${dateStr} (${agoStr}): ${sug.lastR} reps × ${sug.lastW}kg${rpeStr}</div>
         <div class="ses-sug-tip">${sug.sugText}</div>
         ${applyBtn}
