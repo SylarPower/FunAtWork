@@ -133,13 +133,13 @@
 			}
         /* ===== EXERCISE CARDS ===== */
         .ex-card {
-            background:var(--c1);border-radius:16px;margin:14px 0;
+            background:var(--c1);border-radius:16px;margin:8px 0;
             border:1px solid var(--brd);overflow:hidden;
             transition:all .2s;
         }
         .ex-card:active { transform:scale(.995); }
         .ex-header {
-            padding:16px;display:flex;justify-content:space-between;align-items:center;
+    		padding:10px 16px;display:flex;justify-content:space-between;align-items:center;
         }
         .ex-info { flex:1;min-width:0; }
         .ex-info h4 { margin:0;font-size:1.1rem;color:var(--tx); }
@@ -259,7 +259,7 @@
 			/* ===== SUPERSERIE ===== */
 			.ss-group {
 			    border:2px solid rgba(155,89,182,.5);border-radius:20px;
-			    padding:10px 8px 8px;margin:14px 0;
+			    padding:6px 8px 6px;margin:8px 0;
 			    background:rgba(155,89,182,.03);position:relative;
 			}
 			.ss-header {
@@ -2050,7 +2050,7 @@ function renEC(ex, showDrag, dragIdx) {
     h += `<div class="ex-header" onclick="togEx('${ex.uid}')" style="cursor:pointer;">
         ${dragHandle}
         <div class="ex-info" style="flex:1;min-width:0;">
-            <h4 style="margin:0;font-size:1.05rem;">${ex.name}</h4>
+            <h4 style="margin:0;font-size:.9rem;">${ex.name}</h4>
             <small>${d ? d.group : ''}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
