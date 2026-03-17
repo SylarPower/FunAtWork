@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#121212">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="gym-manifest.json">
+	<link rel="apple-touch-icon" href="gym-icon.png">
     <title>GymTracker Pro</title>
     <link rel="icon" href="gym-icon.png">
-    <link rel="apple-touch-icon" href="gym-icon.png">
-    <link rel="manifest" href="gym-manifest.json">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -894,25 +895,37 @@ body.in-session .ses-nav { display:flex; }
     border-color:var(--acc);color:var(--acc);
     background:rgba(3,218,198,.1);box-shadow:0 0 10px rgba(3,218,198,.2);
 }
-/* ===== DAY BOTTOM NAV ===== */
-.day-bottom-nav {
-    position:fixed;bottom:0;left:0;right:0;
-    background:rgba(30,30,30,.95);
-    border-top:1px solid var(--brd);
-    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-    z-index:100;
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-    display:flex;justify-content:center;
+/* ===== EXERCISE SELECTOR PREVIEW ===== */
+.exo-preview {
+    width:44px;height:44px;border-radius:10px;border:1px solid var(--brd);
+    background:var(--c2);color:var(--tx3);display:flex;
+    align-items:center;justify-content:center;cursor:pointer;
+    font-size:1.1rem;padding:0;flex-shrink:0;transition:all .15s;
 }
-[data-theme="light"] .day-bottom-nav { background:rgba(255,255,255,.95); }
-.day-bottom-nav button {
-    background:none;border:none;color:var(--acc);
-    font-size:.85rem;font-weight:700;cursor:pointer;
-    display:flex;align-items:center;gap:8px;
-    padding:10px 32px;border-radius:12px;
-    font-family:inherit;min-height:44px;
+.exo-preview:active { transform:scale(.9);border-color:var(--acc); }
+.exo-video-popup {
+    display:none;position:fixed;inset:0;z-index:10001;
+    background:rgba(0,0,0,.9);align-items:center;justify-content:center;
+    flex-direction:column;gap:12px;padding:20px;
 }
-.day-bottom-nav button:active { opacity:.7;transform:scale(.97); }
+.exo-video-popup.show { display:flex; }
+.exo-video-popup video {
+    width:100%;max-width:400px;max-height:60vh;border-radius:14px;
+    background:#000;
+}
+.exo-video-popup .evp-name {
+    color:#fff;font-size:1rem;font-weight:700;text-align:center;
+}
+.exo-video-popup .evp-detail {
+    color:var(--tx2);font-size:.8rem;text-align:center;
+}
+.exo-video-popup .evp-btns {
+    display:flex;gap:10px;margin-top:8px;
+}
+.exo-video-popup .evp-btns button {
+    padding:12px 24px;border-radius:12px;font-size:.85rem;
+    font-weight:700;min-height:48px;font-family:inherit;
+}
 /* ===== MISC ===== */
 #confetti { position:fixed;inset:0;z-index:99999;pointer-events:none; }
 .emp { text-align:center;padding:30px;color:var(--tx3); }
@@ -932,7 +945,7 @@ body.in-session .ses-nav { display:flex; }
 
 <!-- TOP BAR -->
 <div class="topbar">
-    <button class="tb" onclick="location.href='index.html'">🏠</button>
+    <button class="tb" onclick="smartHome()">🏠</button>
     <h1>GymTracker <span>Pro</span></h1>
     <div style="display:flex;gap:6px;align-items:center;">
         <button class="tb" onclick="toggleTheme()" id="thBtn" style="padding:8px 10px;">🌙</button>
@@ -966,9 +979,6 @@ body.in-session .ses-nav { display:flex; }
     </div>
     <div class="card" id="weeklyCard">
         <h3>📊 Panoramica Settimanale</h3>
-
-        <div id="missingGroups" style="margin-bottom:16px;"></div>
-
         <div class="mm-bg">
             <div class="mm-breathe" id="weeklyMuscleMap"></div>
         </div>
@@ -1020,15 +1030,8 @@ body.in-session .ses-nav { display:flex; }
 
         <div id="eList"></div>
 
-        <button class="bp" onclick="openSel()" style="width:100%;margin-top:14px;margin-bottom:70px;padding:14px;font-size:.9rem;">
+        <button class="bp" onclick="openSel()" style="width:100%;margin-top:14px;margin-bottom:20px;padding:14px;font-size:.9rem;">
             + Esercizio
-        </button>
-    </div>
-
-    <div class="day-bottom-nav">
-        <button onclick="goHome()">
-            <span style="font-size:1.2rem;">🏠</span>
-            <span>Dashboard</span>
         </button>
     </div>
 </div>
@@ -1160,6 +1163,16 @@ body.in-session .ses-nav { display:flex; }
     <div id="exR" style="overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;margin-top:8px;"></div>
     <button class="bs" onclick="closeSel()" style="width:100%;margin-top:12px;">Chiudi</button>
 </div>
+</div>
+<!-- VIDEO PREVIEW POPUP -->
+<div class="exo-video-popup" id="exoVideoPopup" onclick="if(event.target===this)closeExoPreview()">
+    <div class="evp-name" id="evpName"></div>
+    <div class="evp-detail" id="evpDetail"></div>
+    <div id="evpVideoArea"></div>
+    <div class="evp-btns">
+        <button class="bs" onclick="closeExoPreview()">✕ Chiudi</button>
+        <button class="bp" id="evpAddBtn" onclick="">+ Aggiungi</button>
+    </div>
 </div>
 <!-- MODAL: SUPERSERIE -->
 <div id="mSS" class="modal" onclick="if(event.target===this)this.style.display='none'">
@@ -1650,7 +1663,13 @@ function goHome() {
     curDay = null;
     renderAll();
 }
-
+function smartHome() {
+    if (curDay) {
+        goHome();
+    } else {
+        location.href = 'index.html';
+    }
+}
 function goDay(id) {
     curDay = id;
     document.getElementById('vHome').style.display = 'none';
@@ -1709,35 +1728,6 @@ function getWeeklyData() {
 function renderWeeklyOverview() {
     const wd = getWeeklyData();
     const fatigue = getMuscleFatigue();
-
-    // Gruppi mancanti
-    const allPossible = Object.keys(MUSCLE_COLORS);
-    const missing = allPossible.filter(g => !wd.allGroups.includes(g));
-    const missingEl = document.getElementById('missingGroups');
-    if (missingEl) {
-        if (wd.allGroups.length === 0) {
-            missingEl.innerHTML = `<div style="text-align:center;padding:10px;color:var(--tx3);font-size:.8rem;">
-                Aggiungi esercizi per vedere la copertura muscolare
-            </div>`;
-        } else if (missing.length === 0) {
-            missingEl.innerHTML = `<div style="text-align:center;padding:10px;color:var(--grn);font-size:.8rem;font-weight:600;">
-                ✅ Tutti i gruppi muscolari coperti!
-            </div>`;
-        } else {
-            missingEl.innerHTML = `
-                <div style="font-size:.72rem;color:var(--tx2);margin-bottom:8px;font-weight:600;">
-                    ⚠️ Gruppi non coperti dalla scheda:
-                </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    ${missing.map(g => {
-                        const range = VOLUME_RANGES[g] || { mev:4, mav:10, mrv:16 };
-                        return `<span style="padding:4px 12px;border-radius:12px;font-size:.7rem;
-                            font-weight:600;background:rgba(207,102,121,.1);color:var(--red);
-                            border:1px solid rgba(207,102,121,.2);">${g} <span style="font-size:.55rem;opacity:.7;">(MEV: ${range.mev}+ serie)</span></span>`;
-                    }).join('')}
-                </div>`;
-        }
-    }
 
     // Muscle map con gradiente affaticamento
     renderMuscleMap('weeklyMuscleMap', fatigue, 220);
@@ -2945,7 +2935,33 @@ function closeSel() {
     document.getElementById('exQ').value = '';
     mf = 'all';
 }
+function showExoPreview(eid) {
+    const d = exDef(eid);
+    if (!d) return;
+    document.getElementById('evpName').textContent = d.name;
+    document.getElementById('evpDetail').textContent = (d.groups ? d.groups.join(' · ') : d.group) + ' • ' + d.eq;
 
+    const area = document.getElementById('evpVideoArea');
+    if (d.media && d.media.length) {
+        area.innerHTML = d.media.map(url =>
+            `<video loop muted playsinline controls preload="metadata" style="width:100%;max-width:400px;max-height:50vh;border-radius:14px;background:#000;margin:4px 0;">
+                <source src="${url}" type="video/mp4">
+            </video>`
+        ).join('');
+        area.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
+    } else {
+        area.innerHTML = '<div style="color:var(--tx3);padding:30px;text-align:center;">Nessun video disponibile</div>';
+    }
+
+    document.getElementById('evpAddBtn').setAttribute('onclick', "closeExoPreview();addEx('" + eid + "')");
+    document.getElementById('exoVideoPopup').classList.add('show');
+}
+
+function closeExoPreview() {
+    const popup = document.getElementById('exoVideoPopup');
+    popup.querySelectorAll('video').forEach(v => v.pause());
+    popup.classList.remove('show');
+}
 function fuzzyMatch(text, query) {
     text = text.toLowerCase();
     query = query.toLowerCase().trim();
@@ -2962,14 +2978,17 @@ function filEx() {
 
     res.sort((a, b) => a.name.localeCompare(b.name, 'it'));
     document.getElementById('exR').innerHTML = res.length
-        ? res.slice(0, 300).map(e => `
-        <div class="exo" onclick="addEx('${e.id}')">
-            <div style="flex:1">
-                <div class="on">${e.name}</div>
-                <div class="om">${e.groups ? e.groups.join(' · ') : e.group} • ${e.eq}</div>
-            </div>
-            <span style="color:var(--acc);font-weight:bold;font-size:.82rem;">+ Aggiungi</span>
-        </div>`).join('')
+        ? res.slice(0, 300).map(e => {
+            const hasVid = e.media && e.media.length > 0;
+            return `<div class="exo">
+                <div style="flex:1;min-width:0;" onclick="addEx('${e.id}')">
+                    <div class="on">${e.name}</div>
+                    <div class="om">${e.groups ? e.groups.join(' · ') : e.group} • ${e.eq}</div>
+                </div>
+                ${hasVid ? '<button class="exo-preview" onclick="event.stopPropagation();showExoPreview(\'' + e.id + '\')">🎬</button>' : ''}
+                <span onclick="addEx('${e.id}')" style="color:var(--acc);font-weight:bold;font-size:.82rem;cursor:pointer;padding:8px;">+</span>
+            </div>`;
+        }).join('')
         : '<div class="emp">Nessun risultato</div>';
 }
 
@@ -3457,10 +3476,7 @@ function updateTimerToggleUI() {
 function tryStartRestTimer(ex) {
     if (!sesTimerEnabled) return;
     const restTime = parseInt(ex.rest) || 0;
-    if (restTime <= 0) {
-        toast('⏱️ Recupero non impostato per "' + ex.name + '"', 'warn');
-        return;
-    }
+    if (restTime <= 0) return;
     startRestTimer(restTime);
 }
 
