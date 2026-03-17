@@ -3914,16 +3914,27 @@ function previewImport() {
         const days = parseImport(text);
         if (!days.length) { toast('Nessuna giornata trovata', 'warn'); return; }
 
+        const existingNames = D.days.map(d => d.name.toLowerCase());
         let html = '<b style="color:var(--acc);">Trovate ' + days.length + ' giornate:</b>';
         days.forEach(d => {
             const nEx = d.exs.length;
             const nSets = d.exs.reduce((a, e) => a + (e.sd ? e.sd.length : 0), 0);
             const nSS = new Set(d.exs.filter(e => e.ssG).map(e => e.ssG)).size;
-            html += '<div style="margin-top:6px;padding:6px 10px;background:var(--c3);border-radius:8px;">';
-            html += '<b>' + d.name + '</b> — ' + nEx + ' esercizi, ' + nSets + ' serie';
+            const exists = existingNames.includes(d.name.toLowerCase());
+            html += '<div style="margin-top:6px;padding:6px 10px;border-radius:8px;' +
+                (exists ? 'background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.2);' : 'background:var(--c3);') + '">';
+            html += '<b>' + d.name + '</b>' + (exists ? ' <span style="color:var(--yel);font-size:.65rem;">⚠️ GIÀ ESISTENTE</span>' : ' <span style="color:var(--grn);font-size:.65rem;">✨ NUOVA</span>');
+            html += '<br><span style="font-size:.7rem;color:var(--tx2);">' + nEx + ' esercizi, ' + nSets + ' serie';
             if (nSS) html += ', ' + nSS + ' superserie';
-            html += '</div>';
+            html += '</span></div>';
         });
+
+        const conflicts = days.filter(d => existingNames.includes(d.name.toLowerCase()));
+        if (conflicts.length > 0) {
+            html += '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:rgba(241,196,15,.08);border:1px solid rgba(241,196,15,.15);font-size:.72rem;color:var(--yel);">';
+            html += '⚠️ ' + conflicts.length + ' giornate esistenti verranno <b>sostituite</b> (storico sessioni preservato)';
+            html += '</div>';
+        }
 
         document.getElementById('impPreview').innerHTML = html;
         document.getElementById('impPreview').style.display = 'block';
@@ -3940,17 +3951,48 @@ function doImport() {
         const days = parseImport(text);
         if (!days.length) { toast('Nessuna giornata trovata', 'warn'); return; }
 
-        const names = days.map(d => d.name + ' (' + d.exs.length + ' esercizi)');
-        if (!confirm('Importare ' + days.length + ' giornate?\n\n' + names.join('\n'))) return;
+        const existingNames = D.days.map(d => d.name.toLowerCase());
+        const conflicts = days.filter(d => existingNames.includes(d.name.toLowerCase()));
+        const newDays = days.filter(d => !existingNames.includes(d.name.toLowerCase()));
 
-        days.forEach(d => D.days.push(d));
+        let msg = 'Importare ' + days.length + ' giornate?\n\n';
+        if (conflicts.length > 0) {
+            msg += '🔄 SOSTITUZIONE (' + conflicts.length + '):\n';
+            conflicts.forEach(d => msg += '  • ' + d.name + ' → ' + d.exs.length + ' esercizi\n');
+            msg += '\n(gli esercizi attuali verranno sostituiti,\nlo storico sessioni resta)\n';
+        }
+        if (newDays.length > 0) {
+            msg += '\n✨ NUOVE (' + newDays.length + '):\n';
+            newDays.forEach(d => msg += '  • ' + d.name + ' → ' + d.exs.length + ' esercizi\n');
+        }
+
+        if (!confirm(msg)) return;
+
+        let replaced = 0, added = 0;
+
+        days.forEach(newDay => {
+            const existing = D.days.find(d => d.name.toLowerCase() === newDay.name.toLowerCase());
+            if (existing) {
+                existing.exs = newDay.exs;
+                replaced++;
+            } else {
+                D.days.push(newDay);
+                added++;
+            }
+        });
+
         save();
         document.getElementById('mImport').style.display = 'none';
+        openExercises.clear();
 
         if (curDay) renDay();
         renderAll();
 
-        toast('📥 ' + days.length + ' giornate importate!', 'ok');
+        let resultMsg = '📥 ';
+        if (replaced > 0) resultMsg += replaced + ' sostituite';
+        if (replaced > 0 && added > 0) resultMsg += ', ';
+        if (added > 0) resultMsg += added + ' aggiunte';
+        toast(resultMsg, 'ok');
         if (navigator.vibrate) navigator.vibrate([30, 15, 30]);
     } catch(e) {
         console.error('Import error:', e);
