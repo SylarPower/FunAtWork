@@ -1,18 +1,36 @@
 {
-  "name": "GymTracker Pro",
-  "short_name": "GymTracker",
-  "description": "Il tuo tracker di allenamento personale",
-  "start_url": "./palestra.html",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#121212",
-  "icons": [
-    {
-      "src": "gym-icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+    "name": "GymTracker Pro",
+    "short_name": "GymTracker",
+    "description": "Il tuo tracker palestra personale",
+    "start_url": "./gym.html",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#121212",
+    "theme_color": "#121212",
+    "icons": [
+        {
+            "src": "gym-icon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "gym-icon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "gym-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "gym-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
 }
