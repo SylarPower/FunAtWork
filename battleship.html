@@ -1281,6 +1281,7 @@ async function risolviTurno(data) {
     } catch (e) { console.error("Errore risoluzione:", e); }
     processingResolution = false;
 }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ==========================================
 // 🚀 ANIMAZIONI ATTACCO SULLE GRIGLIE REALI
