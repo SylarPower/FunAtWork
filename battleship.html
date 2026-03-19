@@ -147,7 +147,8 @@
 
         /* Emoji nave (prua) */
         .ship-emoji {
-            font-size: 0.7em; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+            font-size: 1.4em;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
             line-height: 1;
         }
 
@@ -418,41 +419,50 @@
         }
         .hidden { display: none !important; }
 /* ==========================================
-   🚀 CINEMA ATTACCO
+   🎯 FLOATING ATTACK LABEL
    ========================================== */
-.attack-cinema {
+.attack-info-float {
     position: fixed;
-    inset: 0;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
     background: rgba(0,0,0,0.88);
-    z-index: 7000;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
-.attack-label {
     color: white;
-    font-size: 1.4rem;
+    padding: 12px 28px;
+    border-radius: 30px;
     font-weight: 900;
+    font-size: 1.05rem;
+    z-index: 7800;
     text-align: center;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    z-index: 2;
+    border: 2px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
     opacity: 0;
-    animation: labelFadeIn 0.4s ease forwards;
 }
-.attack-label .coord {
-    display: block;
-    font-size: 2.5rem;
+.attack-info-float.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+.attack-info-float .atk-coord {
     color: #f1c40f;
-    margin-top: 5px;
-    letter-spacing: 4px;
+    font-size: 1.3rem;
+    margin-left: 8px;
+    letter-spacing: 2px;
 }
-@keyframes labelFadeIn {
-    0% { opacity: 0; transform: scale(0.8); }
-    100% { opacity: 1; transform: scale(1); }
+.attack-info-float .atk-arrow {
+    color: #e74c3c;
+    margin: 0 6px;
+    font-size: 1.2rem;
 }
 
+/* Griglia evidenziata durante animazione */
+.grid-highlight {
+    box-shadow: 0 0 20px rgba(241,196,15,0.4), 0 0 40px rgba(241,196,15,0.2);
+    transition: box-shadow 0.3s ease;
+}
 /* 🚀 MISSILE */
 .missile {
     position: fixed;
@@ -530,14 +540,6 @@
     <p id="lobby-info" style="opacity:0.8;">Sincronizzazione in corso...</p>
     <div id="lobby-status" style="margin:30px; font-size:1.5rem; color:#03dac6; font-weight:bold;"></div>
     <div id="lobby-action"></div>
-</div>
-
-<div class="round-results-overlay" id="round-results-overlay">
-    <div class="round-results-box">
-        <h2 id="results-title" style="margin:0 0 15px;">⚔️ RISULTATI TURNO</h2>
-        <div id="results-body"></div>
-        <button class="btn btn-primary" onclick="chiudiRisultatiTurno()" style="margin-top:15px;">AVANTI ➡️</button>
-    </div>
 </div>
 
 <div class="app-wrapper">
@@ -670,7 +672,7 @@ let unsubscribePartita = null;
 let processingResolution = false;
 let currentPreviewCells = [];  // DOM elements con preview
 let animatingRound = -1;
-    
+let isAnimating = false;    
 // ==========================================
 // DOM
 // ==========================================
@@ -688,9 +690,6 @@ const btnPronto = document.getElementById('btn-pronto');
 const btnFire = document.getElementById('btn-fire');
 const waitingBar = document.getElementById('waiting-bar');
 const waitingText = document.getElementById('waiting-text');
-const roundResultsOv = document.getElementById('round-results-overlay');
-const resultsBody = document.getElementById('results-body');
-const resultsTitle = document.getElementById('results-title');
 
 // ==========================================
 // BANNER
@@ -1213,14 +1212,14 @@ function renderFleetStatus(containerId, navi, storico, player) {
 }
 
 function selezionaCellaAttacco(r, c, data) {
-    if (hoAttaccato) return;
+    if (hoAttaccato || isAnimating) return;
     if (wasAttacked(targetSelezionato, r, c, data.storicoAttacchi || [])) return;
     cellaSelezionata = { r, c };
     renderBattaglia(data);
 }
 
 async function confermaAttacco() {
-    if (!cellaSelezionata || !targetSelezionato || hoAttaccato) return;
+    if (!cellaSelezionata || !targetSelezionato || hoAttaccato || isAnimating) return;
     if ((currentGameData.eliminati||[]).includes(mioNome)) return;
     if ((currentGameData.eliminati||[]).includes(targetSelezionato)) { alert("Non puoi attaccare un giocatore eliminato!"); return; }
     btnFire.disabled = true;
@@ -1283,180 +1282,179 @@ async function risolviTurno(data) {
     processingResolution = false;
 }
 
-// ==========================================
-// RISULTATI TURNO
-// ==========================================
-function mostraRisultatiTurno(data, roundNumber) {
-    if (roundResultsShown >= roundNumber) return;
-    roundResultsShown = roundNumber;
-    const storico = data.storicoAttacchi || [];
-    const attacchiRound = storico.filter(a => a.round === roundNumber);
-    if (attacchiRound.length === 0) return;
+async function animateSingleAttack(atk, data, storico) {
+    const isMyAttack = atk.by === mioNome;
+    const targetsMe = atk.target === mioNome;
 
-    resultsTitle.textContent = `⚔️ TURNO ${roundNumber}`;
-    resultsBody.innerHTML = '';
+    let gridContainerId, startDir;
 
-    attacchiRound.forEach(atk => {
-        const hasShip = cellHasShip(atk.target, atk.r, atk.c, data.navi);
-        const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, data.navi) : null;
-        const sunk = ship ? isShipSunk(atk.target, ship, storico) : false;
-        const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
-        const div = document.createElement('div');
-
-        if (sunk) {
-            div.className = 'result-line result-sunk';
-            div.innerHTML = `💥 <b>${atk.by}</b> → ${atk.target} (${coord}): <b>AFFONDATO!</b> ${ship.emoji||''} ${ship.name}`;
-        } else if (hasShip) {
-            div.className = 'result-line result-hit';
-            div.innerHTML = `🎯 <b>${atk.by}</b> → ${atk.target} (${coord}): <b>COLPITO!</b>`;
-        } else {
-            div.className = 'result-line result-miss';
-            div.innerHTML = `💨 <b>${atk.by}</b> → ${atk.target} (${coord}): Acqua`;
-        }
-        resultsBody.appendChild(div);
-    });
-
-    // Mostra nuove eliminazioni
-    const prevStorico = storico.filter(a => a.round < roundNumber);
-    (data.eliminati || []).forEach(player => {
-        const naviP = data.navi[player] || [];
-        const wasAlready = naviP.length > 0 && naviP.every(n => isShipSunk(player, n, prevStorico));
-        if (!wasAlready) {
-            const div = document.createElement('div');
-            div.className = 'result-line result-eliminated';
-            div.innerHTML = `💀 <b>${player}</b> è stato ELIMINATO!`;
-            resultsBody.appendChild(div);
-        }
-    });
-
-    roundResultsOv.style.display = 'flex';
-}
-
-function chiudiRisultatiTurno() {
-    roundResultsOv.style.display = 'none';
-    if (currentGameData) renderBattaglia(currentGameData);
-}
-// ==========================================
-// 🚀 SISTEMA ANIMAZIONI ATTACCO
-// ==========================================
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function playAttackAnimations(data, roundNumber) {
-    if (animatingRound >= roundNumber) return;
-    animatingRound = roundNumber;
-
-    const storico = data.storicoAttacchi || [];
-    const attacks = storico.filter(a => a.round === roundNumber);
-    if (attacks.length === 0) return;
-
-    // Cinema overlay
-    const cinema = document.createElement('div');
-    cinema.className = 'attack-cinema';
-    cinema.id = 'attack-cinema';
-    document.body.appendChild(cinema);
-
-    await sleep(400);
-
-    for (let i = 0; i < attacks.length; i++) {
-        const atk = attacks[i];
-        const hasShip = cellHasShip(atk.target, atk.r, atk.c, data.navi);
-        const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, data.navi) : null;
-        const sunk = ship ? isShipSunk(atk.target, ship, storico) : false;
-        const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
-
-        // Label chi attacca chi
-        const label = document.createElement('div');
-        label.className = 'attack-label';
-        label.innerHTML = `${atk.by === mioNome ? '🎯 TU' : atk.by} → ${atk.target === mioNome ? 'TE' : atk.target}<span class="coord">${coord}</span>`;
-        cinema.appendChild(label);
-
-        await sleep(600);
-
-        // Punto di impatto: centro dello schermo
-        const impactX = window.innerWidth / 2;
-        const impactY = window.innerHeight / 2;
-
-        // Lancio missile
-        await launchMissile(impactX, impactY);
-
-        // Impatto
-        if (sunk) {
-            await playBigExplosion(impactX, impactY, ship);
-        } else if (hasShip) {
-            await playSmallExplosion(impactX, impactY);
-        } else {
-            await playSplash(impactX, impactY);
-        }
-
-        await sleep(600);
-
-        // Rimuovi label
-        label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 }).onfinish = () => label.remove();
-
-        await sleep(400);
+    if (isMyAttack) {
+        // Mio attacco: missile dal basso → griglia avversario
+        targetSelezionato = atk.target;
+        renderOpponentTabs(data, data.eliminati || []);
+        renderOpponentGrid(data);
+        gridContainerId = 'opponent-grid-container';
+        startDir = 'bottom';
+    } else if (targetsMe) {
+        // Nemico attacca me: missile da sinistra → mia griglia
+        gridContainerId = 'my-grid-container';
+        startDir = 'left';
+    } else {
+        // Nemico attacca un altro: missile da destra → griglia avversario (switch tab)
+        targetSelezionato = atk.target;
+        renderOpponentTabs(data, data.eliminati || []);
+        renderOpponentGrid(data);
+        gridContainerId = 'opponent-grid-container';
+        startDir = 'right';
     }
 
-    // Chiudi cinema
-    cinema.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 });
+    const gridContainer = document.getElementById(gridContainerId);
+    if (!gridContainer) return;
+
+    // Scroll alla griglia
+    gridContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await sleep(300);
+
+    // Evidenzia la griglia
+    const gridEl = gridContainer.querySelector('.battle-grid');
+    if (gridEl) gridEl.classList.add('grid-highlight');
+
+    // Trova la cella bersaglio nel DOM
+    const cellEl = gridContainer.querySelector(`.cell[data-row="${atk.r}"][data-col="${atk.c}"]`);
+    if (!cellEl) { if (gridEl) gridEl.classList.remove('grid-highlight'); return; }
+
+    const cellRect = cellEl.getBoundingClientRect();
+    const targetX = cellRect.left + cellRect.width / 2;
+    const targetY = cellRect.top + cellRect.height / 2;
+
+    // Tipo di impatto
+    const hasShip = cellHasShip(atk.target, atk.r, atk.c, data.navi);
+    const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, data.navi) : null;
+    const sunk = ship ? isShipSunk(atk.target, ship, storico) : false;
+
+    // Label floating
+    const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
+    const attackerName = isMyAttack ? '🎯 TU' : atk.by;
+    const targetName = targetsMe ? 'TE' : atk.target;
+    const label = showAttackLabel(attackerName, targetName, coord);
+
     await sleep(400);
-    cinema.remove();
+
+    // Calcola posizione di partenza
+    const gridRect = gridContainer.getBoundingClientRect();
+    const start = getMissileStart(startDir, gridRect);
+
+    // Lancia missile
+    await launchMissileToCell(start.x, start.y, targetX, targetY, startDir);
+
+    // Impatto
+    if (sunk) {
+        await playBigExplosion(targetX, targetY, ship);
+    } else if (hasShip) {
+        await playSmallExplosion(targetX, targetY);
+    } else {
+        await playSplash(targetX, targetY);
+    }
+
+    // Pulizia
+    if (gridEl) gridEl.classList.remove('grid-highlight');
+    hideAttackLabel(label);
+
+    await sleep(300);
 }
 
 // ==========================================
-// 🚀 MISSILE
+// 📍 CALCOLA POSIZIONE PARTENZA MISSILE
 // ==========================================
-function launchMissile(targetX, targetY) {
+function getMissileStart(direction, gridRect) {
+    const cx = gridRect.left + gridRect.width / 2;
+    const cy = gridRect.top + gridRect.height / 2;
+
+    switch (direction) {
+        case 'bottom':
+            return { x: cx, y: window.innerHeight + 60 };
+        case 'right':
+            return { x: window.innerWidth + 60, y: cy };
+        case 'left':
+            return { x: -60, y: cy };
+        default:
+            return { x: cx, y: window.innerHeight + 60 };
+    }
+}
+
+// ==========================================
+// 🚀 MISSILE VERSO CELLA SPECIFICA
+// ==========================================
+function launchMissileToCell(startX, startY, targetX, targetY, direction) {
     return new Promise(resolve => {
         const missile = document.createElement('div');
         missile.className = 'missile';
         missile.textContent = '🚀';
-
-        // Partenza: angolo casuale in alto
-        const startX = targetX + (Math.random() - 0.5) * 300;
-        const startY = -50;
-
         missile.style.left = startX + 'px';
         missile.style.top = startY + 'px';
-        missile.style.transform = 'rotate(180deg)';
         document.body.appendChild(missile);
 
-        // Trail di fuoco durante il volo
+        // Punto di controllo per curva bezier
+        let cpX, cpY;
+        switch (direction) {
+            case 'bottom':
+                cpX = startX + (targetX - startX) * 0.5 + (Math.random() - 0.5) * 80;
+                cpY = startY + (targetY - startY) * 0.3;
+                break;
+            case 'right':
+                cpX = startX + (targetX - startX) * 0.3;
+                cpY = startY + (targetY - startY) * 0.5 + (Math.random() - 0.5) * 60;
+                break;
+            case 'left':
+                cpX = startX + (targetX - startX) * 0.3;
+                cpY = startY + (targetY - startY) * 0.5 + (Math.random() - 0.5) * 60;
+                break;
+        }
+
+        // Trail di fuoco
         const trailInterval = setInterval(() => {
             const rect = missile.getBoundingClientRect();
-            spawnTrailParticle(rect.left + rect.width / 2, rect.top);
-        }, 40);
+            if (rect.width > 0) {
+                spawnTrailParticle(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+        }, 35);
 
-        // Animazione volo con curva
-        const midX = (startX + targetX) / 2 + (Math.random() - 0.5) * 100;
-        const midY = startY + (targetY - startY) * 0.3;
-
-        const duration = 800;
+        const duration = 900;
         const startTime = performance.now();
 
-        function animateFrame(now) {
+        function animate(now) {
             const t = Math.min((now - startTime) / duration, 1);
-            // Bezier quadratica
-            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-            const oneMinT = 1 - ease;
+            // Easing: accelera poi decelera
+            const ease = t < 0.7
+                ? (t / 0.7) * (t / 0.7)   // accelera nella prima parte
+                : 1 - Math.pow(1 - t, 3);  // decelera verso la fine
 
-            const x = oneMinT * oneMinT * startX + 2 * oneMinT * ease * midX + ease * ease * targetX;
-            const y = oneMinT * oneMinT * startY + 2 * oneMinT * ease * midY + ease * ease * targetY;
+            // Bezier quadratica: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+            const mt = 1 - ease;
+            const x = mt * mt * startX + 2 * mt * ease * cpX + ease * ease * targetX;
+            const y = mt * mt * startY + 2 * mt * ease * cpY + ease * ease * targetY;
 
             missile.style.left = x + 'px';
             missile.style.top = y + 'px';
 
-            // Rotazione verso la direzione del movimento
-            if (t > 0.1) {
-                const angle = Math.atan2(targetY - y, targetX - x) * (180 / Math.PI) + 90;
-                missile.style.transform = `rotate(${angle}deg)`;
-            }
+            // Tangente per rotazione
+            const tx = 2 * mt * (cpX - startX) + 2 * ease * (targetX - cpX);
+            const ty = 2 * mt * (cpY - startY) + 2 * ease * (targetY - cpY);
+            const angleDeg = Math.atan2(ty, tx) * (180 / Math.PI);
+            // 🚀 punta naturalmente a ~315° (upper-right), offset +45°
+            const rotation = angleDeg + 45;
 
-            // Scala crescente all'avvicinarsi
-            const scale = 1 + t * 0.5;
-            missile.style.fontSize = (2.5 * scale) + 'rem';
+            // Scala: cresce avvicinandosi
+            const scale = 0.8 + t * 0.7;
+
+            missile.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
+
+            // Glow crescente
+            const glowIntensity = Math.floor(t * 15);
+            missile.style.filter = `drop-shadow(0 0 ${glowIntensity}px rgba(231,76,60,${0.3 + t * 0.7}))`;
 
             if (t < 1) {
-                requestAnimationFrame(animateFrame);
+                requestAnimationFrame(animate);
             } else {
                 clearInterval(trailInterval);
                 missile.remove();
@@ -1464,10 +1462,37 @@ function launchMissile(targetX, targetY) {
             }
         }
 
-        requestAnimationFrame(animateFrame);
+        requestAnimationFrame(animate);
     });
 }
 
+// ==========================================
+// 🏷️ LABEL ATTACCO FLOATING
+// ==========================================
+function showAttackLabel(attacker, target, coord) {
+    // Rimuovi label precedenti
+    document.querySelectorAll('.attack-info-float').forEach(el => el.remove());
+
+    const label = document.createElement('div');
+    label.className = 'attack-info-float';
+    label.innerHTML = `${attacker}<span class="atk-arrow">➜</span>${target}<span class="atk-coord">${coord}</span>`;
+    document.body.appendChild(label);
+
+    // Trigger animazione ingresso
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            label.classList.add('visible');
+        });
+    });
+
+    return label;
+}
+
+function hideAttackLabel(label) {
+    if (!label) return;
+    label.classList.remove('visible');
+    setTimeout(() => { if (label.parentNode) label.remove(); }, 400);
+}
 function spawnTrailParticle(x, y) {
     const trail = document.createElement('div');
     trail.className = 'missile-trail';
@@ -1758,6 +1783,7 @@ function avviaListener() {
         if (data.stato === 'attesa' || data.stato === 'piazzamento') {
             animatingRound = -1;
             roundResultsShown = -1;
+            isAnimating = false;
         }
         document.getElementById('fixed-home-btn').style.display = 'block';
 
@@ -1822,13 +1848,14 @@ function gestisciBattaglia(data) {
     const surviving = getSurvivingPlayers(data);
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
     removeGameBanner();
-    iniziaBattaglia(data);
 
-    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto && animatingRound < ultimoRisolto) {
-        // ✅ Animazioni prima dei risultati
-        playAttackAnimations(data, ultimoRisolto).then(() => {
-            mostraRisultatiTurno(data, ultimoRisolto);
-        });
+    // Non re-renderizzare durante le animazioni
+    if (!isAnimating) {
+        iniziaBattaglia(data);
+    }
+
+    if (ultimoRisolto > 0 && animatingRound < ultimoRisolto) {
+        playAttackAnimations(data, ultimoRisolto);
     }
 
     const tuttiAttaccato = surviving.every(p => !!attacchiTurno[p]);
@@ -1842,13 +1869,13 @@ function gestisciConclusa(data) {
     const vincitore = data.vincitore;
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
 
-    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto && animatingRound < ultimoRisolto) {
-        playAttackAnimations(data, ultimoRisolto).then(() => {
-            mostraRisultatiTurno(data, ultimoRisolto);
-        });
+    if (ultimoRisolto > 0 && animatingRound < ultimoRisolto) {
+        playAttackAnimations(data, ultimoRisolto);
     }
 
-    iniziaBattaglia(data);
+    if (!isAnimating) {
+        iniziaBattaglia(data);
+    }
     statusFase.textContent = 'FINE';
     const haVinto = vincitore === mioNome;
     const turni = (data.turnoCorrente || 1) - 1;
