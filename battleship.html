@@ -12,16 +12,18 @@
     <style>
         :root {
             --ocean: #1a5276;
-            --ocean-deep: #0d2137;
-            --ocean-light: #2980b9;
-            --ship-color: #5d6d7e;
+            --ocean-deep: #0b1a2e;
+            --ocean-light: #2e86c1;
+            --ocean-shimmer: rgba(255,255,255,0.06);
+            --ship-color: #566573;
             --ship-light: #85929e;
+            --ship-accent: #aeb6bf;
             --hit-color: #e74c3c;
-            --miss-color: rgba(255,255,255,0.4);
-            --sunk-color: #922b21;
+            --miss-color: rgba(255,255,255,0.35);
+            --sunk-color: #7b241c;
             --target-color: #f1c40f;
-            --preview-valid: rgba(46, 204, 113, 0.5);
-            --preview-invalid: rgba(231, 76, 60, 0.5);
+            --preview-valid: rgba(46, 204, 113, 0.45);
+            --preview-invalid: rgba(231, 76, 60, 0.45);
             --bg: #0a1628;
             --panel: #1c2833;
             --panel-light: #273746;
@@ -32,542 +34,393 @@
             --success: #27ae60;
             --warning: #f39c12;
         }
-
-        * {
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
         body {
             font-family: 'Roboto', sans-serif;
             background: var(--bg);
             color: var(--text);
-            margin: 0;
-            padding: 10px;
+            margin: 0; padding: 10px;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
         }
+        .app-wrapper { width: 100%; max-width: 1100px; }
 
-        .app-wrapper {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* === HEADER === */
-        .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
+        /* HEADER */
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .header-bar h1 { margin: 0; font-size: 1.4rem; }
 
-        /* === STATUS BAR === */
+        /* STATUS BAR */
         .status-bar {
-            background: var(--panel);
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
+            background: var(--panel); padding: 10px 15px; border-radius: 8px;
+            margin-bottom: 10px; display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 8px;
         }
-        .status-item {
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .status-val {
-            font-weight: 900;
-            color: var(--accent);
-        }
+        .status-item { font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .status-val { font-weight: 900; color: var(--accent); }
 
-        /* === GAME CONTAINER === */
-        .game-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+        /* GAME CONTAINER */
+        .game-container { display: flex; flex-direction: column; gap: 15px; }
         @media (min-width: 800px) {
-            .game-container {
-                flex-direction: row;
-                gap: 20px;
-            }
+            .game-container { flex-direction: row; gap: 20px; }
             .my-section { flex: 0 0 45%; }
             .opponent-section { flex: 1; }
         }
-
-        .grid-section {
-            background: var(--panel);
-            border-radius: 10px;
-            padding: 12px;
-        }
+        .grid-section { background: var(--panel); border-radius: 10px; padding: 12px; }
         .section-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
         }
 
-        /* === BATTLE GRID === */
+        /* ==========================================
+           🌊 BATTLE GRID + WAVE EFFECTS
+           ========================================== */
         .battle-grid {
-            display: grid;
-            gap: 2px;
+            display: grid; gap: 2px;
             background: var(--ocean-deep);
-            padding: 2px;
-            border-radius: 6px;
-            aspect-ratio: 1;
-            width: 100%;
+            padding: 2px; border-radius: 8px;
+            aspect-ratio: 1; width: 100%;
+            position: relative;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.3);
         }
         .coord-label {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 0.65rem;
-            font-weight: 700;
-            color: var(--text-dim);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0.65rem; font-weight: 700; color: var(--text-dim);
             user-select: none;
         }
-        .coord-corner { /* top-left empty corner */ }
 
+        /* 🌊 CELLE OCEANO CON ONDE */
         .cell {
             background: var(--ocean);
             border-radius: 3px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.15s, transform 0.1s;
-            user-select: none;
-            font-size: 0.9rem;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; position: relative;
+            transition: background 0.15s, transform 0.1s, box-shadow 0.2s;
+            user-select: none; font-size: 0.9rem;
+            overflow: hidden;
         }
-        .cell:hover { filter: brightness(1.2); }
-        .cell:active { transform: scale(0.95); }
-        .cell.no-hover:hover { filter: none; }
+        /* Shimmer delle onde */
+        .cell::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(
+                135deg,
+                transparent 20%,
+                var(--ocean-shimmer) 45%,
+                transparent 70%
+            );
+            background-size: 250% 250%;
+            animation: waveShimmer var(--wave-speed, 5s) var(--wave-delay, 0s) ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .cell > * { position: relative; z-index: 1; }
+        .cell:hover:not(.no-hover) { filter: brightness(1.3); box-shadow: 0 0 8px rgba(52,152,219,0.4); }
+        .cell:active:not(.no-hover) { transform: scale(0.94); }
+        .cell.no-hover:hover { filter: none; box-shadow: none; }
         .cell.no-hover { cursor: default; }
 
+        @keyframes waveShimmer {
+            0%   { background-position: 200% 200%; }
+            50%  { background-position: 0% 0%; }
+            100% { background-position: 200% 200%; }
+        }
+
+        /* ==========================================
+           🚢 NAVI SUL GRID
+           ========================================== */
         .cell.ship-cell {
-            background: var(--ship-color);
+            background: linear-gradient(145deg, var(--ship-color), #4a5568);
             border: 1px solid var(--ship-light);
+            box-shadow: inset 0 1px 3px rgba(255,255,255,0.1);
         }
-        .cell.ship-cell.ship-hit {
-            background: var(--hit-color);
-            border-color: #c0392b;
+        .cell.ship-cell::before { display: none; } /* No onde sulle navi */
+
+        /* Forme nave: prua, corpo, poppa */
+        .cell.ship-bow-h { border-radius: 50% 4px 4px 50%; }
+        .cell.ship-stern-h { border-radius: 4px 50% 50% 4px; }
+        .cell.ship-bow-v { border-radius: 50% 50% 4px 4px; }
+        .cell.ship-stern-v { border-radius: 4px 4px 50% 50%; }
+        .cell.ship-mid-h { border-radius: 3px; }
+        .cell.ship-mid-v { border-radius: 3px; }
+        .cell.ship-single { border-radius: 50%; }
+
+        /* Emoji nave (prua) */
+        .ship-emoji {
+            font-size: 0.7em; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+            line-height: 1;
         }
+
+        /* Nave colpita */
+        .cell.ship-hit {
+            background: linear-gradient(145deg, #c0392b, #e74c3c) !important;
+            border-color: #a93226 !important;
+            animation: hitFlash 0.5s ease;
+        }
+        .cell.ship-hit .hit-fire { font-size: 0.8em; animation: fireFlicker 0.4s ease-in-out infinite; }
+
+        /* Nave affondata */
+        .cell.sunk-cell {
+            background: linear-gradient(145deg, var(--sunk-color), #5b2c20) !important;
+            border: 1px solid #e74c3c !important;
+            animation: sinkAnim 0.8s ease;
+        }
+        .cell.sunk-cell::after { content: '💀'; font-size: 0.65em; z-index: 1; position: relative; }
+        .cell.sunk-cell::before { display: none; }
+
+        /* Marcatori attacco (griglia avversario) */
         .cell.hit-marker {
-            background: var(--hit-color);
+            background: linear-gradient(145deg, #c0392b, #e74c3c) !important;
         }
         .cell.hit-marker::after {
-            content: '✕';
-            color: white;
-            font-weight: 900;
-            font-size: 1.1em;
+            content: '✕'; color: white; font-weight: 900; font-size: 1.1em;
+            position: relative; z-index: 1;
         }
+        .cell.hit-marker::before { display: none; }
+
         .cell.miss-marker::after {
             content: '';
-            width: 30%;
-            height: 30%;
+            width: 28%; height: 28%;
             background: var(--miss-color);
             border-radius: 50%;
-            position: absolute;
+            position: absolute; z-index: 1;
+            box-shadow: 0 0 6px rgba(255,255,255,0.2);
         }
-        .cell.sunk-cell {
-            background: var(--sunk-color) !important;
-            border: 1px solid #e74c3c;
+
+        /* Preview piazzamento */
+        .cell.preview-valid {
+            background: var(--preview-valid) !important;
+            border: 2px dashed #2ecc71 !important;
+            box-shadow: 0 0 10px rgba(46,204,113,0.3);
         }
-        .cell.sunk-cell::after {
-            content: '💀';
-            font-size: 0.7em;
+        .cell.preview-invalid {
+            background: var(--preview-invalid) !important;
+            border: 2px dashed #e74c3c !important;
+            box-shadow: 0 0 10px rgba(231,76,60,0.3);
         }
-        .cell.preview-cell {
-            background: var(--preview-valid);
-            border: 2px dashed #2ecc71;
-        }
-        .cell.preview-invalid-cell {
-            background: var(--preview-invalid);
-            border: 2px dashed #e74c3c;
-        }
+
+        /* Bersaglio selezionato */
         .cell.target-cell {
             background: var(--target-color) !important;
+            box-shadow: 0 0 12px rgba(241,196,15,0.5);
             animation: pulseTarget 0.8s infinite;
         }
-        .cell.attacked-cell {
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
+        .cell.target-cell::before { display: none; }
+        .cell.attacked-cell { cursor: not-allowed; opacity: 0.7; }
 
         @keyframes pulseTarget {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(241,196,15,0.6); }
-            50% { box-shadow: 0 0 0 4px rgba(241,196,15,0.3); }
+            0%, 100% { box-shadow: 0 0 5px rgba(241,196,15,0.4); }
+            50% { box-shadow: 0 0 15px rgba(241,196,15,0.7); }
         }
+        @keyframes hitFlash {
+            0% { transform: scale(1); filter: brightness(1); }
+            30% { transform: scale(1.15); filter: brightness(2); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        @keyframes fireFlicker {
+            0%, 100% { transform: scale(1) rotate(-5deg); }
+            50% { transform: scale(1.1) rotate(5deg); }
+        }
+        @keyframes sinkAnim {
+            0% { transform: scale(1) rotate(0); opacity: 1; }
+            40% { transform: scale(0.85) rotate(4deg); opacity: 0.5; }
+            70% { transform: scale(0.9) rotate(-2deg); opacity: 0.7; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        @keyframes missRipple {
+            0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+            100% { box-shadow: 0 0 0 8px rgba(255,255,255,0); }
+        }
+        .cell.anim-miss { animation: missRipple 0.6s ease-out; }
 
-        /* === SHIP LIST (placement) === */
-        .ship-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
+        /* ==========================================
+           📋 LISTA NAVI (Piazzamento)
+           ========================================== */
+        .ship-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
         .ship-item {
-            background: var(--panel-light);
-            padding: 8px 10px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
+            background: var(--panel-light); padding: 10px 12px; border-radius: 8px;
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
         }
-        .ship-item:hover { border-color: var(--accent); }
+        .ship-item:hover { border-color: var(--accent); background: rgba(52,152,219,0.1); }
         .ship-item.selected {
             border-color: var(--target-color);
-            background: rgba(241,196,15,0.15);
+            background: rgba(241,196,15,0.12);
+            box-shadow: 0 0 15px rgba(241,196,15,0.15);
         }
-        .ship-item.placed {
-            opacity: 0.5;
-            border-color: var(--success);
-        }
-        .ship-item.placed::after {
-            content: '✅';
-            margin-left: auto;
-        }
-        .ship-blocks {
-            display: flex;
-            gap: 2px;
-        }
+        .ship-item.placed { opacity: 0.5; border-color: var(--success); }
+        .ship-item.placed::after { content: '✅'; margin-left: auto; font-size: 1.1rem; }
+
+        /* Blocchetti nave nella lista */
+        .ship-blocks { display: flex; gap: 1px; }
         .ship-block {
-            width: 18px;
-            height: 18px;
-            background: var(--ship-color);
-            border-radius: 2px;
+            width: 20px; height: 20px;
+            background: linear-gradient(145deg, var(--ship-color), #4a5568);
             border: 1px solid var(--ship-light);
         }
-        .ship-name {
-            font-size: 0.8rem;
-            font-weight: 700;
-            min-width: 100px;
-        }
+        .ship-block:first-child { border-radius: 50% 3px 3px 50%; }
+        .ship-block:last-child { border-radius: 3px 50% 50% 3px; }
+        .ship-block:only-child { border-radius: 50%; }
 
-        /* === OPPONENT TABS === */
+        .ship-name { font-size: 0.8rem; font-weight: 700; min-width: 100px; }
+        .ship-size-label { font-size: 0.7rem; color: var(--text-dim); }
+
+        /* ==========================================
+           🎯 TABS AVVERSARI
+           ========================================== */
         .opponent-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 8px;
-            overflow-x: auto;
-            padding-bottom: 5px;
+            display: flex; gap: 5px; margin-bottom: 8px;
+            overflow-x: auto; padding-bottom: 5px;
         }
         .tab-btn {
-            padding: 6px 14px;
-            border: 2px solid var(--panel-light);
-            border-radius: 20px;
-            background: var(--panel-light);
-            color: var(--text);
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 700;
-            white-space: nowrap;
-            transition: all 0.2s;
+            padding: 6px 14px; border: 2px solid var(--panel-light);
+            border-radius: 20px; background: var(--panel-light);
+            color: var(--text); cursor: pointer; font-size: 0.8rem;
+            font-weight: 700; white-space: nowrap; transition: all 0.2s;
         }
         .tab-btn:hover { border-color: var(--accent); }
-        .tab-btn.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: white;
-        }
-        .tab-btn.eliminated {
-            opacity: 0.4;
-            text-decoration: line-through;
-        }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .tab-btn.eliminated { opacity: 0.4; text-decoration: line-through; }
 
-        /* === BUTTONS === */
+        /* ==========================================
+           🔘 PULSANTI
+           ========================================== */
         .btn {
-            padding: 10px 20px;
-            border: 2px solid var(--panel-light);
-            border-radius: 6px;
-            background: var(--panel);
-            color: var(--text);
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            text-transform: uppercase;
+            padding: 10px 20px; border: 2px solid var(--panel-light);
+            border-radius: 6px; background: var(--panel); color: var(--text);
+            cursor: pointer; font-weight: 700; font-size: 0.9rem;
+            transition: all 0.2s; text-transform: uppercase;
         }
         .btn:hover { background: var(--panel-light); }
         .btn:active { transform: scale(0.97); }
-        .btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-primary {
-            background: var(--accent) !important;
-            border-color: var(--accent) !important;
-            color: white !important;
-        }
-        .btn-danger {
-            background: var(--accent2) !important;
-            border-color: var(--accent2) !important;
-            color: white !important;
-        }
-        .btn-success {
-            background: var(--success) !important;
-            border-color: var(--success) !important;
-            color: white !important;
-        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--accent) !important; border-color: var(--accent) !important; color: white !important; }
+        .btn-danger { background: var(--accent2) !important; border-color: var(--accent2) !important; color: white !important; }
+        .btn-success { background: var(--success) !important; border-color: var(--success) !important; color: white !important; }
         .btn-fire {
             background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
-            border: none !important;
-            color: white !important;
-            font-size: 1.1rem;
-            padding: 12px 30px;
-            letter-spacing: 2px;
+            border: none !important; color: white !important;
+            font-size: 1.1rem; padding: 12px 30px; letter-spacing: 2px;
             box-shadow: 0 4px 15px rgba(231,76,60,0.4);
         }
         .btn-fire:not(:disabled):hover {
-            box-shadow: 0 6px 25px rgba(231,76,60,0.6);
-            transform: scale(1.03);
+            box-shadow: 0 6px 25px rgba(231,76,60,0.6); transform: scale(1.03);
         }
-
-        .btn-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-
-        .direction-btn {
-            font-size: 1.4rem;
-            padding: 8px 14px;
-        }
-
-        /* === PLACEMENT CONTROLS === */
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .direction-btn { font-size: 1.4rem; padding: 8px 14px; }
         .placement-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 10px;
+            display: flex; gap: 8px; align-items: center;
+            flex-wrap: wrap; margin-top: 10px;
         }
 
-        /* === RISULTATI TURNO (overlay) === */
+        /* ==========================================
+           📊 RISULTATI TURNO
+           ========================================== */
         .round-results-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.92);
-            z-index: 5000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            padding: 20px;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+            z-index: 5000; display: none; justify-content: center;
+            align-items: center; flex-direction: column; padding: 20px;
         }
         .round-results-box {
-            background: var(--panel);
-            border: 2px solid var(--accent);
-            border-radius: 15px;
-            padding: 25px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            max-height: 80vh;
-            overflow-y: auto;
+            background: var(--panel); border: 2px solid var(--accent);
+            border-radius: 15px; padding: 25px; max-width: 500px;
+            width: 90%; text-align: center; max-height: 80vh; overflow-y: auto;
         }
         .result-line {
-            padding: 8px;
-            margin: 5px 0;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            padding: 8px; margin: 5px 0; border-radius: 6px;
+            font-size: 0.9rem; display: flex; align-items: center;
+            justify-content: center; gap: 8px;
         }
         .result-hit { background: rgba(231,76,60,0.2); border: 1px solid #e74c3c; }
         .result-miss { background: rgba(255,255,255,0.05); border: 1px solid #555; }
         .result-sunk { background: rgba(146,43,33,0.3); border: 1px solid #922b21; }
         .result-eliminated { background: rgba(241,196,15,0.2); border: 2px solid #f1c40f; font-weight: 900; }
 
-        /* === WAITING STATUS === */
+        /* WAITING */
         .waiting-bar {
-            background: var(--panel-light);
-            padding: 10px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 0.85rem;
-            margin-top: 8px;
+            background: var(--panel-light); padding: 10px; border-radius: 6px;
+            text-align: center; font-size: 0.85rem; margin-top: 8px;
         }
         .waiting-bar .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid white;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            vertical-align: middle;
-            margin-right: 5px;
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid white; border-top-color: transparent;
+            border-radius: 50%; animation: spin 1s linear infinite;
+            vertical-align: middle; margin-right: 5px;
         }
 
-        /* === FLEET STATUS === */
-        .fleet-status {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-top: 5px;
-        }
+        /* FLEET STATUS */
+        .fleet-status { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
         .fleet-ship-indicator {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 3px;
-            background: var(--ship-color);
+            font-size: 0.7rem; padding: 2px 6px; border-radius: 3px;
+            background: var(--ship-color); transition: all 0.3s;
         }
         .fleet-ship-indicator.sunk {
-            background: var(--sunk-color);
-            text-decoration: line-through;
+            background: var(--sunk-color); text-decoration: line-through;
         }
 
-        /* === BANNER (riuso Ruzzle) === */
+        /* BANNER */
         .game-banner {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 9999;
+            position: fixed; top: 0; left: 0; right: 0;
+            padding: 12px 20px; display: flex; justify-content: space-between;
+            align-items: center; z-index: 9999;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            animation: slideDown 0.3s ease;
-            color: white;
-            flex-wrap: wrap;
+            animation: slideDown 0.3s ease; color: white; flex-wrap: wrap;
         }
-        .game-banner .banner-left {
-            display: flex; align-items: center; gap: 10px;
-        }
-        .game-banner .banner-right {
-            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-        }
+        .game-banner .banner-left { display: flex; align-items: center; gap: 10px; }
+        .game-banner .banner-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         @media (max-width: 600px) {
-            .game-banner {
-                flex-direction: column; text-align: center; gap: 10px;
-            }
-            .game-banner .banner-left,
-            .game-banner .banner-right { justify-content: center; }
+            .game-banner { flex-direction: column; text-align: center; gap: 10px; }
+            .game-banner .banner-left, .game-banner .banner-right { justify-content: center; }
         }
 
-        /* === LOBBY === */
+        /* LOBBY */
         .lobby-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.98);
-            z-index: 10000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            color: white;
-            padding: 20px;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.98);
+            z-index: 10000; display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            text-align: center; color: white; padding: 20px;
         }
 
-        /* === START SCREEN === */
-        .start-screen {
-            text-align: center;
-            padding: 40px 20px;
-        }
+        /* START SCREEN */
+        .start-screen { text-align: center; padding: 40px 20px; }
         .start-screen h2 { font-size: 2rem; margin-bottom: 15px; }
 
-        /* === ANIMATIONS === */
-        @keyframes slideDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        /* ANIMATIONS */
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-4px); }
             75% { transform: translateX(4px); }
         }
-        @keyframes explode {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3); background: #f39c12; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes sinkAnim {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.8) rotate(5deg); opacity: 0.5; }
-            100% { transform: scale(1) rotate(0); opacity: 1; }
-        }
-        .anim-hit { animation: explode 0.4s ease; }
-        .anim-shake { animation: shake 0.3s ease; }
-        .anim-sink { animation: sinkAnim 0.6s ease; }
-
         @keyframes bannerVictoryPulse {
             0%, 100% { box-shadow: 0 4px 15px rgba(241,196,15,0.3); }
             50% { box-shadow: 0 8px 30px rgba(241,196,15,0.6); }
         }
         .banner-victory { animation: bannerVictoryPulse 1s ease-in-out infinite; }
+        .anim-shake { animation: shake 0.3s ease; }
+        .confetti { position: fixed; width: 10px; height: 10px; z-index: 10001; pointer-events: none; }
 
-        /* === CONFETTI === */
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            z-index: 10001;
-            pointer-events: none;
-        }
-
-        /* === RESPONSIVE === */
         @media (max-width: 600px) {
             .cell { font-size: 0.7rem; }
             .coord-label { font-size: 0.55rem; }
             .ship-name { min-width: 80px; font-size: 0.75rem; }
-            .ship-block { width: 14px; height: 14px; }
+            .ship-block { width: 16px; height: 16px; }
         }
 
-        /* === FIXED HOME BTN === */
         #fixed-home-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9998;
-            display: none;
+            position: fixed; bottom: 20px; right: 20px; z-index: 9998; display: none;
         }
         #fixed-home-btn button {
-            background: var(--panel);
-            color: var(--text);
-            border: 2px solid #555;
-            padding: 12px 20px;
-            border-radius: 50px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            background: var(--panel); color: var(--text); border: 2px solid #555;
+            padding: 12px 20px; border-radius: 50px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-
-        /* Nascosto inizialmente */
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<!-- LOBBY -->
 <div class="lobby-overlay" id="lobby-overlay">
     <h1 style="font-size:2.5rem; margin-bottom:10px;">🚢 SALA D'ATTESA</h1>
     <p id="lobby-info" style="opacity:0.8;">Sincronizzazione in corso...</p>
@@ -575,7 +428,6 @@
     <div id="lobby-action"></div>
 </div>
 
-<!-- ROUND RESULTS OVERLAY -->
 <div class="round-results-overlay" id="round-results-overlay">
     <div class="round-results-box">
         <h2 id="results-title" style="margin:0 0 15px;">⚔️ RISULTATI TURNO</h2>
@@ -584,13 +436,11 @@
     </div>
 </div>
 
-<!-- MAIN -->
 <div class="app-wrapper">
     <div class="header-bar">
         <h1>🚢 Battaglia Navale dei 🐷</h1>
     </div>
 
-    <!-- STATUS BAR -->
     <div class="status-bar" id="status-bar">
         <div class="status-item">⚓ <span class="status-val" id="status-fase">Attesa</span></div>
         <div class="status-item">🎯 Turno: <span class="status-val" id="status-turno">-</span></div>
@@ -598,16 +448,12 @@
     </div>
 
     <div class="game-container" id="game-container">
-
-        <!-- === START SCREEN === -->
         <div id="start-screen" class="start-screen" style="width:100%;">
             <div style="font-size:4rem;">🚢</div>
             <h2>BATTAGLIA NAVALE</h2>
             <p style="opacity:0.7; margin-bottom:20px;">Crea o entra in una partita multiplayer</p>
-            <p style="opacity:0.5; font-size:0.85rem;">Usa la lobby principale per creare una partita</p>
         </div>
 
-        <!-- === MY GRID SECTION === -->
         <div class="grid-section my-section hidden" id="my-section">
             <div class="section-title">
                 <span>🛡️</span>
@@ -617,14 +463,9 @@
             <div class="fleet-status" id="my-fleet-status"></div>
         </div>
 
-        <!-- === RIGHT SECTION (ships/opponent) === -->
         <div class="grid-section opponent-section hidden" id="right-section">
-            <!-- SHIP LIST (placement phase) -->
             <div id="placement-panel">
-                <div class="section-title">
-                    <span>📋</span>
-                    <span>NAVI DA PIAZZARE</span>
-                </div>
+                <div class="section-title"><span>📋</span><span>NAVI DA PIAZZARE</span></div>
                 <div class="ship-list" id="ship-list"></div>
                 <div class="placement-controls">
                     <button class="btn direction-btn" id="btn-rotate" onclick="ruotaDirezione()" title="Ruota">🔄</button>
@@ -636,22 +477,14 @@
                 </button>
             </div>
 
-            <!-- OPPONENT GRIDS (battle phase) -->
             <div id="battle-panel" class="hidden">
-                <div class="section-title">
-                    <span>🎯</span>
-                    <span>SCEGLI BERSAGLIO</span>
-                </div>
+                <div class="section-title"><span>🎯</span><span>SCEGLI BERSAGLIO</span></div>
                 <div class="opponent-tabs" id="opponent-tabs"></div>
                 <div id="opponent-grid-container"></div>
                 <div class="fleet-status" id="opponent-fleet-status"></div>
-
                 <div class="btn-group" style="justify-content:center; margin-top:12px;">
-                    <button class="btn btn-fire" id="btn-fire" onclick="confermaAttacco()" disabled>
-                        🔥 FUOCO!
-                    </button>
+                    <button class="btn btn-fire" id="btn-fire" onclick="confermaAttacco()" disabled>🔥 FUOCO!</button>
                 </div>
-
                 <div class="waiting-bar hidden" id="waiting-bar">
                     <span class="spinner"></span>
                     <span id="waiting-text">In attesa degli altri giocatori...</span>
@@ -661,13 +494,12 @@
     </div>
 </div>
 
-<!-- FIXED HOME -->
 <div id="fixed-home-btn">
     <button onclick="tornaHome()">🏠 HOME</button>
 </div>
 <script>
 // ==========================================
-// 1. CONFIGURAZIONE FIREBASE
+// FIREBASE CONFIG
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyCNo7o2Ft22JDEyJ97BspE3Kur5DNAPKQc",
@@ -679,13 +511,12 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
 const urlParams = new URLSearchParams(window.location.search);
 const matchId = urlParams.get('matchId');
 const mioNome = localStorage.getItem('mioNome');
 
 // ==========================================
-// 2. CONFIGURAZIONE NAVI PER DIMENSIONE
+// CONFIGURAZIONE NAVI
 // ==========================================
 const NAVI_CONFIGS = {
     6:  [
@@ -718,173 +549,130 @@ const NAVI_CONFIGS = {
 const COL_LABELS = 'ABCDEFGHIJKLMNOP';
 
 // ==========================================
-// 3. STATO DEL GIOCO
+// STATO
 // ==========================================
 let gridSize = 10;
-let naviConfig = [];         // config navi per la partita corrente
-let naviPiazzate = [];       // [{ name, size, cells:[[r,c]], dir }]
-let naveSelezionataIdx = -1; // indice nave selezionata per piazzamento
-let direzione = 'H';        // H o V
-
+let naviConfig = [];
+let naviPiazzate = [];       // [{configIdx, name, size, cells:[{r,c}], dir}]
+let naveSelezionataIdx = -1;
+let direzione = 'H';
 let targetSelezionato = null;
-let cellaSelezionata = null; // [r, c]
+let cellaSelezionata = null;  // {r, c} or null
 let hoAttaccato = false;
-let roundResultsShown = -1;  // ultimo round di cui ho visto i risultati
+let roundResultsShown = -1;
 let currentBannerPriority = 0;
-
 let currentGameData = null;
 let unsubscribePartita = null;
 let processingResolution = false;
+let currentPreviewCells = [];  // DOM elements con preview
 
 // ==========================================
-// 4. DOM REFERENCES
+// DOM
 // ==========================================
-const lobbyOverlay   = document.getElementById('lobby-overlay');
-const lobbyStatus    = document.getElementById('lobby-status');
-const startScreen    = document.getElementById('start-screen');
-const mySection      = document.getElementById('my-section');
-const rightSection   = document.getElementById('right-section');
+const lobbyOverlay = document.getElementById('lobby-overlay');
+const startScreen = document.getElementById('start-screen');
+const mySection = document.getElementById('my-section');
+const rightSection = document.getElementById('right-section');
 const placementPanel = document.getElementById('placement-panel');
-const battlePanel    = document.getElementById('battle-panel');
-const statusFase     = document.getElementById('status-fase');
-const statusTurno    = document.getElementById('status-turno');
+const battlePanel = document.getElementById('battle-panel');
+const statusFase = document.getElementById('status-fase');
+const statusTurno = document.getElementById('status-turno');
 const statusSuperstiti = document.getElementById('status-superstiti');
-const shipListEl     = document.getElementById('ship-list');
-const btnPronto      = document.getElementById('btn-pronto');
-const btnFire        = document.getElementById('btn-fire');
-const waitingBar     = document.getElementById('waiting-bar');
-const waitingText    = document.getElementById('waiting-text');
+const shipListEl = document.getElementById('ship-list');
+const btnPronto = document.getElementById('btn-pronto');
+const btnFire = document.getElementById('btn-fire');
+const waitingBar = document.getElementById('waiting-bar');
+const waitingText = document.getElementById('waiting-text');
 const roundResultsOv = document.getElementById('round-results-overlay');
-const resultsBody    = document.getElementById('results-body');
-const resultsTitle   = document.getElementById('results-title');
+const resultsBody = document.getElementById('results-body');
+const resultsTitle = document.getElementById('results-title');
 
 // ==========================================
-// 5. BANNER SYSTEM
+// BANNER
 // ==========================================
-function showGameBanner(options) {
-    const priority = options.priority || 1;
+function showGameBanner(opts) {
+    const priority = opts.priority || 1;
     if (currentBannerPriority > priority) return;
     currentBannerPriority = priority;
-
-    let banner = document.getElementById('game-banner');
-    if (!banner) {
-        banner = document.createElement('div');
-        banner.id = 'game-banner';
-        banner.className = 'game-banner';
-        document.body.appendChild(banner);
-    }
-
-    banner.style.background = `linear-gradient(135deg, ${options.color} 0%, ${adjustColor(options.color, -20)} 100%)`;
-    if (options.vibrate) banner.classList.add('banner-victory');
-    else banner.classList.remove('banner-victory');
-
-    let buttonsHtml = (options.buttons || []).map(btn =>
-        `<button onclick="${btn.onclick}" class="btn" style="padding:8px 16px; background:white; color:#333; border:none; font-weight:700;">${btn.text}</button>`
+    let b = document.getElementById('game-banner');
+    if (!b) { b = document.createElement('div'); b.id = 'game-banner'; b.className = 'game-banner'; document.body.appendChild(b); }
+    b.style.background = `linear-gradient(135deg, ${opts.color} 0%, ${adjustColor(opts.color,-20)} 100%)`;
+    if (opts.vibrate) b.classList.add('banner-victory'); else b.classList.remove('banner-victory');
+    const btns = (opts.buttons||[]).map(x =>
+        `<button onclick="${x.onclick}" class="btn" style="padding:8px 16px;background:white;color:#333;border:none;font-weight:700;">${x.text}</button>`
     ).join('');
-
-    let spinnerHtml = options.spinner ?
-        `<div style="width:18px;height:18px;border:3px solid white;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>` : '';
-
-    banner.innerHTML = `
-        <div class="banner-left">
-            <span style="font-size:1.5rem;">${options.icon}</span>
-            <div>
-                <div style="font-weight:bold;">${options.title}</div>
-                <div style="font-size:0.8rem; opacity:0.9;">${options.subtitle || ''}</div>
-            </div>
-        </div>
-        <div class="banner-right">${buttonsHtml}${spinnerHtml}</div>
-    `;
+    const spin = opts.spinner ? `<div style="width:18px;height:18px;border:3px solid white;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>` : '';
+    b.innerHTML = `<div class="banner-left"><span style="font-size:1.5rem;">${opts.icon}</span><div><div style="font-weight:bold;">${opts.title}</div><div style="font-size:0.8rem;opacity:0.9;">${opts.subtitle||''}</div></div></div><div class="banner-right">${btns}${spin}</div>`;
 }
-
-function removeGameBanner() {
-    currentBannerPriority = 0;
-    const el = document.getElementById('game-banner');
-    if (el) el.remove();
-}
-
-function adjustColor(hex, amount) {
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
-    const n = parseInt(c, 16);
-    const r = Math.max(0, Math.min(255, (n >> 16) + amount));
-    const g = Math.max(0, Math.min(255, ((n >> 8) & 0xFF) + amount));
-    const b = Math.max(0, Math.min(255, (n & 0xFF) + amount));
-    return '#' + (0x1000000 + r*0x10000 + g*0x100 + b).toString(16).slice(1);
+function removeGameBanner() { currentBannerPriority = 0; const e = document.getElementById('game-banner'); if (e) e.remove(); }
+function adjustColor(hex, amt) {
+    let c = hex.replace('#',''); if (c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    const n=parseInt(c,16);
+    const r=Math.max(0,Math.min(255,(n>>16)+amt));
+    const g=Math.max(0,Math.min(255,((n>>8)&0xFF)+amt));
+    const b=Math.max(0,Math.min(255,(n&0xFF)+amt));
+    return '#'+(0x1000000+r*0x10000+g*0x100+b).toString(16).slice(1);
 }
 
 // ==========================================
-// 6. UTILITY DI CALCOLO
+// UTILITY — ✅ TUTTE usano {r, c} objects
 // ==========================================
-function getAttacksAgainst(player, storico) {
-    return (storico || []).filter(a => a.target === player);
-}
-
-function getMyAttacksAgainst(player, storico) {
-    return (storico || []).filter(a => a.by === mioNome && a.target === player);
-}
+function getAttacksAgainst(player, storico) { return (storico||[]).filter(a => a.target === player); }
 
 function cellHasShip(player, r, c, naviData) {
     const navi = naviData[player];
     if (!navi) return false;
-    return navi.some(nave => nave.cells.some(cell => cell[0] === r && cell[1] === c));
+    return navi.some(nave => nave.cells.some(cell => cell.r === r && cell.c === c));
 }
-
 function getShipAt(player, r, c, naviData) {
     const navi = naviData[player];
     if (!navi) return null;
-    return navi.find(nave => nave.cells.some(cell => cell[0] === r && cell[1] === c));
+    return navi.find(nave => nave.cells.some(cell => cell.r === r && cell.c === c));
 }
-
 function wasAttacked(player, r, c, storico) {
-    return (storico || []).some(a => a.target === player && a.r === r && a.c === c);
+    return (storico||[]).some(a => a.target === player && a.r === r && a.c === c);
 }
-
 function isShipSunk(player, nave, storico) {
     const attacks = getAttacksAgainst(player, storico);
-    return nave.cells.every(cell =>
-        attacks.some(a => a.r === cell[0] && a.c === cell[1])
-    );
+    return nave.cells.every(cell => attacks.some(a => a.r === cell.r && a.c === cell.c));
 }
-
 function isPlayerEliminated(player, naviData, storico) {
     const navi = naviData[player];
     if (!navi || navi.length === 0) return false;
     return navi.every(nave => isShipSunk(player, nave, storico));
 }
+function getSurvivingPlayers(data) { return data.partecipanti.filter(p => !(data.eliminati||[]).includes(p)); }
+function getOpponents(data) { return data.partecipanti.filter(p => p !== mioNome); }
+function getSurvivingOpponents(data) { return getSurvivingPlayers(data).filter(p => p !== mioNome); }
 
-function getSurvivingPlayers(data) {
-    return data.partecipanti.filter(p =>
-        !(data.eliminati || []).includes(p)
-    );
-}
-
-function getOpponents(data) {
-    return data.partecipanti.filter(p => p !== mioNome);
-}
-
-function getSurvivingOpponents(data) {
-    return getSurvivingPlayers(data).filter(p => p !== mioNome);
+// Determina info visiva per una cella nave
+function getShipCellInfo(navi, r, c) {
+    for (const nave of navi) {
+        const idx = nave.cells.findIndex(cell => cell.r === r && cell.c === c);
+        if (idx === -1) continue;
+        if (nave.cells.length === 1) return { ship: nave, pos: 'single', dir: 'H', idx };
+        const dir = nave.cells[0].r === nave.cells[1].r ? 'H' : 'V';
+        let pos = 'mid';
+        if (idx === 0) pos = 'bow';
+        else if (idx === nave.cells.length - 1) pos = 'stern';
+        return { ship: nave, pos, dir, idx };
+    }
+    return null;
 }
 
 // ==========================================
-// 7. RENDERING GRIGLIA
+// RENDER GRIGLIA — con onde e navi visive
 // ==========================================
 function renderGrid(containerId, opts) {
-    // opts: { size, showShips:[{cells}], attacks:[], allAttacks:[], interactive, onClick, isMyGrid }
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-
     const grid = document.createElement('div');
     grid.className = 'battle-grid';
     grid.style.gridTemplateColumns = `25px repeat(${opts.size}, 1fr)`;
     grid.style.gridTemplateRows = `25px repeat(${opts.size}, 1fr)`;
 
     // Corner
-    const corner = document.createElement('div');
-    corner.className = 'coord-label coord-corner';
-    grid.appendChild(corner);
-
+    grid.appendChild(Object.assign(document.createElement('div'), { className: 'coord-label' }));
     // Column headers
     for (let c = 0; c < opts.size; c++) {
         const lbl = document.createElement('div');
@@ -893,36 +681,35 @@ function renderGrid(containerId, opts) {
         grid.appendChild(lbl);
     }
 
+    // Precalcola set
+    const allAttacks = opts.allAttacks || opts.attacks || [];
+    const attackedSet = new Set();
+    allAttacks.forEach(a => attackedSet.add(`${a.r},${a.c}`));
+
     const shipCellSet = new Set();
     const sunkCellSet = new Set();
+    const shipsForInfo = opts.showShips || [];
 
-    if (opts.showShips) {
-        opts.showShips.forEach(nave => {
-            const sunk = nave.cells.every(cell =>
-                (opts.allAttacks || opts.attacks || []).some(a => a.r === cell[0] && a.c === cell[1])
-            );
-            nave.cells.forEach(cell => {
-                shipCellSet.add(`${cell[0]},${cell[1]}`);
-                if (sunk) sunkCellSet.add(`${cell[0]},${cell[1]}`);
-            });
+    shipsForInfo.forEach(nave => {
+        const sunk = nave.cells.every(cell => attackedSet.has(`${cell.r},${cell.c}`));
+        nave.cells.forEach(cell => {
+            shipCellSet.add(`${cell.r},${cell.c}`);
+            if (sunk) sunkCellSet.add(`${cell.r},${cell.c}`);
         });
-    }
+    });
 
-    // Calcola navi affondate da rendere visibili anche su griglia avversario
+    // Celle affondate rivelate (griglia avversario)
     const revealedSunkCells = new Set();
+    const revealedSunkShips = [];
     if (!opts.isMyGrid && opts.enemyShips) {
         opts.enemyShips.forEach(nave => {
-            const sunk = nave.cells.every(cell =>
-                (opts.allAttacks || []).some(a => a.r === cell[0] && a.c === cell[1])
-            );
+            const sunk = nave.cells.every(cell => allAttacks.some(a => a.r === cell.r && a.c === cell.c));
             if (sunk) {
-                nave.cells.forEach(cell => revealedSunkCells.add(`${cell[0]},${cell[1]}`));
+                revealedSunkShips.push(nave);
+                nave.cells.forEach(cell => revealedSunkCells.add(`${cell.r},${cell.c}`));
             }
         });
     }
-
-    const attackedSet = new Set();
-    (opts.allAttacks || opts.attacks || []).forEach(a => attackedSet.add(`${a.r},${a.c}`));
 
     for (let r = 0; r < opts.size; r++) {
         // Row label
@@ -934,83 +721,165 @@ function renderGrid(containerId, opts) {
         for (let c = 0; c < opts.size; c++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
             const key = `${r},${c}`;
             const attacked = attackedSet.has(key);
             const hasShip = shipCellSet.has(key);
             const isSunk = sunkCellSet.has(key);
             const isRevealedSunk = revealedSunkCells.has(key);
 
+            // 🌊 Wave delay basato su posizione
+            const waveDelay = (r * 0.12 + c * 0.18) % 3;
+            const waveSpeed = 4 + (r + c) % 3;
+            cell.style.setProperty('--wave-delay', `${waveDelay}s`);
+            cell.style.setProperty('--wave-speed', `${waveSpeed}s`);
+
             if (opts.isMyGrid) {
-                // La mia griglia: mostra navi, colpi ricevuti
                 if (hasShip) {
                     cell.classList.add('ship-cell');
+                    // Aggiungi forma nave
+                    const info = getShipCellInfo(shipsForInfo, r, c);
+                    if (info) {
+                        if (info.pos === 'single') cell.classList.add('ship-single');
+                        else cell.classList.add(`ship-${info.pos}-${info.dir.toLowerCase()}`);
+                        // Emoji sulla prua
+                        if (info.pos === 'bow' || info.pos === 'single') {
+                            const em = document.createElement('span');
+                            em.className = 'ship-emoji';
+                            em.textContent = info.ship.emoji || '🚢';
+                            cell.appendChild(em);
+                        }
+                    }
                     if (isSunk) {
                         cell.classList.add('sunk-cell');
                     } else if (attacked) {
                         cell.classList.add('ship-hit');
-                        cell.innerHTML = '🔥';
+                        const fire = document.createElement('span');
+                        fire.className = 'hit-fire';
+                        fire.textContent = '🔥';
+                        cell.appendChild(fire);
                     }
                 } else if (attacked) {
                     cell.classList.add('miss-marker');
                 }
                 cell.classList.add('no-hover');
             } else {
-                // Griglia avversario: mostra solo attacchi
+                // Griglia avversario
                 if (isRevealedSunk) {
-                    cell.classList.add('sunk-cell');
-                } else if (attacked) {
-                    const hitShip = opts.enemyShips &&
-                        opts.enemyShips.some(n => n.cells.some(cc => cc[0]===r && cc[1]===c));
-                    if (hitShip) {
-                        cell.classList.add('hit-marker');
-                    } else {
-                        cell.classList.add('miss-marker');
+                    cell.classList.add('ship-cell', 'sunk-cell');
+                    const info = getShipCellInfo(revealedSunkShips, r, c);
+                    if (info) {
+                        if (info.pos === 'single') cell.classList.add('ship-single');
+                        else cell.classList.add(`ship-${info.pos}-${info.dir.toLowerCase()}`);
                     }
+                } else if (attacked) {
+                    const hitShip = opts.enemyShips && opts.enemyShips.some(n => n.cells.some(cc => cc.r === r && cc.c === c));
+                    cell.classList.add(hitShip ? 'hit-marker' : 'miss-marker');
                     cell.classList.add('attacked-cell', 'no-hover');
                 }
             }
 
-            // Cella selezionata come bersaglio
-            if (opts.targetCell && opts.targetCell[0] === r && opts.targetCell[1] === c) {
+            // Bersaglio selezionato
+            if (opts.targetCell && opts.targetCell.r === r && opts.targetCell.c === c) {
                 cell.classList.add('target-cell');
             }
 
-            // Preview piazzamento
-            if (opts.previewCells) {
-                const inPreview = opts.previewCells.some(pc => pc[0]===r && pc[1]===c);
-                if (inPreview) {
-                    cell.classList.add(opts.previewValid ? 'preview-cell' : 'preview-invalid-cell');
-                }
-            }
-
+            // Click handler
             if (opts.interactive && !attacked && !isRevealedSunk) {
                 cell.addEventListener('click', () => opts.onClick(r, c));
+            } else if (!opts.interactive) {
+                cell.classList.add('no-hover');
+            }
+
+            // Hover preview per piazzamento
+            if (opts.isMyGrid && opts.placementMode && naveSelezionataIdx >= 0) {
+                cell.addEventListener('mouseenter', () => showPlacementPreview(r, c));
+                cell.addEventListener('mouseleave', clearPlacementPreview);
+                cell.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    showPlacementPreview(r, c);
+                }, { passive: false });
             }
 
             grid.appendChild(cell);
         }
     }
-
     container.appendChild(grid);
 }
 
 // ==========================================
-// 8. PIAZZAMENTO NAVI
+// PREVIEW PIAZZAMENTO
 // ==========================================
+function showPlacementPreview(r, c) {
+    clearPlacementPreview();
+    if (naveSelezionataIdx < 0) return;
+    const config = naviConfig[naveSelezionataIdx];
+    if (naviPiazzate.some(p => p.configIdx === naveSelezionataIdx)) return;
+
+    const cells = calcolaCelleNave(r, c, config.size, direzione);
+    const valid = cells !== null && !haOverlap(cells);
+    const cellsToShow = cells || calcolaCelleNaveClipped(r, c, config.size, direzione);
+
+    const gridEl = document.querySelector('#my-grid-container .battle-grid');
+    if (!gridEl) return;
+
+    cellsToShow.forEach(pos => {
+        const domCell = gridEl.querySelector(`.cell[data-row="${pos.r}"][data-col="${pos.c}"]`);
+        if (domCell && !domCell.classList.contains('ship-cell')) {
+            domCell.classList.add(valid ? 'preview-valid' : 'preview-invalid');
+            currentPreviewCells.push(domCell);
+        }
+    });
+}
+
+function clearPlacementPreview() {
+    currentPreviewCells.forEach(el => el.classList.remove('preview-valid', 'preview-invalid'));
+    currentPreviewCells = [];
+}
+
+// ==========================================
+// PIAZZAMENTO NAVI — ✅ cells come {r, c}
+// ==========================================
+function calcolaCelleNave(startR, startC, size, dir) {
+    const cells = [];
+    for (let i = 0; i < size; i++) {
+        const r = dir === 'V' ? startR + i : startR;
+        const c = dir === 'H' ? startC + i : startC;
+        if (r >= gridSize || c >= gridSize) return null;
+        cells.push({ r, c });
+    }
+    return cells;
+}
+
+// Versione che ritorna celle anche se fuori griglia (per preview rosso)
+function calcolaCelleNaveClipped(startR, startC, size, dir) {
+    const cells = [];
+    for (let i = 0; i < size; i++) {
+        const r = dir === 'V' ? startR + i : startR;
+        const c = dir === 'H' ? startC + i : startC;
+        if (r < gridSize && c < gridSize) cells.push({ r, c });
+    }
+    return cells;
+}
+
+function haOverlap(cells) {
+    const occupate = new Set();
+    naviPiazzate.forEach(n => n.cells.forEach(c => occupate.add(`${c.r},${c.c}`)));
+    return cells.some(c => occupate.has(`${c.r},${c.c}`));
+}
+
 function iniziaPiazzamento() {
     naviPiazzate = [];
-    naveSelezionataIdx = -1;
+    naveSelezionataIdx = 0;
     direzione = 'H';
-
     startScreen.style.display = 'none';
     mySection.classList.remove('hidden');
     rightSection.classList.remove('hidden');
     placementPanel.classList.remove('hidden');
     battlePanel.classList.add('hidden');
-
     document.getElementById('my-section-title').textContent = 'PIAZZA LE TUE NAVI';
     statusFase.textContent = 'Piazzamento';
-
     renderShipList();
     renderMiaGrigliaPiazzamento();
     aggiornaBottonePronto();
@@ -1024,12 +893,11 @@ function renderShipList() {
         item.className = `ship-item ${naveSelezionataIdx === idx ? 'selected' : ''} ${placed ? 'placed' : ''}`;
         item.innerHTML = `
             <span class="ship-name">${nave.emoji} ${nave.name}</span>
-            <div class="ship-blocks">
-                ${'<span class="ship-block"></span>'.repeat(nave.size)}
-            </div>
+            <div class="ship-blocks">${'<span class="ship-block"></span>'.repeat(nave.size)}</div>
+            <span class="ship-size-label">${nave.size} celle</span>
         `;
         if (!placed) {
-            item.addEventListener('click', () => selezionaNave(idx));
+            item.addEventListener('click', () => { naveSelezionataIdx = idx; renderShipList(); renderMiaGrigliaPiazzamento(); });
         } else {
             item.addEventListener('click', () => rimuoviNavePiazzata(idx));
             item.title = 'Clicca per rimuovere';
@@ -1038,67 +906,30 @@ function renderShipList() {
     });
 }
 
-function selezionaNave(idx) {
-    naveSelezionataIdx = idx;
-    renderShipList();
-    renderMiaGrigliaPiazzamento();
-}
-
 function ruotaDirezione() {
     direzione = direzione === 'H' ? 'V' : 'H';
-    document.getElementById('direction-label').innerHTML =
-        `Direzione: <b>${direzione === 'H' ? 'Orizzontale →' : 'Verticale ↓'}</b>`;
+    document.getElementById('direction-label').innerHTML = `Direzione: <b>${direzione === 'H' ? 'Orizzontale →' : 'Verticale ↓'}</b>`;
     renderMiaGrigliaPiazzamento();
-}
-
-function calcolaCelleNave(startR, startC, size, dir) {
-    const cells = [];
-    for (let i = 0; i < size; i++) {
-        const r = dir === 'V' ? startR + i : startR;
-        const c = dir === 'H' ? startC + i : startC;
-        if (r >= gridSize || c >= gridSize) return null;
-        cells.push([r, c]);
-    }
-    return cells;
-}
-
-function haOverlap(cells) {
-    const occupate = new Set();
-    naviPiazzate.forEach(n => n.cells.forEach(c => occupate.add(`${c[0]},${c[1]}`)));
-    return cells.some(c => occupate.has(`${c[0]},${c[1]}`));
 }
 
 function piazzaNave(r, c) {
     if (naveSelezionataIdx < 0) return;
     const config = naviConfig[naveSelezionataIdx];
     if (naviPiazzate.some(p => p.configIdx === naveSelezionataIdx)) return;
-
     const cells = calcolaCelleNave(r, c, config.size, direzione);
     if (!cells || haOverlap(cells)) {
-        // Shake feedback
-        const container = document.getElementById('my-grid-container');
-        container.classList.add('anim-shake');
-        setTimeout(() => container.classList.remove('anim-shake'), 300);
+        const ct = document.getElementById('my-grid-container');
+        ct.classList.add('anim-shake');
+        setTimeout(() => ct.classList.remove('anim-shake'), 300);
         return;
     }
-
-    naviPiazzate.push({
-        configIdx: naveSelezionataIdx,
-        name: config.name,
-        size: config.size,
-        cells: cells,
-        dir: direzione
-    });
-
-    // Auto-seleziona prossima nave non piazzata
+    naviPiazzate.push({ configIdx: naveSelezionataIdx, name: config.name, size: config.size, emoji: config.emoji, cells, dir: direzione });
+    // Auto-select next
     naveSelezionataIdx = -1;
     for (let i = 0; i < naviConfig.length; i++) {
-        if (!naviPiazzate.some(p => p.configIdx === i)) {
-            naveSelezionataIdx = i;
-            break;
-        }
+        if (!naviPiazzate.some(p => p.configIdx === i)) { naveSelezionataIdx = i; break; }
     }
-
+    clearPlacementPreview();
     renderShipList();
     renderMiaGrigliaPiazzamento();
     aggiornaBottonePronto();
@@ -1125,26 +956,30 @@ function aggiornaBottonePronto() {
 }
 
 function renderMiaGrigliaPiazzamento() {
-    const shipData = naviPiazzate.map(n => ({ cells: n.cells }));
+    const shipData = naviPiazzate.map(n => ({ cells: n.cells, emoji: n.emoji, name: n.name, size: n.size }));
     renderGrid('my-grid-container', {
         size: gridSize,
         showShips: shipData,
         attacks: [],
         isMyGrid: true,
         interactive: true,
+        placementMode: true,
         onClick: piazzaNave
     });
 }
 
+// ✅ FIX: Converte celle in oggetti semplici per Firebase
 async function confermaPiazzamento() {
     if (naviPiazzate.length < naviConfig.length) return;
     btnPronto.disabled = true;
     btnPronto.textContent = '⏳ INVIO...';
 
+    // ✅ Converte {r, c} in oggetti piatti (NO array annidati)
     const naviDaSalvare = naviPiazzate.map(n => ({
         name: n.name,
         size: n.size,
-        cells: n.cells
+        emoji: n.emoji || '🚢',
+        cells: n.cells.map(c => ({ r: c.r, c: c.c }))
     }));
 
     try {
@@ -1157,12 +992,12 @@ async function confermaPiazzamento() {
         console.error("Errore piazzamento:", e);
         btnPronto.disabled = false;
         btnPronto.textContent = '✅ PRONTO!';
-        alert("Errore nell'invio. Riprova.");
+        alert("Errore nell'invio. Riprova.\n" + e.message);
     }
 }
 
 // ==========================================
-// 9. BATTAGLIA
+// BATTAGLIA
 // ==========================================
 function iniziaBattaglia(data) {
     startScreen.style.display = 'none';
@@ -1170,18 +1005,10 @@ function iniziaBattaglia(data) {
     rightSection.classList.remove('hidden');
     placementPanel.classList.add('hidden');
     battlePanel.classList.remove('hidden');
-
     document.getElementById('my-section-title').textContent = 'LA TUA FLOTTA';
-    statusFase.textContent = 'Battaglia';
-
+    statusFase.textContent = (data.eliminati||[]).includes(mioNome) ? 'Eliminato 💀' : 'Battaglia';
     hoAttaccato = false;
     cellaSelezionata = null;
-
-    const amIEliminated = (data.eliminati || []).includes(mioNome);
-    if (amIEliminated) {
-        statusFase.textContent = 'Eliminato';
-    }
-
     renderBattaglia(data);
 }
 
@@ -1192,47 +1019,36 @@ function renderBattaglia(data) {
     const turno = data.turnoCorrente || 1;
     const amIEliminated = eliminati.includes(mioNome);
 
-    // Status
     statusTurno.textContent = turno;
     const surviving = getSurvivingPlayers(data);
     statusSuperstiti.textContent = `${surviving.length}/${data.partecipanti.length}`;
 
-    // Ho già attaccato questo turno?
     hoAttaccato = !!attacchiTurno[mioNome] || amIEliminated;
 
     // Mia griglia
     const mieNavi = data.navi[mioNome] || [];
     const attacchiControMe = getAttacksAgainst(mioNome, storico);
     renderGrid('my-grid-container', {
-        size: gridSize,
-        showShips: mieNavi,
-        allAttacks: attacchiControMe,
-        attacks: attacchiControMe,
-        isMyGrid: true,
-        interactive: false
+        size: gridSize, showShips: mieNavi,
+        allAttacks: attacchiControMe, attacks: attacchiControMe,
+        isMyGrid: true, interactive: false
     });
-
-    // Fleet status mia
     renderFleetStatus('my-fleet-status', mieNavi, storico, mioNome);
 
     // Tabs avversari
     renderOpponentTabs(data, eliminati);
 
-    // Griglia avversario selezionato
     if (!targetSelezionato || !data.partecipanti.includes(targetSelezionato) || targetSelezionato === mioNome) {
-        // Seleziona primo avversario sopravvissuto
-        const opponents = getSurvivingOpponents(data);
-        targetSelezionato = opponents.length > 0 ? opponents[0] : getOpponents(data)[0];
+        const opp = getSurvivingOpponents(data);
+        targetSelezionato = opp.length > 0 ? opp[0] : getOpponents(data)[0];
     }
     renderOpponentGrid(data);
 
-    // Stato attacco
     if (hoAttaccato) {
         btnFire.classList.add('hidden');
         waitingBar.classList.remove('hidden');
         const submitted = Object.keys(attacchiTurno).length;
-        const needed = surviving.length;
-        waitingText.textContent = `Attacchi: ${submitted}/${needed} — attendo gli altri...`;
+        waitingText.textContent = `Attacchi: ${submitted}/${surviving.length} — attendo gli altri...`;
     } else if (amIEliminated) {
         btnFire.classList.add('hidden');
         waitingBar.classList.remove('hidden');
@@ -1251,11 +1067,7 @@ function renderOpponentTabs(data, eliminati) {
         const btn = document.createElement('button');
         btn.className = `tab-btn ${p === targetSelezionato ? 'active' : ''} ${eliminati.includes(p) ? 'eliminated' : ''}`;
         btn.textContent = `${eliminati.includes(p) ? '💀 ' : ''}${p}`;
-        btn.addEventListener('click', () => {
-            targetSelezionato = p;
-            cellaSelezionata = null;
-            renderBattaglia(currentGameData);
-        });
+        btn.addEventListener('click', () => { targetSelezionato = p; cellaSelezionata = null; renderBattaglia(currentGameData); });
         tabsEl.appendChild(btn);
     });
 }
@@ -1268,7 +1080,6 @@ function renderOpponentGrid(data) {
     const amIEliminated = eliminati.includes(mioNome);
     const allAttacksVsTarget = getAttacksAgainst(targetSelezionato, storico);
     const targetShips = data.navi[targetSelezionato] || [];
-
     const interactive = !hoAttaccato && !amIEliminated && !targetEliminated;
 
     renderGrid('opponent-grid-container', {
@@ -1277,12 +1088,10 @@ function renderOpponentGrid(data) {
         enemyShips: targetShips,
         allAttacks: allAttacksVsTarget,
         isMyGrid: false,
-        interactive: interactive,
+        interactive,
         onClick: (r, c) => selezionaCellaAttacco(r, c, data),
         targetCell: cellaSelezionata
     });
-
-    // Fleet status avversario
     renderFleetStatus('opponent-fleet-status', targetShips, storico, targetSelezionato);
 }
 
@@ -1293,122 +1102,88 @@ function renderFleetStatus(containerId, navi, storico, player) {
         const sunk = isShipSunk(player, nave, storico);
         const span = document.createElement('span');
         span.className = `fleet-ship-indicator ${sunk ? 'sunk' : ''}`;
-        span.textContent = `${nave.name} (${nave.size})`;
+        span.textContent = `${nave.emoji||''} ${nave.name} (${nave.size})`;
         el.appendChild(span);
     });
 }
 
 function selezionaCellaAttacco(r, c, data) {
     if (hoAttaccato) return;
-    const storico = data.storicoAttacchi || [];
-    if (wasAttacked(targetSelezionato, r, c, storico)) return;
-
-    cellaSelezionata = [r, c];
+    if (wasAttacked(targetSelezionato, r, c, data.storicoAttacchi || [])) return;
+    cellaSelezionata = { r, c };
     renderBattaglia(data);
 }
 
 async function confermaAttacco() {
     if (!cellaSelezionata || !targetSelezionato || hoAttaccato) return;
-    if ((currentGameData.eliminati || []).includes(mioNome)) return;
-    if ((currentGameData.eliminati || []).includes(targetSelezionato)) {
-        alert("Non puoi attaccare un giocatore eliminato!");
-        return;
-    }
-
+    if ((currentGameData.eliminati||[]).includes(mioNome)) return;
+    if ((currentGameData.eliminati||[]).includes(targetSelezionato)) { alert("Non puoi attaccare un giocatore eliminato!"); return; }
     btnFire.disabled = true;
-    const [r, c] = cellaSelezionata;
-
     try {
         await db.collection("partite").doc(matchId).update({
-            [`attacchiTurno.${mioNome}`]: {
-                target: targetSelezionato,
-                r: r,
-                c: c
-            }
+            [`attacchiTurno.${mioNome}`]: { target: targetSelezionato, r: cellaSelezionata.r, c: cellaSelezionata.c }
         });
         hoAttaccato = true;
         cellaSelezionata = null;
     } catch (e) {
         console.error("Errore invio attacco:", e);
         btnFire.disabled = false;
-        alert("Errore nell'invio dell'attacco. Riprova.");
+        alert("Errore. Riprova.");
     }
 }
 
 // ==========================================
-// 10. RISOLUZIONE TURNO
+// RISOLUZIONE TURNO
 // ==========================================
 async function risolviTurno(data) {
     if (processingResolution) return;
     processingResolution = true;
-
     try {
         await db.runTransaction(async (transaction) => {
             const docRef = db.collection("partite").doc(matchId);
             const snap = await transaction.get(docRef);
-            const freshData = snap.data();
+            const fd = snap.data();
+            const surviving = getSurvivingPlayers(fd);
+            const attacks = fd.attacchiTurno || {};
+            if (Object.keys(attacks).length < surviving.length) { processingResolution = false; return; }
 
-            // Controlla di nuovo che tutti abbiano attaccato
-            const surviving = getSurvivingPlayers(freshData);
-            const attacks = freshData.attacchiTurno || {};
-            if (Object.keys(attacks).length < surviving.length) {
-                processingResolution = false;
-                return; // Non tutti hanno attaccato
-            }
-
-            const turno = freshData.turnoCorrente || 1;
-            const storico = freshData.storicoAttacchi || [];
-
-            // Aggiungi attacchi allo storico
+            const turno = fd.turnoCorrente || 1;
+            const storico = fd.storicoAttacchi || [];
             const nuoviAttacchi = [];
             Object.entries(attacks).forEach(([player, atk]) => {
-                nuoviAttacchi.push({
-                    by: player,
-                    target: atk.target,
-                    r: atk.r,
-                    c: atk.c,
-                    round: turno
-                });
+                nuoviAttacchi.push({ by: player, target: atk.target, r: atk.r, c: atk.c, round: turno });
             });
-            const storicoAggiornato = [...storico, ...nuoviAttacchi];
+            const storicoAgg = [...storico, ...nuoviAttacchi];
 
-            // Controlla eliminazioni
-            const nuoviEliminati = [...(freshData.eliminati || [])];
-            freshData.partecipanti.forEach(player => {
+            const nuoviEliminati = [...(fd.eliminati || [])];
+            fd.partecipanti.forEach(player => {
                 if (nuoviEliminati.includes(player)) return;
-                if (isPlayerEliminated(player, freshData.navi, storicoAggiornato)) {
-                    nuoviEliminati.push(player);
-                }
+                if (isPlayerEliminated(player, fd.navi, storicoAgg)) nuoviEliminati.push(player);
             });
 
-            // Controlla vincitore
-            const sopravvissuti = freshData.partecipanti.filter(p => !nuoviEliminati.includes(p));
+            const sopravvissuti = fd.partecipanti.filter(p => !nuoviEliminati.includes(p));
             const vincitore = sopravvissuti.length <= 1 ? (sopravvissuti[0] || null) : null;
 
             transaction.update(docRef, {
-                storicoAttacchi: storicoAggiornato,
+                storicoAttacchi: storicoAgg,
                 attacchiTurno: {},
                 turnoCorrente: turno + 1,
                 eliminati: nuoviEliminati,
-                vincitore: vincitore,
+                vincitore,
                 ultimoRoundRisolto: turno,
                 stato: vincitore ? 'conclusa' : 'battaglia'
             });
         });
-    } catch (e) {
-        console.error("Errore risoluzione turno:", e);
-    }
-
+    } catch (e) { console.error("Errore risoluzione:", e); }
     processingResolution = false;
 }
 
 // ==========================================
-// 11. MOSTRA RISULTATI TURNO
+// RISULTATI TURNO
 // ==========================================
 function mostraRisultatiTurno(data, roundNumber) {
     if (roundResultsShown >= roundNumber) return;
     roundResultsShown = roundNumber;
-
     const storico = data.storicoAttacchi || [];
     const attacchiRound = storico.filter(a => a.round === roundNumber);
     if (attacchiRound.length === 0) return;
@@ -1420,36 +1195,28 @@ function mostraRisultatiTurno(data, roundNumber) {
         const hasShip = cellHasShip(atk.target, atk.r, atk.c, data.navi);
         const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, data.navi) : null;
         const sunk = ship ? isShipSunk(atk.target, ship, storico) : false;
-
         const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
+        const div = document.createElement('div');
 
         if (sunk) {
-            const div = document.createElement('div');
             div.className = 'result-line result-sunk';
-            div.innerHTML = `💥 <b>${atk.by}</b> → ${atk.target} (${coord}): <b>COLPITO E AFFONDATO!</b> 🔥 ${ship.name}`;
-            resultsBody.appendChild(div);
+            div.innerHTML = `💥 <b>${atk.by}</b> → ${atk.target} (${coord}): <b>AFFONDATO!</b> ${ship.emoji||''} ${ship.name}`;
         } else if (hasShip) {
-            const div = document.createElement('div');
             div.className = 'result-line result-hit';
             div.innerHTML = `🎯 <b>${atk.by}</b> → ${atk.target} (${coord}): <b>COLPITO!</b>`;
-            resultsBody.appendChild(div);
         } else {
-            const div = document.createElement('div');
             div.className = 'result-line result-miss';
             div.innerHTML = `💨 <b>${atk.by}</b> → ${atk.target} (${coord}): Acqua`;
-            resultsBody.appendChild(div);
         }
+        resultsBody.appendChild(div);
     });
 
-    // Mostra eliminazioni
+    // Mostra nuove eliminazioni
+    const prevStorico = storico.filter(a => a.round < roundNumber);
     (data.eliminati || []).forEach(player => {
-        // Controlla se è stato eliminato in questo round
-        const naviPlayer = data.navi[player] || [];
-        const prevStorico = storico.filter(a => a.round < roundNumber);
-        const wasAlreadyEliminated = naviPlayer.length > 0 &&
-            naviPlayer.every(n => isShipSunk(player, n, prevStorico));
-
-        if (!wasAlreadyEliminated) {
+        const naviP = data.navi[player] || [];
+        const wasAlready = naviP.length > 0 && naviP.every(n => isShipSunk(player, n, prevStorico));
+        if (!wasAlready) {
             const div = document.createElement('div');
             div.className = 'result-line result-eliminated';
             div.innerHTML = `💀 <b>${player}</b> è stato ELIMINATO!`;
@@ -1466,65 +1233,37 @@ function chiudiRisultatiTurno() {
 }
 
 // ==========================================
-// 12. FIREBASE LISTENER
+// FIREBASE LISTENER
 // ==========================================
 function avviaListener() {
     if (unsubscribePartita) unsubscribePartita();
-
     unsubscribePartita = db.collection("partite").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
-        if (!data) {
-            alert("Partita non trovata!");
-            window.location.href = 'index.html';
-            return;
-        }
+        if (!data) { alert("Partita non trovata!"); window.location.href = 'index.html'; return; }
         currentGameData = data;
         lobbyOverlay.style.display = 'none';
-
         gridSize = parseInt(data.opzioni?.gridSize) || 10;
         naviConfig = NAVI_CONFIGS[gridSize] || NAVI_CONFIGS[10];
-
         document.getElementById('fixed-home-btn').style.display = 'block';
 
-        // === ATTESA ===
-        if (data.stato === 'attesa') {
-            gestisciAttesa(data);
-        }
-        // === PIAZZAMENTO ===
-        else if (data.stato === 'piazzamento') {
-            gestisciPiazzamento(data);
-        }
-        // === BATTAGLIA ===
-        else if (data.stato === 'battaglia') {
-            gestisciBattaglia(data);
-        }
-        // === CONCLUSA ===
-        else if (data.stato === 'conclusa') {
-            gestisciConclusa(data);
-        }
+        if (data.stato === 'attesa') gestisciAttesa(data);
+        else if (data.stato === 'piazzamento') gestisciPiazzamento(data);
+        else if (data.stato === 'battaglia') gestisciBattaglia(data);
+        else if (data.stato === 'conclusa') gestisciConclusa(data);
     });
 }
 
 function gestisciAttesa(data) {
     const pronti = data.pronti || [];
     startScreen.style.display = 'none';
-
     if (!pronti.includes(mioNome)) {
-        db.collection("partite").doc(matchId).update({
-            pronti: firebase.firestore.FieldValue.arrayUnion(mioNome)
-        });
+        db.collection("partite").doc(matchId).update({ pronti: firebase.firestore.FieldValue.arrayUnion(mioNome) });
     }
-
     showGameBanner({
-        icon: '⏳',
-        title: `ATTESA GIOCATORI (${pronti.length}/${data.partecipanti.length})`,
-        subtitle: 'Tutti devono entrare nella stanza...',
-        color: '#2c3e50',
-        buttons: [{ text: '🚫 ANNULLA', onclick: 'annullaPartita()' }],
-        spinner: true
+        icon: '⏳', title: `ATTESA GIOCATORI (${pronti.length}/${data.partecipanti.length})`,
+        subtitle: 'Tutti devono entrare nella stanza...', color: '#2c3e50',
+        buttons: [{ text: '🚫 ANNULLA', onclick: 'annullaPartita()' }], spinner: true
     });
-
-    // Tutti pronti → piazzamento
     if (pronti.length >= data.partecipanti.length) {
         db.collection("partite").doc(matchId).update({ stato: 'piazzamento' });
     }
@@ -1532,94 +1271,61 @@ function gestisciAttesa(data) {
 
 function gestisciPiazzamento(data) {
     const prontiPiazz = data.prontiPiazzamento || [];
-
     if (prontiPiazz.includes(mioNome)) {
-        // Ho già piazzato — attendo gli altri
         showGameBanner({
-            icon: '⏳',
-            title: `PIAZZAMENTO (${prontiPiazz.length}/${data.partecipanti.length})`,
-            subtitle: 'Attendi che tutti piazzino le navi...',
-            color: '#8e44ad',
-            spinner: true
+            icon: '⏳', title: `PIAZZAMENTO (${prontiPiazz.length}/${data.partecipanti.length})`,
+            subtitle: 'Attendi che tutti piazzino le navi...', color: '#8e44ad', spinner: true
         });
-
-        // Mostra la mia griglia piazzata (read-only)
         startScreen.style.display = 'none';
         mySection.classList.remove('hidden');
         rightSection.classList.remove('hidden');
         placementPanel.classList.remove('hidden');
         battlePanel.classList.add('hidden');
-
         const mieNavi = data.navi[mioNome] || [];
-        renderGrid('my-grid-container', {
-            size: gridSize,
-            showShips: mieNavi,
-            attacks: [],
-            isMyGrid: true,
-            interactive: false
-        });
-
+        renderGrid('my-grid-container', { size: gridSize, showShips: mieNavi, attacks: [], isMyGrid: true, interactive: false });
         btnPronto.disabled = true;
         btnPronto.textContent = '✅ IN ATTESA...';
     } else {
         removeGameBanner();
         iniziaPiazzamento();
     }
-
-    // Tutti piazzati → battaglia!
     if (prontiPiazz.length >= data.partecipanti.length) {
         removeGameBanner();
-        db.collection("partite").doc(matchId).update({
-            stato: 'battaglia',
-            turnoCorrente: 1,
-            attacchiTurno: {},
-            storicoAttacchi: [],
-            eliminati: []
-        });
+        // Solo il primo (alfabeticamente) avvia la battaglia
+        const starter = data.partecipanti.sort()[0];
+        if (mioNome === starter) {
+            db.collection("partite").doc(matchId).update({
+                stato: 'battaglia', turnoCorrente: 1, attacchiTurno: {},
+                storicoAttacchi: [], eliminati: []
+            });
+        }
     }
 }
 
 function gestisciBattaglia(data) {
     const attacchiTurno = data.attacchiTurno || {};
     const surviving = getSurvivingPlayers(data);
-    const turno = data.turnoCorrente || 1;
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
-
     removeGameBanner();
     iniziaBattaglia(data);
-
-    // Mostra risultati del round precedente (se non già visto)
     if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto) {
         mostraRisultatiTurno(data, ultimoRisolto);
     }
-
-    // Tutti i sopravvissuti hanno attaccato? → risolvi
     const tuttiAttaccato = surviving.every(p => !!attacchiTurno[p]);
     if (tuttiAttaccato && surviving.length > 0) {
-        // Solo il primo giocatore (alfabeticamente) risolve
         const resolver = surviving.sort()[0];
-        if (mioNome === resolver) {
-            risolviTurno(data);
-        }
+        if (mioNome === resolver) risolviTurno(data);
     }
 }
 
 function gestisciConclusa(data) {
     const vincitore = data.vincitore;
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
-
-    // Mostra risultati ultimo round se non visti
-    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto) {
-        mostraRisultatiTurno(data, ultimoRisolto);
-    }
-
-    // Mostra battaglia finale (griglie rivelate)
+    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto) mostraRisultatiTurno(data, ultimoRisolto);
     iniziaBattaglia(data);
     statusFase.textContent = 'FINE';
-
     const haVinto = vincitore === mioNome;
-    const turni = data.turnoCorrente - 1;
-
+    const turni = (data.turnoCorrente || 1) - 1;
     showGameBanner({
         icon: haVinto ? '👑' : '💀',
         title: haVinto ? 'VITTORIA!' : `Ha vinto ${vincitore}!`,
@@ -1631,50 +1337,27 @@ function gestisciConclusa(data) {
             { text: '🏠 HOME', onclick: 'tornaHome()' }
         ]
     });
-
     if (haVinto) celebraVittoria();
 }
 
 // ==========================================
-// 13. RIVINCITA & NAVIGAZIONE
+// RIVINCITA & NAV
 // ==========================================
 async function creaRivincita() {
     if (!currentGameData) return;
     const v = currentGameData;
-
-    showGameBanner({
-        icon: '⏳',
-        title: 'CREAZIONE RIVINCITA...',
-        subtitle: 'Attendi...',
-        color: '#3498db',
-        spinner: true
-    });
-
+    showGameBanner({ icon: '⏳', title: 'CREAZIONE RIVINCITA...', subtitle: 'Attendi...', color: '#3498db', spinner: true });
     try {
-        let pts = {};
-        v.partecipanti.forEach(p => pts[p] = 0);
-
         const doc = await db.collection("partite").add({
-            gioco: 'battleship',
-            partecipanti: v.partecipanti,
-            opzioni: { gridSize: gridSize },
-            pronti: [],
-            prontiPiazzamento: [],
-            navi: {},
-            storicoAttacchi: [],
-            attacchiTurno: {},
-            turnoCorrente: 1,
-            eliminati: [],
-            vincitore: null,
-            stato: 'attesa',
-            timestamp: Date.now()
+            gioco: 'battleship', partecipanti: v.partecipanti,
+            opzioni: { gridSize }, pronti: [], prontiPiazzamento: [],
+            navi: {}, storicoAttacchi: [], attacchiTurno: {},
+            turnoCorrente: 1, eliminati: [], vincitore: null,
+            stato: 'attesa', timestamp: Date.now()
         });
-
         await db.collection("partite").doc(matchId).update({
-            prossimaPartita: doc.id,
-            prossimaPartitaCreataDa: mioNome
+            prossimaPartita: doc.id, prossimaPartitaCreataDa: mioNome
         });
-
         window.location.href = `battleship.html?matchId=${doc.id}`;
     } catch (e) {
         console.error("Errore rivincita:", e);
@@ -1682,67 +1365,44 @@ async function creaRivincita() {
     }
 }
 
-function tornaHome() {
-    if (unsubscribePartita) unsubscribePartita();
-    window.location.href = 'index.html';
-}
-
+function tornaHome() { if (unsubscribePartita) unsubscribePartita(); window.location.href = 'index.html'; }
 async function annullaPartita() {
     if (!confirm("Cancellare la partita per tutti?")) return;
-    try {
-        await db.collection("partite").doc(matchId).delete();
-        alert("Partita cancellata.");
-        window.location.href = 'index.html';
-    } catch (e) {
-        console.error(e);
-    }
+    try { await db.collection("partite").doc(matchId).delete(); window.location.href = 'index.html'; } catch(e) { console.error(e); }
 }
 
 // ==========================================
-// 14. CELEBRAZIONI
+// CELEBRAZIONI
 // ==========================================
 function celebraVittoria() {
-    const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#ff00ff'];
+    const colors = ['#f1c40f','#e74c3c','#3498db','#2ecc71','#9b59b6','#ff00ff'];
     for (let i = 0; i < 150; i++) {
         const p = document.createElement('div');
         p.className = 'confetti';
-        p.style.left = Math.random() * 100 + '%';
-        p.style.top = '-5%';
-        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        const size = Math.random() * 12 + 4;
-        p.style.width = size + 'px';
-        p.style.height = size + 'px';
-        if (Math.random() > 0.3) p.style.borderRadius = '50%';
+        p.style.left = Math.random()*100+'%'; p.style.top = '-5%';
+        p.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+        const s = Math.random()*12+4; p.style.width=s+'px'; p.style.height=s+'px';
+        if (Math.random()>0.3) p.style.borderRadius='50%';
         document.body.appendChild(p);
-
-        const drift = (Math.random() - 0.5) * 300;
-        const dur = 2000 + Math.random() * 3000;
+        const drift = (Math.random()-0.5)*300;
+        const dur = 2000+Math.random()*3000;
         p.animate([
-            { transform: 'translate(0,0) rotate(0)', opacity: 1 },
-            { transform: `translate(${drift}px, ${window.innerHeight + 50}px) rotate(${Math.random()*720}deg)`, opacity: 0 }
-        ], { duration: dur, easing: 'ease-in', delay: Math.random() * 800 }).onfinish = () => p.remove();
+            { transform:'translate(0,0) rotate(0)', opacity:1 },
+            { transform:`translate(${drift}px, ${window.innerHeight+50}px) rotate(${Math.random()*720}deg)`, opacity:0 }
+        ], { duration:dur, easing:'ease-in', delay:Math.random()*800 }).onfinish = () => p.remove();
         setTimeout(() => { if (p.parentNode) p.remove(); }, 6000);
     }
 }
 
 // ==========================================
-// 15. INIZIALIZZAZIONE
+// INIT
 // ==========================================
 if (!matchId) {
-    // Nessun matchId → mostra schermata start
     startScreen.style.display = 'block';
 } else {
-    if (!mioNome) {
-        alert("Effettua il login per giocare.");
-        window.location.href = 'index.html';
-    } else {
-        avviaListener();
-    }
+    if (!mioNome) { alert("Effettua il login per giocare."); window.location.href = 'index.html'; }
+    else avviaListener();
 }
 </script>
-
-<div id="fixed-home-btn">
-    <button onclick="tornaHome()">🏠 HOME</button>
-</div>
 </body>
 </html>
