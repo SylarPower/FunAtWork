@@ -173,7 +173,7 @@
             background: linear-gradient(145deg, #c0392b, #e74c3c) !important;
         }
         .cell.hit-marker::after {
-            content: '✕'; color: white; font-weight: 900; font-size: 1.1em;
+            content: '🔥'; color: white; font-weight: 900; font-size: 1.1em;
             position: relative; z-index: 1;
         }
         .cell.hit-marker::before { display: none; }
@@ -417,6 +417,110 @@
             cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .hidden { display: none !important; }
+/* ==========================================
+   🚀 CINEMA ATTACCO
+   ========================================== */
+.attack-cinema {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 7000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+.attack-label {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 900;
+    text-align: center;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    z-index: 2;
+    opacity: 0;
+    animation: labelFadeIn 0.4s ease forwards;
+}
+.attack-label .coord {
+    display: block;
+    font-size: 2.5rem;
+    color: #f1c40f;
+    margin-top: 5px;
+    letter-spacing: 4px;
+}
+@keyframes labelFadeIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* 🚀 MISSILE */
+.missile {
+    position: fixed;
+    z-index: 7500;
+    pointer-events: none;
+    font-size: 2.5rem;
+    filter: drop-shadow(0 0 12px rgba(231,76,60,0.9));
+}
+.missile-trail {
+    position: fixed;
+    width: 4px;
+    border-radius: 2px;
+    z-index: 7499;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* 💥 IMPACT FLASH */
+.impact-flash {
+    position: fixed;
+    border-radius: 50%;
+    z-index: 7600;
+    pointer-events: none;
+}
+
+/* 🔥 IMPACT TEXT */
+.impact-text {
+    position: fixed;
+    z-index: 7700;
+    pointer-events: none;
+    font-size: 3rem;
+    font-weight: 900;
+    text-shadow: 0 0 20px rgba(0,0,0,0.8);
+    color: white;
+}
+
+/* Impact particles */
+.impact-particle {
+    position: fixed;
+    border-radius: 50%;
+    z-index: 7550;
+    pointer-events: none;
+}
+
+/* Screen shake */
+@keyframes screenShake {
+    0%, 100% { transform: translate(0,0) rotate(0); }
+    10% { transform: translate(-5px,-3px) rotate(-0.5deg); }
+    20% { transform: translate(5px,2px) rotate(0.5deg); }
+    30% { transform: translate(-3px,5px) rotate(-0.3deg); }
+    40% { transform: translate(3px,-2px) rotate(0.3deg); }
+    50% { transform: translate(-2px,3px) rotate(-0.2deg); }
+    60% { transform: translate(4px,-3px) rotate(0.2deg); }
+    70% { transform: translate(-3px,2px) rotate(-0.1deg); }
+    80% { transform: translate(2px,-1px) rotate(0.1deg); }
+    90% { transform: translate(-1px,2px) rotate(0); }
+}
+.screen-shake { animation: screenShake 0.5s ease; }
+.screen-shake-heavy { animation: screenShake 0.7s ease 2; }
+
+/* Ripple per splash */
+.water-ripple {
+    position: fixed;
+    border: 3px solid rgba(100,180,255,0.6);
+    border-radius: 50%;
+    z-index: 7550;
+    pointer-events: none;
+}
     </style>
 </head>
 <body>
@@ -565,7 +669,8 @@ let currentGameData = null;
 let unsubscribePartita = null;
 let processingResolution = false;
 let currentPreviewCells = [];  // DOM elements con preview
-
+let animatingRound = -1;
+    
 // ==========================================
 // DOM
 // ==========================================
@@ -1231,7 +1336,413 @@ function chiudiRisultatiTurno() {
     roundResultsOv.style.display = 'none';
     if (currentGameData) renderBattaglia(currentGameData);
 }
+// ==========================================
+// 🚀 SISTEMA ANIMAZIONI ATTACCO
+// ==========================================
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+async function playAttackAnimations(data, roundNumber) {
+    if (animatingRound >= roundNumber) return;
+    animatingRound = roundNumber;
+
+    const storico = data.storicoAttacchi || [];
+    const attacks = storico.filter(a => a.round === roundNumber);
+    if (attacks.length === 0) return;
+
+    // Cinema overlay
+    const cinema = document.createElement('div');
+    cinema.className = 'attack-cinema';
+    cinema.id = 'attack-cinema';
+    document.body.appendChild(cinema);
+
+    await sleep(400);
+
+    for (let i = 0; i < attacks.length; i++) {
+        const atk = attacks[i];
+        const hasShip = cellHasShip(atk.target, atk.r, atk.c, data.navi);
+        const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, data.navi) : null;
+        const sunk = ship ? isShipSunk(atk.target, ship, storico) : false;
+        const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
+
+        // Label chi attacca chi
+        const label = document.createElement('div');
+        label.className = 'attack-label';
+        label.innerHTML = `${atk.by === mioNome ? '🎯 TU' : atk.by} → ${atk.target === mioNome ? 'TE' : atk.target}<span class="coord">${coord}</span>`;
+        cinema.appendChild(label);
+
+        await sleep(600);
+
+        // Punto di impatto: centro dello schermo
+        const impactX = window.innerWidth / 2;
+        const impactY = window.innerHeight / 2;
+
+        // Lancio missile
+        await launchMissile(impactX, impactY);
+
+        // Impatto
+        if (sunk) {
+            await playBigExplosion(impactX, impactY, ship);
+        } else if (hasShip) {
+            await playSmallExplosion(impactX, impactY);
+        } else {
+            await playSplash(impactX, impactY);
+        }
+
+        await sleep(600);
+
+        // Rimuovi label
+        label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 }).onfinish = () => label.remove();
+
+        await sleep(400);
+    }
+
+    // Chiudi cinema
+    cinema.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 });
+    await sleep(400);
+    cinema.remove();
+}
+
+// ==========================================
+// 🚀 MISSILE
+// ==========================================
+function launchMissile(targetX, targetY) {
+    return new Promise(resolve => {
+        const missile = document.createElement('div');
+        missile.className = 'missile';
+        missile.textContent = '🚀';
+
+        // Partenza: angolo casuale in alto
+        const startX = targetX + (Math.random() - 0.5) * 300;
+        const startY = -50;
+
+        missile.style.left = startX + 'px';
+        missile.style.top = startY + 'px';
+        missile.style.transform = 'rotate(180deg)';
+        document.body.appendChild(missile);
+
+        // Trail di fuoco durante il volo
+        const trailInterval = setInterval(() => {
+            const rect = missile.getBoundingClientRect();
+            spawnTrailParticle(rect.left + rect.width / 2, rect.top);
+        }, 40);
+
+        // Animazione volo con curva
+        const midX = (startX + targetX) / 2 + (Math.random() - 0.5) * 100;
+        const midY = startY + (targetY - startY) * 0.3;
+
+        const duration = 800;
+        const startTime = performance.now();
+
+        function animateFrame(now) {
+            const t = Math.min((now - startTime) / duration, 1);
+            // Bezier quadratica
+            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            const oneMinT = 1 - ease;
+
+            const x = oneMinT * oneMinT * startX + 2 * oneMinT * ease * midX + ease * ease * targetX;
+            const y = oneMinT * oneMinT * startY + 2 * oneMinT * ease * midY + ease * ease * targetY;
+
+            missile.style.left = x + 'px';
+            missile.style.top = y + 'px';
+
+            // Rotazione verso la direzione del movimento
+            if (t > 0.1) {
+                const angle = Math.atan2(targetY - y, targetX - x) * (180 / Math.PI) + 90;
+                missile.style.transform = `rotate(${angle}deg)`;
+            }
+
+            // Scala crescente all'avvicinarsi
+            const scale = 1 + t * 0.5;
+            missile.style.fontSize = (2.5 * scale) + 'rem';
+
+            if (t < 1) {
+                requestAnimationFrame(animateFrame);
+            } else {
+                clearInterval(trailInterval);
+                missile.remove();
+                resolve();
+            }
+        }
+
+        requestAnimationFrame(animateFrame);
+    });
+}
+
+function spawnTrailParticle(x, y) {
+    const trail = document.createElement('div');
+    trail.className = 'missile-trail';
+    trail.style.left = x + 'px';
+    trail.style.top = y + 'px';
+    trail.style.height = (8 + Math.random() * 12) + 'px';
+    trail.style.background = `linear-gradient(to bottom, ${
+        Math.random() > 0.5 ? '#f39c12' : '#e74c3c'
+    }, transparent)`;
+    document.body.appendChild(trail);
+
+    trail.animate([
+        { opacity: 0.8, transform: 'scale(1)' },
+        { opacity: 0, transform: `scale(0.3) translateY(${15 + Math.random() * 20}px)` }
+    ], { duration: 400 + Math.random() * 200 }).onfinish = () => trail.remove();
+}
+
+// ==========================================
+// 💥 PICCOLA ESPLOSIONE (Colpito)
+// ==========================================
+async function playSmallExplosion(x, y) {
+    // Flash
+    spawnFlash(x, y, '#e74c3c', 80);
+
+    // Particelle fuoco
+    const colors = ['#e74c3c', '#f39c12', '#f1c40f', '#e67e22', '#ff6b6b'];
+    spawnParticleBurst(x, y, colors, 25, 120, 600);
+
+    // Emoji impatto
+    spawnImpactEmoji(x, y, '💥', 1.2);
+
+    // Shake leggero
+    document.body.classList.add('screen-shake');
+    setTimeout(() => document.body.classList.remove('screen-shake'), 500);
+
+    await sleep(500);
+}
+
+// ==========================================
+// 💥💥 GRANDE ESPLOSIONE (Affondato!)
+// ==========================================
+async function playBigExplosion(x, y, ship) {
+    // Flash grande
+    spawnFlash(x, y, '#f39c12', 200);
+    await sleep(50);
+    spawnFlash(x, y, '#e74c3c', 150);
+
+    // Tante particelle
+    const colors1 = ['#e74c3c', '#c0392b', '#f39c12', '#e67e22'];
+    const colors2 = ['#f1c40f', '#ff6b6b', '#ff4757', '#ff6348'];
+    spawnParticleBurst(x, y, colors1, 40, 200, 1000);
+    setTimeout(() => spawnParticleBurst(x, y, colors2, 30, 160, 800), 100);
+
+    // Frammenti debris
+    spawnDebris(x, y, 15);
+
+    // Emoji sequenza
+    spawnImpactEmoji(x, y, '💥', 2.0);
+    setTimeout(() => spawnImpactEmoji(x - 30, y - 20, '🔥', 1.5), 150);
+    setTimeout(() => spawnImpactEmoji(x + 30, y + 20, '🔥', 1.5), 250);
+
+    // Testo AFFONDATO!
+    setTimeout(() => {
+        const txt = document.createElement('div');
+        txt.className = 'impact-text';
+        txt.style.left = '50%';
+        txt.style.top = (y - 60) + 'px';
+        txt.style.transform = 'translateX(-50%)';
+        txt.style.color = '#ff4757';
+        txt.innerHTML = `💀 ${ship?.name || 'NAVE'} AFFONDATA!`;
+        document.body.appendChild(txt);
+
+        txt.animate([
+            { opacity: 0, transform: 'translateX(-50%) scale(0.5)' },
+            { opacity: 1, transform: 'translateX(-50%) scale(1.1)', offset: 0.3 },
+            { opacity: 1, transform: 'translateX(-50%) scale(1)', offset: 0.5 },
+            { opacity: 1, transform: 'translateX(-50%) scale(1)', offset: 0.8 },
+            { opacity: 0, transform: 'translateX(-50%) scale(0.8) translateY(-30px)' }
+        ], { duration: 2000 }).onfinish = () => txt.remove();
+    }, 300);
+
+    // Shake pesante
+    document.body.classList.add('screen-shake-heavy');
+    setTimeout(() => document.body.classList.remove('screen-shake-heavy'), 1400);
+
+    // Fumo residuo
+    setTimeout(() => spawnSmoke(x, y, 8), 400);
+
+    await sleep(1200);
+}
+
+// ==========================================
+// 💦 SPLASH (Acqua)
+// ==========================================
+async function playSplash(x, y) {
+    // Flash blu
+    spawnFlash(x, y, 'rgba(52,152,219,0.5)', 60);
+
+    // Particelle acqua
+    const colors = ['#3498db', '#5dade2', '#85c1e9', '#aed6f1', '#ffffff'];
+    spawnParticleBurst(x, y, colors, 20, 100, 700);
+
+    // Gocce che cadono
+    spawnWaterDrops(x, y, 12);
+
+    // Cerchi d'onda
+    spawnWaterRipples(x, y, 3);
+
+    // Emoji
+    spawnImpactEmoji(x, y, '💦', 1.3);
+
+    // Testo "ACQUA"
+    setTimeout(() => {
+        const txt = document.createElement('div');
+        txt.className = 'impact-text';
+        txt.style.left = '50%';
+        txt.style.top = (y - 50) + 'px';
+        txt.style.transform = 'translateX(-50%)';
+        txt.style.color = '#85c1e9';
+        txt.style.fontSize = '2rem';
+        txt.textContent = '~ ACQUA ~';
+        document.body.appendChild(txt);
+
+        txt.animate([
+            { opacity: 0, transform: 'translateX(-50%) translateY(10px)' },
+            { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
+            { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' }
+        ], { duration: 1200 }).onfinish = () => txt.remove();
+    }, 200);
+
+    await sleep(700);
+}
+
+// ==========================================
+// 🛠️ HELPER PARTICELLE
+// ==========================================
+function spawnFlash(x, y, color, size) {
+    const flash = document.createElement('div');
+    flash.className = 'impact-flash';
+    flash.style.left = (x - size / 2) + 'px';
+    flash.style.top = (y - size / 2) + 'px';
+    flash.style.width = size + 'px';
+    flash.style.height = size + 'px';
+    flash.style.background = `radial-gradient(circle, ${color}, transparent)`;
+    document.body.appendChild(flash);
+
+    flash.animate([
+        { opacity: 1, transform: 'scale(0.3)' },
+        { opacity: 0.8, transform: 'scale(1.5)' },
+        { opacity: 0, transform: 'scale(2.5)' }
+    ], { duration: 400 }).onfinish = () => flash.remove();
+}
+
+function spawnParticleBurst(x, y, colors, count, radius, duration) {
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'impact-particle';
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        const size = 3 + Math.random() * 8;
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        document.body.appendChild(p);
+
+        const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.5;
+        const dist = radius * (0.4 + Math.random() * 0.6);
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist + Math.random() * 30; // gravità
+        const dur = duration * (0.6 + Math.random() * 0.4);
+
+        p.animate([
+            { transform: 'translate(0,0) scale(1)', opacity: 1 },
+            { transform: `translate(${tx * 0.7}px, ${ty * 0.5}px) scale(1)`, opacity: 0.9, offset: 0.3 },
+            { transform: `translate(${tx}px, ${ty + 20}px) scale(0)`, opacity: 0 }
+        ], { duration: dur }).onfinish = () => p.remove();
+
+        setTimeout(() => { if (p.parentNode) p.remove(); }, dur + 100);
+    }
+}
+
+function spawnDebris(x, y, count) {
+    const chars = ['▪', '▫', '◾', '◽', '▬', '⬛'];
+    for (let i = 0; i < count; i++) {
+        const d = document.createElement('div');
+        d.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:7560;pointer-events:none;font-size:${0.5 + Math.random() * 0.8}rem;color:${Math.random() > 0.5 ? '#7f8c8d' : '#566573'};`;
+        d.textContent = chars[Math.floor(Math.random() * chars.length)];
+        document.body.appendChild(d);
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 150;
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist;
+        const rot = (Math.random() - 0.5) * 720;
+
+        d.animate([
+            { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+            { transform: `translate(${tx}px, ${ty + 100}px) rotate(${rot}deg)`, opacity: 0 }
+        ], { duration: 800 + Math.random() * 600, easing: 'cubic-bezier(0.25,0.46,0.45,0.94)' })
+            .onfinish = () => d.remove();
+    }
+}
+
+function spawnSmoke(x, y, count) {
+    for (let i = 0; i < count; i++) {
+        const s = document.createElement('div');
+        const size = 15 + Math.random() * 30;
+        s.style.cssText = `position:fixed;left:${x - size / 2 + (Math.random() - 0.5) * 40}px;top:${y - size / 2}px;width:${size}px;height:${size}px;border-radius:50%;background:rgba(100,100,100,0.4);z-index:7540;pointer-events:none;`;
+        document.body.appendChild(s);
+
+        s.animate([
+            { transform: 'translate(0,0) scale(0.5)', opacity: 0.5 },
+            { transform: `translate(${(Math.random() - 0.5) * 50}px, ${-40 - Math.random() * 60}px) scale(2)`, opacity: 0 }
+        ], { duration: 1500 + Math.random() * 1000, delay: i * 80 })
+            .onfinish = () => s.remove();
+    }
+}
+
+function spawnImpactEmoji(x, y, emoji, scale) {
+    const e = document.createElement('div');
+    e.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:7650;pointer-events:none;font-size:${scale * 2.5}rem;transform:translate(-50%,-50%);`;
+    e.textContent = emoji;
+    document.body.appendChild(e);
+
+    e.animate([
+        { transform: 'translate(-50%,-50%) scale(0)', opacity: 1 },
+        { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1, offset: 0.2 },
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.4 },
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 0.8, offset: 0.7 },
+        { transform: 'translate(-50%,-50%) scale(0.5)', opacity: 0 }
+    ], { duration: 1000 }).onfinish = () => e.remove();
+
+    setTimeout(() => { if (e.parentNode) e.remove(); }, 1100);
+}
+
+function spawnWaterDrops(x, y, count) {
+    for (let i = 0; i < count; i++) {
+        const d = document.createElement('div');
+        const size = 3 + Math.random() * 5;
+        d.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size * 1.4}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:#5dade2;z-index:7555;pointer-events:none;`;
+        document.body.appendChild(d);
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 30 + Math.random() * 80;
+        const tx = Math.cos(angle) * dist;
+        const peakY = -(30 + Math.random() * 60);
+
+        d.animate([
+            { transform: 'translate(0,0)', opacity: 1 },
+            { transform: `translate(${tx * 0.5}px, ${peakY}px)`, opacity: 0.9, offset: 0.35 },
+            { transform: `translate(${tx}px, ${peakY + 120}px)`, opacity: 0 }
+        ], { duration: 600 + Math.random() * 400, easing: 'cubic-bezier(0.25,0.1,0.25,1)' })
+            .onfinish = () => d.remove();
+    }
+}
+
+function spawnWaterRipples(x, y, count) {
+    for (let i = 0; i < count; i++) {
+        const r = document.createElement('div');
+        r.className = 'water-ripple';
+        const startSize = 10;
+        r.style.left = (x - startSize / 2) + 'px';
+        r.style.top = (y - startSize / 2) + 'px';
+        r.style.width = startSize + 'px';
+        r.style.height = startSize + 'px';
+        document.body.appendChild(r);
+
+        const maxSize = 60 + i * 30;
+        r.animate([
+            { width: startSize + 'px', height: startSize + 'px', left: (x - startSize / 2) + 'px', top: (y - startSize / 2) + 'px', opacity: 0.8, borderWidth: '3px' },
+            { width: maxSize + 'px', height: maxSize + 'px', left: (x - maxSize / 2) + 'px', top: (y - maxSize / 2) + 'px', opacity: 0, borderWidth: '1px' }
+        ], { duration: 800 + i * 200, delay: i * 150 })
+            .onfinish = () => r.remove();
+    }
+}
 // ==========================================
 // FIREBASE LISTENER
 // ==========================================
@@ -1244,6 +1755,10 @@ function avviaListener() {
         lobbyOverlay.style.display = 'none';
         gridSize = parseInt(data.opzioni?.gridSize) || 10;
         naviConfig = NAVI_CONFIGS[gridSize] || NAVI_CONFIGS[10];
+        if (data.stato === 'attesa' || data.stato === 'piazzamento') {
+            animatingRound = -1;
+            roundResultsShown = -1;
+        }
         document.getElementById('fixed-home-btn').style.display = 'block';
 
         if (data.stato === 'attesa') gestisciAttesa(data);
@@ -1308,9 +1823,14 @@ function gestisciBattaglia(data) {
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
     removeGameBanner();
     iniziaBattaglia(data);
-    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto) {
-        mostraRisultatiTurno(data, ultimoRisolto);
+
+    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto && animatingRound < ultimoRisolto) {
+        // ✅ Animazioni prima dei risultati
+        playAttackAnimations(data, ultimoRisolto).then(() => {
+            mostraRisultatiTurno(data, ultimoRisolto);
+        });
     }
+
     const tuttiAttaccato = surviving.every(p => !!attacchiTurno[p]);
     if (tuttiAttaccato && surviving.length > 0) {
         const resolver = surviving.sort()[0];
@@ -1321,7 +1841,13 @@ function gestisciBattaglia(data) {
 function gestisciConclusa(data) {
     const vincitore = data.vincitore;
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
-    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto) mostraRisultatiTurno(data, ultimoRisolto);
+
+    if (ultimoRisolto > 0 && roundResultsShown < ultimoRisolto && animatingRound < ultimoRisolto) {
+        playAttackAnimations(data, ultimoRisolto).then(() => {
+            mostraRisultatiTurno(data, ultimoRisolto);
+        });
+    }
+
     iniziaBattaglia(data);
     statusFase.textContent = 'FINE';
     const haVinto = vincitore === mioNome;
