@@ -1541,7 +1541,6 @@ function renderOpponentGrid(data) {
         }
     }
 }
-}
 
 function renderFleetStatus(containerId, navi, storico, player) {
     const el = document.getElementById(containerId);
@@ -1649,8 +1648,8 @@ async function risolviTurno(data) {
             const turno = fd.turnoCorrente || 1;
             const storico = fd.storicoAttacchi || [];
             const mode = fd.opzioni?.mode || 'classic';
-            const hasEvents = (mode === 'chaos');
-            const hasSpecial = (mode === 'worms' || mode === 'chaos');
+            const hasEvents = (mode === 'trump');
+            const hasSpecial = (mode === 'super' || mode === 'trump');
             let casseAttive = [...(fd.casseAttive || [])];
             let arsenali = JSON.parse(JSON.stringify(fd.arsenale || {}));
             const eventiLog = [...(fd.eventiLog || [])];
@@ -2617,10 +2616,10 @@ function avviaListener() {
         gridSize = parseInt(data.opzioni?.gridSize) || 10;
         const mode = data.opzioni?.mode || 'classic';
         
-        featureArmiSpeciali = (mode === 'worms' || mode === 'chaos');
-        featureNaviSpeciali = (mode === 'worms' || mode === 'chaos');
-        featureEventiRandom = (mode === 'chaos');
-        featurePowerups = (mode === 'worms' || mode === 'chaos');
+        featureArmiSpeciali = (mode === 'super' || mode === 'trump');
+        featureNaviSpeciali = (mode === 'super' || mode === 'trump');
+        featureEventiRandom = (mode === 'trump');
+        featurePowerups = (mode === 'super' || mode === 'trump');
         
         // Seleziona navi config con/senza speciali
         naviConfig = buildNaviConfig(gridSize);
@@ -2686,7 +2685,7 @@ function gestisciPiazzamento(data) {
         const starter = data.partecipanti.sort()[0];
         if (mioNome === starter) {
             const mode = data.opzioni?.mode || 'classic';
-            const hasSpecial = (mode === 'worms' || mode === 'chaos');
+            const hasSpecial = (mode === 'super' || mode === 'trump');
 
             const updateData = {
                 stato: 'battaglia', turnoCorrente: 1, attacchiTurno: {},
