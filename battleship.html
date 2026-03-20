@@ -217,11 +217,13 @@
             box-shadow: 0 0 12px rgba(241,196,15,0.5);
             animation: pulseTarget 0.8s infinite;
             cursor: pointer !important;
+            z-index: 4;
         }
-        .cell.target-cell::before { display: none !important; }
         .cell.target-cell::after { content: none !important; }
-        .cell.attacked-cell { cursor: not-allowed; opacity: 0.7; }
+        .cell.target-cell::before { display: none !important; }
         .cell.target-cell .ship-emoji { display: none; }
+        .cell.target-cell .sunk-skull { display: none; }
+        .cell.attacked-cell { cursor: not-allowed; opacity: 0.7; }
         
         @keyframes pulseTarget {
             0%, 100% { box-shadow: 0 0 5px rgba(241,196,15,0.4); }
@@ -841,8 +843,8 @@ const ARSENALE_INIZIALE = {
     missile: 999,
     cluster: 2,
     laser: 2,
-    scudo: 2,
-    scudoStratega: 1
+    scudo: 1,
+    scudoStratega: 3
 };
 
 // Navi speciali: rimpiazzano le normali quando abilitate
@@ -907,6 +909,7 @@ let selectedWeapon = 'missile';
 let arsenaleLocale = { ...ARSENALE_INIZIALE };
 let scudoGlobaleAttivo = false;
 let scudoCellaAttiva = null;    // {r,c} o null
+let selectedWeaponCells = [];  // tutte le celle coinvolte dall'arma selezionata
 let krakenShapeIndex = 0;       // indice forma corrente per Kraken
 let piazzamentoIniziato = false;
 // ==========================================
@@ -1156,8 +1159,8 @@ function renderGrid(containerId, opts) {
                 }
             }
 
-            // Bersaglio selezionato
-            if (opts.targetCell && opts.targetCell.r === r && opts.targetCell.c === c) {
+            // ✅ Bersaglio: tutte le celle coinvolte dall'arma
+            if (opts.targetCells && opts.targetCells.some(tc => tc.r === r && tc.c === c)) {
                 cell.classList.add('target-cell');
             }
             // Scudo su cella
@@ -1482,6 +1485,7 @@ function iniziaBattaglia(data) {
         if (turno !== (window._lastRenderedTurno || 0)) {
             cellaSelezionata = null;
             selectedWeapon = 'missile';
+            selectedWeaponCells = [];
             scudoGlobaleAttivo = false;
             scudoCellaAttiva = null;
         }
@@ -1564,12 +1568,13 @@ function renderOpponentTabs(data, eliminati) {
         btn.className = `tab-btn ${p === targetSelezionato ? 'active' : ''} ${eliminati.includes(p) ? 'eliminated' : ''}`;
         btn.textContent = `${eliminati.includes(p) ? '💀 ' : ''}${p}`;
         btn.addEventListener('click', () => {
-        targetSelezionato = p;
-        cellaSelezionata = null;
-        renderOpponentTabs(currentGameData, currentGameData.eliminati || []);
-        renderOpponentGrid(currentGameData);
-        btnFire.disabled = true;
-    });
+            targetSelezionato = p;
+            cellaSelezionata = null;
+            selectedWeaponCells = [];
+            renderOpponentTabs(currentGameData, currentGameData.eliminati || []);
+            renderOpponentGrid(currentGameData);
+            btnFire.disabled = true;
+        });
         tabsEl.appendChild(btn);
     });
 }
@@ -1597,6 +1602,7 @@ function renderOpponentGrid(data) {
         interactive,
         onClick: (r, c) => selezionaCellaAttacco(r, c, data),
         targetCell: cellaSelezionata,
+        targetCells: selectedWeaponCells,
         intelCells: intelCellsForTarget
     });
     renderFleetStatus('opponent-fleet-status', targetShips, storico, targetSelezionato);
@@ -1669,13 +1675,16 @@ function selezionaCellaAttacco(r, c, data) {
     if (hoAttaccato || isAnimating) return;
     if (wasAttacked(targetSelezionato, r, c, data.storicoAttacchi || [])) return;
 
-    // ✅ Doppio click sulla stessa cella → conferma attacco
     if (cellaSelezionata && cellaSelezionata.r === r && cellaSelezionata.c === c) {
         confermaAttacco();
         return;
     }
 
     cellaSelezionata = { r, c };
+
+    // ✅ Calcola tutte le celle coinvolte dall'arma
+    selectedWeaponCells = calcolaCelleArma(selectedWeapon, r, c);
+
     renderOpponentGrid(data);
     btnFire.disabled = false;
 }
@@ -1737,6 +1746,7 @@ async function confermaAttacco() {
         scudoGlobaleAttivo = false;
         scudoCellaAttiva = null;
         selectedWeapon = 'missile';
+        selectedWeaponCells = [];
         shieldSelectionMode = false;
     } catch (e) {
         console.error("Errore invio attacco:", e);
@@ -2143,7 +2153,6 @@ async function animateGroupAttack(group, renderData, checkStorico, naviData) {
     await waitForPaint();
     gridContainer.scrollIntoView({ behavior: 'instant', block: 'nearest' });
     await waitForPaint();
-    await sleep(50);
 
     const gridEl = gridContainer.querySelector('.battle-grid');
     if (gridEl) gridEl.classList.add('grid-highlight');
@@ -2152,35 +2161,30 @@ async function animateGroupAttack(group, renderData, checkStorico, naviData) {
     if (!centerCell) { if (gridEl) gridEl.classList.remove('grid-highlight'); return; }
 
     await waitForPaint();
-    const centerRect = centerCell.getBoundingClientRect();
-    const targetX = centerRect.left + centerRect.width / 2;
-    const targetY = centerRect.top + centerRect.height / 2;
+    let centerRect = centerCell.getBoundingClientRect();
+    let targetX = centerRect.left + centerRect.width / 2;
+    let targetY = centerRect.top + centerRect.height / 2;
 
-    const coord = `${COL_LABELS[group.centerC]}${group.centerR + 1}`;
-    const attackerName = isMyAttack ? '🎯 TU' : group.by;
-    const targetName = targetsMe ? 'TE' : group.target;
-    const weaponLabel = group.weapon === 'cluster' ? ' 💣' : ' 🔭';
-    const label = showAttackLabel(attackerName + weaponLabel, targetName, coord);
+    await sleep(300);
 
-    await sleep(400);
-
-    // Lancio missile al centro
     const gridRect = gridContainer.getBoundingClientRect();
     const start = getMissileStart(startDir, gridRect);
     const fakeAtk = { weapon: group.weapon, isEvent: false };
     await launchMissileToCell(start.x, start.y, targetX, targetY, startDir, fakeAtk);
 
+    // ✅ Ri-leggi posizione dopo missile
+    centerRect = centerCell.getBoundingClientRect();
+    targetX = centerRect.left + centerRect.width / 2;
+    targetY = centerRect.top + centerRect.height / 2;
+
     if (group.isLaser) {
-        // ✅ LASER: scan visuale su tutte le celle 3x3
         await playLaserScanGroup(gridContainer, group.attacks);
     } else {
-        // ✅ CLUSTER: esplosione simultanea su tutte le celle a croce
         await playClusterExplosion(gridContainer, group.attacks, naviData, checkStorico);
     }
 
     if (gridEl) gridEl.classList.remove('grid-highlight');
-    hideAttackLabel(label);
-    await sleep(300);
+    await sleep(200);
 }
 
 // ==========================================
@@ -2264,23 +2268,7 @@ async function playLaserScanGroup(gridContainer, attacks) {
         spawnFlash(cell.x, cell.y, 'rgba(52,152,219,0.3)', 30);
     }
 
-    // Testo
-    const txt = document.createElement('div');
-    txt.className = 'impact-text';
-    txt.style.left = '50%';
-    txt.style.top = (cy - 60) + 'px';
-    txt.style.transform = 'translateX(-50%)';
-    txt.style.color = '#5dade2';
-    txt.style.fontSize = '1.6rem';
-    txt.textContent = '🔭 AREA SCANSIONATA';
-    document.body.appendChild(txt);
-    txt.animate([
-        { opacity: 0, transform: 'translateX(-50%) scale(0.7)' },
-        { opacity: 1, transform: 'translateX(-50%) scale(1)' },
-        { opacity: 0, transform: 'translateX(-50%) translateY(-25px)' }
-    ], { duration: 1500 }).onfinish = () => txt.remove();
-
-    await sleep(1200);
+    await sleep(800);
 
     // Ripulisci stili inline
     allCells.forEach(cell => {
@@ -2292,23 +2280,21 @@ async function playLaserScanGroup(gridContainer, attacks) {
 async function animateSingleAttack(atk, renderData, checkStorico) {
     const isMyAttack = atk.by === mioNome;
     const targetsMe = atk.target === mioNome;
-
     let gridContainerId, startDir;
 
     if (isMyAttack) {
         targetSelezionato = atk.target;
         renderOpponentTabs(renderData, renderData.eliminati || []);
-        renderOpponentGrid(renderData);  // ✅ Pre-hit data
+        renderOpponentGrid(renderData);
         gridContainerId = 'opponent-grid-container';
         startDir = 'bottom';
     } else if (targetsMe) {
-        // ✅ La mia griglia è già renderizzata con dati pre-round
         gridContainerId = 'my-grid-container';
         startDir = 'left';
     } else {
         targetSelezionato = atk.target;
         renderOpponentTabs(renderData, renderData.eliminati || []);
-        renderOpponentGrid(renderData);  // ✅ Pre-hit data
+        renderOpponentGrid(renderData);
         gridContainerId = 'opponent-grid-container';
         startDir = 'right';
     }
@@ -2316,14 +2302,9 @@ async function animateSingleAttack(atk, renderData, checkStorico) {
     const gridContainer = document.getElementById(gridContainerId);
     if (!gridContainer) return;
 
-    // ✅ Aspetta che il DOM sia completamente renderizzato
     await waitForPaint();
-
     gridContainer.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-
-    // ✅ Aspetta fine scroll + paint
     await waitForPaint();
-    await sleep(50);
 
     const gridEl = gridContainer.querySelector('.battle-grid');
     if (gridEl) gridEl.classList.add('grid-highlight');
@@ -2331,39 +2312,28 @@ async function animateSingleAttack(atk, renderData, checkStorico) {
     const cellEl = gridContainer.querySelector(`.cell[data-row="${atk.r}"][data-col="${atk.c}"]`);
     if (!cellEl) { if (gridEl) gridEl.classList.remove('grid-highlight'); return; }
 
-    // ✅ Leggi posizione DOPO paint
+    // ✅ Posizione per LANCIO missile
     await waitForPaint();
-    const cellRect = cellEl.getBoundingClientRect();
-    const targetX = cellRect.left + cellRect.width / 2;
-    const targetY = cellRect.top + cellRect.height / 2;
+    let cellRect = cellEl.getBoundingClientRect();
+    let targetX = cellRect.left + cellRect.width / 2;
+    let targetY = cellRect.top + cellRect.height / 2;
 
-    // ✅ Usa checkStorico (include QUESTO attacco) per determinare hit/sunk
     const hasShip = cellHasShip(atk.target, atk.r, atk.c, renderData.navi);
     const ship = hasShip ? getShipAt(atk.target, atk.r, atk.c, renderData.navi) : null;
     const sunk = ship ? isShipSunk(atk.target, ship, checkStorico) : false;
 
-    // Label floating
-    const coord = `${COL_LABELS[atk.c]}${atk.r + 1}`;
-    const attackerName = isMyAttack ? '🎯 TU' : atk.by;
-    const targetName = targetsMe ? 'TE' : atk.target;
-    const label = showAttackLabel(attackerName, targetName, coord);
+    await sleep(300);
 
-    await sleep(400);
-
-    // Calcola posizione di partenza
     const gridRect = gridContainer.getBoundingClientRect();
     const start = getMissileStart(startDir, gridRect);
-
-    // Lancia missile
     await launchMissileToCell(start.x, start.y, targetX, targetY, startDir, atk);
 
-    // Emoji missile diversa per arma
-    const weaponEmoji = atk.weapon === 'cluster' ? '💣' : atk.weapon === 'laser' ? '🔭' : (atk.isEvent ? '🐙' : '🚀');
+    // ✅ Ri-leggi posizione DOPO il missile (scroll potrebbe essere cambiato)
+    cellRect = cellEl.getBoundingClientRect();
+    targetX = cellRect.left + cellRect.width / 2;
+    targetY = cellRect.top + cellRect.height / 2;
 
-    // Impatto
-    if (atk.isLaser || atk.weapon === 'laser') {
-        await playLaserScan(targetX, targetY);
-    } else if (sunk) {
+    if (sunk) {
         await playBigExplosion(targetX, targetY, ship);
     } else if (hasShip) {
         await playSmallExplosion(targetX, targetY);
@@ -2371,11 +2341,8 @@ async function animateSingleAttack(atk, renderData, checkStorico) {
         await playSplash(targetX, targetY);
     }
 
-    // Pulizia
     if (gridEl) gridEl.classList.remove('grid-highlight');
-    hideAttackLabel(label);
-
-    await sleep(300);
+    await sleep(200);
 }
 
 // ==========================================
@@ -2585,27 +2552,6 @@ async function playLaserScan(x, y) {
 }
 
 // ==========================================
-// 🏷️ LABEL ATTACCO FLOATING
-// ==========================================
-function showAttackLabel(attacker, target, coord) {
-    // Rimuovi label precedenti
-    document.querySelectorAll('.attack-info-float').forEach(el => el.remove());
-
-    const label = document.createElement('div');
-    label.className = 'attack-info-float';
-    label.innerHTML = `${attacker}<span class="atk-arrow">➜</span>${target}<span class="atk-coord">${coord}</span>`;
-    document.body.appendChild(label);
-
-    // Trigger animazione ingresso
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            label.classList.add('visible');
-        });
-    });
-
-    return label;
-}
-// ==========================================
 // ⚔️ SELETTORE ARMI
 // ==========================================
 function renderWeaponBar() {
@@ -2631,6 +2577,7 @@ function renderWeaponBar() {
         btn.addEventListener('click', () => {
             selectedWeapon = id;
             cellaSelezionata = null;
+            selectedWeaponCells = [];
             renderWeaponBar();
             renderOpponentGrid(currentGameData);
             btnFire.disabled = true;
@@ -2810,11 +2757,6 @@ function calcolaCelleArma(weapon, r, c) {
     }
     return cells;
 }
-function hideAttackLabel(label) {
-    if (!label) return;
-    label.classList.remove('visible');
-    setTimeout(() => { if (label.parentNode) label.remove(); }, 400);
-}
 function spawnTrailParticle(x, y) {
     const trail = document.createElement('div');
     trail.className = 'missile-trail';
@@ -2876,26 +2818,6 @@ async function playBigExplosion(x, y, ship) {
     setTimeout(() => spawnImpactEmoji(x - 30, y - 20, '🔥', 1.5), 150);
     setTimeout(() => spawnImpactEmoji(x + 30, y + 20, '🔥', 1.5), 250);
 
-    // Testo AFFONDATO!
-    setTimeout(() => {
-        const txt = document.createElement('div');
-        txt.className = 'impact-text';
-        txt.style.left = '50%';
-        txt.style.top = (y - 60) + 'px';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.color = '#ff4757';
-        txt.innerHTML = `💀 ${ship?.name || 'NAVE'} AFFONDATA!`;
-        document.body.appendChild(txt);
-
-        txt.animate([
-            { opacity: 0, transform: 'translateX(-50%) scale(0.5)' },
-            { opacity: 1, transform: 'translateX(-50%) scale(1.1)', offset: 0.3 },
-            { opacity: 1, transform: 'translateX(-50%) scale(1)', offset: 0.5 },
-            { opacity: 1, transform: 'translateX(-50%) scale(1)', offset: 0.8 },
-            { opacity: 0, transform: 'translateX(-50%) scale(0.8) translateY(-30px)' }
-        ], { duration: 2000 }).onfinish = () => txt.remove();
-    }, 300);
-
     // Shake pesante
     document.body.classList.add('screen-shake-heavy');
     setTimeout(() => document.body.classList.remove('screen-shake-heavy'), 1400);
@@ -2925,25 +2847,6 @@ async function playSplash(x, y) {
 
     // Emoji
     spawnImpactEmoji(x, y, '💦', 1.3);
-
-    // Testo "ACQUA"
-    setTimeout(() => {
-        const txt = document.createElement('div');
-        txt.className = 'impact-text';
-        txt.style.left = '50%';
-        txt.style.top = (y - 50) + 'px';
-        txt.style.transform = 'translateX(-50%)';
-        txt.style.color = '#85c1e9';
-        txt.style.fontSize = '2rem';
-        txt.textContent = '~ ACQUA ~';
-        document.body.appendChild(txt);
-
-        txt.animate([
-            { opacity: 0, transform: 'translateX(-50%) translateY(10px)' },
-            { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
-            { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' }
-        ], { duration: 1200 }).onfinish = () => txt.remove();
-    }, 200);
 
     await sleep(700);
 }
