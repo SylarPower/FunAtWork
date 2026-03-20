@@ -811,6 +811,131 @@
     background: rgba(52,152,219,0.2) !important;
     border: 1px dashed rgba(52,152,219,0.5) !important;
 }
+/* ==========================================
+   📊 STATS BAR
+   ========================================== */
+.stats-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px;
+    background: var(--panel);
+    border-radius: 8px;
+    margin-top: 8px;
+    justify-content: center;
+}
+.stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--panel-light);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.stat-chip .stat-emoji { font-size: 0.9rem; }
+.stat-chip .stat-value { color: var(--accent); }
+.stat-chip.streak-active { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); }
+
+/* ==========================================
+   🏆 POWERUP INDICATORI
+   ========================================== */
+.powerup-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    background: rgba(241,196,15,0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(241,196,15,0.15);
+    margin-top: 6px;
+}
+.powerup-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: default;
+}
+.powerup-chip.available {
+    background: rgba(46,204,113,0.15);
+    border: 1px solid #27ae60;
+    color: #2ecc71;
+}
+.powerup-chip.locked {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #444;
+    color: #666;
+}
+.powerup-chip.active {
+    background: rgba(241,196,15,0.2);
+    border: 1px solid #f1c40f;
+    color: #f1c40f;
+    animation: pulseTarget 1.5s infinite;
+}
+.powerup-chip .pu-emoji { font-size: 0.9rem; }
+
+/* ==========================================
+   ❓ HELP OVERLAY
+   ========================================== */
+.help-btn {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    z-index: 9997;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 2px solid #555;
+    color: var(--text);
+    font-size: 1.2rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.help-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 8000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.help-content {
+    background: var(--panel);
+    border-radius: 15px;
+    padding: 25px;
+    max-width: 550px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    color: var(--text);
+}
+.help-section { margin-bottom: 15px; }
+.help-section h3 { color: var(--accent); margin: 0 0 8px; font-size: 0.95rem; }
+.help-item {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.8rem;
+    align-items: flex-start;
+}
+.help-item .hi-emoji { font-size: 1.1rem; min-width: 25px; text-align: center; }
+.help-item .hi-name { font-weight: 700; color: var(--target-color); }
+.help-item .hi-desc { color: var(--text-dim); }
+.help-item .hi-unlock { color: #2ecc71; font-size: 0.7rem; font-style: italic; }
     </style>
 </head>
 <body>
@@ -903,10 +1028,48 @@
                 <span class="spinner"></span>
                 <span id="waiting-text">In attesa degli altri giocatori...</span>
             </div>
+            <!-- STATS + POWERUPS -->
+            <div id="stats-powerup-section" class="hidden">
+                <div class="stats-bar" id="stats-bar"></div>
+                <div class="powerup-bar" id="powerup-bar"></div>
+            </div>
         </div>
     </div>
 </div>
-
+<button class="help-btn" onclick="toggleHelp()" title="Guida">❓</button>
+<div class="help-overlay" id="help-overlay" onclick="if(event.target===this)toggleHelp()">
+    <div class="help-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--accent);">📖 GUIDA</h2>
+            <span onclick="toggleHelp()" style="cursor:pointer; font-size:1.5rem;">✖️</span>
+        </div>
+        <div class="help-section">
+            <h3>⚔️ Armi</h3>
+            <div class="help-item"><span class="hi-emoji">🚀</span><div><span class="hi-name">Missile</span> — <span class="hi-desc">Colpisce 1 cella. Illimitato.</span></div></div>
+            <div class="help-item"><span class="hi-emoji">💣</span><div><span class="hi-name">Grappolo</span> — <span class="hi-desc">Esplosione a croce: cella + 4 adiacenti (×2)</span></div></div>
+            <div class="help-item"><span class="hi-emoji">🔩</span><div><span class="hi-name">Perforante</span> — <span class="hi-desc">3 celle in linea retta. Doppio click per ruotare. (×2)</span></div></div>
+            <div class="help-item"><span class="hi-emoji">🐟</span><div><span class="hi-name">Torpedine</span> — <span class="hi-desc">Colpisce intera riga o colonna. Doppio click per alternare. (×1)</span></div></div>
+            <div class="help-item"><span class="hi-emoji">🔭</span><div><span class="hi-name">Mirino Laser</span> — <span class="hi-desc">Scansiona area 3×3, rivela navi SENZA danni. (×2)</span></div></div>
+        </div>
+        <div class="help-section">
+            <h3>🛡️ Difesa</h3>
+            <div class="help-item"><span class="hi-emoji">🛡️</span><div><span class="hi-name">Scudo Globale</span> — <span class="hi-desc">Blocca il prossimo colpo su di te questo turno. (×1)</span></div></div>
+            <div class="help-item"><span class="hi-emoji">🎯</span><div><span class="hi-name">Scudo Stratega</span> — <span class="hi-desc">Protegge 1 cella specifica della tua griglia per 1 turno. (×1)</span></div></div>
+        </div>
+        <div class="help-section">
+            <h3>🏆 Powerups (sbloccabili)</h3>
+            <div class="help-item"><span class="hi-emoji">⚡</span><div><span class="hi-name">Doppio Colpo</span> — <span class="hi-desc">Spara 2 volte il prossimo turno.</span><br><span class="hi-unlock">🔓 Affondi una nave nemica</span></div></div>
+            <div class="help-item"><span class="hi-emoji">📡</span><div><span class="hi-name">Sonar Ping</span> — <span class="hi-desc">Rivela 1 cella nemica dove c'è una nave.</span><br><span class="hi-unlock">🔓 3 colpi a segno consecutivi (streak)</span></div></div>
+            <div class="help-item"><span class="hi-emoji">🔧</span><div><span class="hi-name">Riparazione</span> — <span class="hi-desc">Annulla 1 colpo subito sulla tua griglia.</span><br><span class="hi-unlock">🔓 Sopravvivi 5 turni senza perdere navi</span></div></div>
+            <div class="help-item"><span class="hi-emoji">💨</span><div><span class="hi-name">Ultimo Respiro</span> — <span class="hi-desc">Doppio colpo automatico.</span><br><span class="hi-unlock">🔓 Automatico: ti resta 1 sola nave</span></div></div>
+        </div>
+        <div class="help-section">
+            <h3>🚢 Navi Speciali</h3>
+            <div class="help-item"><span class="hi-emoji">🐙</span><div><span class="hi-name">Kraken</span> — <span class="hi-desc">Forma L o T. Usa 🔄 per cambiare forma durante il piazzamento.</span></div></div>
+            <div class="help-item"><span class="hi-emoji">💥</span><div><span class="hi-name">Cannoniera</span> — <span class="hi-desc">Se colpita (ma non affondata), contrattacca 1 cella random sul nemico!</span></div></div>
+        </div>
+    </div>
+</div>
 <div id="fixed-home-btn">
     <button onclick="tornaHome()">🏠 HOME</button>
 </div>
@@ -964,19 +1127,118 @@ const COL_LABELS = 'ABCDEFGHIJKLMNOP';
 // CONFIGURAZIONE ARMI E FEATURE
 // ==========================================
 const ARMI_CONFIG = {
-    missile:  { name: 'Missile',        emoji: '🚀', desc: 'Colpisce 1 cella',                            unlimited: true },
-    cluster:  { name: 'Grappolo',       emoji: '💣', desc: 'Esplosione a croce: cella + 4 adiacenti',     unlimited: false },
-    laser:    { name: 'Mirino Laser',   emoji: '🔭', desc: 'Scansiona area 3×3: rivela navi SENZA danni', unlimited: false }
+    missile:    { name: 'Missile',       emoji: '🚀', desc: 'Colpisce 1 cella',                              unlimited: true },
+    cluster:    { name: 'Grappolo',      emoji: '💣', desc: 'Esplosione a croce: cella + 4 adiacenti',       unlimited: false },
+    piercing:   { name: 'Perforante',    emoji: '🔩', desc: '3 celle in linea retta (scegli direzione)',      unlimited: false },
+    torpedo:    { name: 'Torpedine',     emoji: '🐟', desc: 'Colpisce intera RIGA o COLONNA scelta',         unlimited: false },
+    laser:      { name: 'Mirino Laser',  emoji: '🔭', desc: 'Scansiona area 3×3: rivela navi SENZA danni',   unlimited: false }
 };
 
 const ARSENALE_INIZIALE = {
     missile: 999,
     cluster: 2,
+    piercing: 2,
+    torpedo: 1,
     laser: 2,
     scudo: 1,
-    scudoStratega: 3
+    scudoStratega: 1
 };
+// ==========================================
+// 🏆 POWERUPS (guadagnati in-game)
+// ==========================================
+const POWERUP_DEFS = {
+    doppioColpo: {
+        name: 'Doppio Colpo',
+        emoji: '⚡',
+        desc: 'Spara 2 volte il prossimo turno',
+        unlock: 'Affondi una nave nemica'
+    },
+    sonarPing: {
+        name: 'Sonar Ping',
+        emoji: '📡',
+        desc: 'Rivela 1 cella nemica con una nave',
+        unlock: '3 colpi a segno consecutivi'
+    },
+    riparazione: {
+        name: 'Riparazione',
+        emoji: '🔧',
+        desc: 'Annulla 1 colpo subito (scegli quale cella riparare)',
+        unlock: '5 turni senza perdere una nave'
+    },
+    ultimoRespiro: {
+        name: 'Ultimo Respiro',
+        emoji: '💨',
+        desc: 'Doppio colpo automatico quando resta 1 sola nave',
+        unlock: 'Automatico quando hai 1 nave rimasta'
+    }
+};
+// ==========================================
+// 📊 CALCOLO STATISTICHE IN-GAME
+// ==========================================
+function calcolaStatsGiocatore(player, data) {
+    const storico = data.storicoAttacchi || [];
+    const mieAzioni = storico.filter(a => a.by === player && !a.isLaser && !a.isEvent && !a.isRetaliation);
+    const colpi = mieAzioni.length;
+    const hit = mieAzioni.filter(a => cellHasShip(a.target, a.r, a.c, data.navi)).length;
+    const precisione = colpi > 0 ? Math.round((hit / colpi) * 100) : 0;
 
+    // Streak corrente
+    let streak = 0;
+    for (let i = mieAzioni.length - 1; i >= 0; i--) {
+        const a = mieAzioni[i];
+        if (cellHasShip(a.target, a.r, a.c, data.navi)) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+
+    // Best streak
+    let bestStreak = 0;
+    let tempStreak = 0;
+    mieAzioni.forEach(a => {
+        if (cellHasShip(a.target, a.r, a.c, data.navi)) {
+            tempStreak++;
+            if (tempStreak > bestStreak) bestStreak = tempStreak;
+        } else {
+            tempStreak = 0;
+        }
+    });
+
+    // Navi affondate (per avversario)
+    const naviAffondate = {};
+    data.partecipanti.filter(p => p !== player).forEach(opp => {
+        const naviOpp = data.navi[opp] || [];
+        naviAffondate[opp] = naviOpp.filter(n => {
+            const affondataConMioColpo = n.cells.some(c =>
+                storico.some(a => a.by === player && a.target === opp && a.r === c.r && a.c === c.c)
+            );
+            return affondataConMioColpo && isShipSunk(opp, n, storico);
+        }).length;
+    });
+
+    // Turni sopravvissuti senza perdere nave
+    const navi = data.navi[player] || [];
+    let turniSenzaPerdita = 0;
+    const turnoCorrente = data.turnoCorrente || 1;
+    for (let t = turnoCorrente - 1; t >= 1; t--) {
+        const storicoFinoT = storico.filter(a => a.round <= t);
+        const storicoFinoTm1 = storico.filter(a => a.round <= t - 1);
+        const naviSunkT = navi.filter(n => isShipSunk(player, n, storicoFinoT)).length;
+        const naviSunkTm1 = navi.filter(n => isShipSunk(player, n, storicoFinoTm1)).length;
+        if (naviSunkT > naviSunkTm1) break;
+        turniSenzaPerdita++;
+    }
+
+    // Navi rimaste
+    const naviRimaste = navi.filter(n => !isShipSunk(player, n, storico)).length;
+
+    return {
+        colpi, hit, precisione, streak, bestStreak,
+        naviAffondate, turniSenzaPerdita, naviRimaste,
+        naviTotali: navi.length
+    };
+}
 // Navi speciali: rimpiazzano le normali quando abilitate
 const NAVI_SPECIALI = {
     kraken: {
@@ -1006,9 +1268,7 @@ const NAVI_SPECIALI = {
 };
 
 const EVENTI_CONFIG = {
-    tempesta:         { emoji: '🌀', name: 'TEMPESTA!',         desc: 'Tutti i missili deviano di 1 cella!',         color: '#2980b9' },
-    cassa:            { emoji: '📦', name: 'RIFORNIMENTO!',     desc: 'Una cassa è apparsa sulla mappa!',            color: '#f39c12' },
-    kraken_selvaggio: { emoji: '🐙', name: 'KRAKEN SELVAGGIO!', desc: '3 celle random colpite!',                     color: '#8e44ad' }
+    cassa:            { emoji: '📦', name: 'RIFORNIMENTO!',     desc: 'Una cassa è apparsa sulla mappa!',            color: '#f39c12' }
 };
 
 // Feature flags (impostate dal listener Firebase)
@@ -1040,6 +1300,8 @@ let arsenaleLocale = { ...ARSENALE_INIZIALE };
 let scudoGlobaleAttivo = false;
 let scudoCellaAttiva = null;    // {r,c} o null
 let selectedWeaponCells = [];  // tutte le celle coinvolte dall'arma selezionata
+let piercingDirection = 'H';   // H o V per colpo perforante
+let torpedoMode = 'row';       // 'row' o 'col' per torpedine
 let krakenShapeIndex = 0;       // indice forma corrente per Kraken
 let piazzamentoIniziato = false;
 // ==========================================
@@ -1623,6 +1885,7 @@ function iniziaBattaglia(data) {
             cellaSelezionata = null;
             selectedWeapon = 'missile';
             selectedWeaponCells = [];
+            window._secondShotUsed = false;
             scudoGlobaleAttivo = false;
             scudoCellaAttiva = null;
         }
@@ -1693,7 +1956,19 @@ function renderBattaglia(data) {
     if (scudoGlobaleAttivo) fireLabel += ' + 🛡️';
     if (scudoCellaAttiva) fireLabel += ` + 🎯${COL_LABELS[scudoCellaAttiva.c]}${scudoCellaAttiva.r+1}`;
     btnFire.textContent = fireLabel;
-
+    // Indicatore doppio colpo
+    const hasDC = (data.powerups?.[mioNome]?.doppioColpo || 0) > 0;
+    const hasUR = data.powerups?.[mioNome]?.ultimoRespiro === true;
+    if ((hasDC || hasUR) && !hoAttaccato) {
+        if (window._secondShotUsed) {
+            btnFire.textContent = '🔥 SECONDO COLPO!';
+            btnFire.style.boxShadow = '0 0 20px rgba(241,196,15,0.5)';
+        } else {
+            btnFire.textContent += ' ⚡×2';
+        }
+    } else {
+        btnFire.style.boxShadow = '';
+    }
     // Stato bottone
     if (hoAttaccato) {
         btnFire.classList.add('hidden');
@@ -1709,6 +1984,8 @@ function renderBattaglia(data) {
         btnFire.disabled = !cellaSelezionata;
         waitingBar.classList.add('hidden');
     }
+    // Stats e powerups
+    renderStatsBar(data);
 }
 
 function renderOpponentTabs(data, eliminati) {
@@ -1852,16 +2129,31 @@ function renderFleetStatus(containerId, navi, storico, player) {
 
 function selezionaCellaAttacco(r, c, data) {
     if (hoAttaccato || isAnimating) return;
-    if (wasAttacked(targetSelezionato, r, c, data.storicoAttacchi || [])) return;
+
+    // Per torpedo, il click sulla riga/colonna è sempre valido
+    if (selectedWeapon !== 'torpedo') {
+        if (wasAttacked(targetSelezionato, r, c, data.storicoAttacchi || [])) return;
+    }
 
     if (cellaSelezionata && cellaSelezionata.r === r && cellaSelezionata.c === c) {
+        // Doppio click: per piercing/torpedo, cambia direzione invece di sparare
+        if (selectedWeapon === 'piercing') {
+            piercingDirection = piercingDirection === 'H' ? 'V' : 'H';
+            selectedWeaponCells = calcolaCelleArma('piercing', r, c);
+            renderOpponentGrid(data);
+            return;
+        }
+        if (selectedWeapon === 'torpedo') {
+            torpedoMode = torpedoMode === 'row' ? 'col' : 'row';
+            selectedWeaponCells = calcolaCelleArma('torpedo', r, c);
+            renderOpponentGrid(data);
+            return;
+        }
         confermaAttacco();
         return;
     }
 
     cellaSelezionata = { r, c };
-
-    // ✅ Calcola tutte le celle coinvolte dall'arma
     selectedWeaponCells = calcolaCelleArma(selectedWeapon, r, c);
 
     renderOpponentGrid(data);
@@ -1892,7 +2184,8 @@ async function confermaAttacco() {
         target: targetSelezionato,
         r: cellaSelezionata.r,
         c: cellaSelezionata.c,
-        weapon: selectedWeapon
+        weapon: selectedWeapon,
+        weaponDir: selectedWeapon === 'piercing' ? piercingDirection : (selectedWeapon === 'torpedo' ? torpedoMode : null)
     };
 
     // Scudi
@@ -1918,14 +2211,49 @@ async function confermaAttacco() {
             updates[`arsenale.${mioNome}`] = { ...arsenaleLocale };
         }
 
+        // ✅ Se è il secondo colpo, aggiungi come secondo attacco
+        if (window._secondShotUsed) {
+            updates[`attacchiTurno.${mioNome}_2`] = attackData;
+            delete updates[`attacchiTurno.${mioNome}`];
+        }
+
         await db.collection("partite").doc(matchId).update(updates);
 
+        // ✅ Doppio colpo: primo colpo non chiude il turno
+        const hasDoppioColpo = (currentGameData?.powerups?.[mioNome]?.doppioColpo || 0) > 0;
+        const hasUltimoRespiro = currentGameData?.powerups?.[mioNome]?.ultimoRespiro === true;
+        const extraShot = hasDoppioColpo || hasUltimoRespiro;
+
+        if (extraShot && !window._secondShotUsed) {
+            window._secondShotUsed = true;
+            cellaSelezionata = null;
+            selectedWeaponCells = [];
+            // Decrementa powerup su Firebase
+            if (hasDoppioColpo) {
+                const newCount = (currentGameData.powerups[mioNome].doppioColpo || 1) - 1;
+                db.collection("partite").doc(matchId).update({
+                    [`powerups.${mioNome}.doppioColpo`]: newCount
+                });
+            }
+            if (hasUltimoRespiro) {
+                db.collection("partite").doc(matchId).update({
+                    [`powerups.${mioNome}.ultimoRespiro`]: false
+                });
+            }
+            // Non segnare hoAttaccato — secondo colpo
+            renderBattaglia(currentGameData);
+            return;
+        }
+
         hoAttaccato = true;
+        window._secondShotUsed = false;
         cellaSelezionata = null;
         scudoGlobaleAttivo = false;
         scudoCellaAttiva = null;
         selectedWeapon = 'missile';
         selectedWeaponCells = [];
+        piercingDirection = 'H';
+        torpedoMode = 'row';
         shieldSelectionMode = false;
     } catch (e) {
         console.error("Errore invio attacco:", e);
@@ -1934,7 +2262,31 @@ async function confermaAttacco() {
         alert("Errore. Riprova.");
     }
 }
+function calcolaStatsGiocatoreFromStorico(player, naviData, storico, partecipanti) {
+    const mieAzioni = storico.filter(a => a.by === player && !a.isLaser && !a.isEvent && !a.isRetaliation);
+    const colpi = mieAzioni.length;
+    const hit = mieAzioni.filter(a => cellHasShip(a.target, a.r, a.c, naviData)).length;
 
+    let streak = 0;
+    for (let i = mieAzioni.length - 1; i >= 0; i--) {
+        if (cellHasShip(mieAzioni[i].target, mieAzioni[i].r, mieAzioni[i].c, naviData)) streak++;
+        else break;
+    }
+
+    const navi = naviData[player] || [];
+    const turnoMax = Math.max(...storico.map(a => a.round), 0);
+    let turniSenzaPerdita = 0;
+    for (let t = turnoMax; t >= 1; t--) {
+        const finT = storico.filter(a => a.round <= t);
+        const finTm1 = storico.filter(a => a.round <= t - 1);
+        if (navi.filter(n => isShipSunk(player, n, finT)).length > navi.filter(n => isShipSunk(player, n, finTm1)).length) break;
+        turniSenzaPerdita++;
+    }
+
+    const naviRimaste = navi.filter(n => !isShipSunk(player, n, storico)).length;
+
+    return { colpi, hit, streak, turniSenzaPerdita, naviRimaste };
+}
 // ==========================================
 // RISOLUZIONE TURNO
 // ==========================================
@@ -1961,33 +2313,6 @@ async function risolviTurno(data) {
             const eventiLog = [...(fd.eventiLog || [])];
             let intelData = JSON.parse(JSON.stringify(fd.intelData || {}));
 
-            // =====================
-            // A. EVENTI RANDOM
-            // =====================
-            let tempestaAttiva = false;
-            let krakenSelvaggio = [];
-
-            if (hasEvents && turno >= 3) {
-                // Tempesta: 20% dal turno 3
-                if (Math.random() < 0.20) {
-                    tempestaAttiva = true;
-                    eventiLog.push({ turno, tipo: 'tempesta' });
-                }
-            }
-            if (hasEvents && turno >= 5) {
-                // Kraken selvaggio: 15%
-                if (Math.random() < 0.15) {
-                    const ksHits = [];
-                    for (let i = 0; i < 3; i++) {
-                        const target = surviving[Math.floor(Math.random() * surviving.length)];
-                        const kr = Math.floor(Math.random() * gridSize);
-                        const kc = Math.floor(Math.random() * gridSize);
-                        ksHits.push({ by: '🐙KRAKEN', target, r: kr, c: kc, round: turno, isEvent: true });
-                    }
-                    krakenSelvaggio = ksHits;
-                    eventiLog.push({ turno, tipo: 'kraken_selvaggio', hits: ksHits.map(h => ({target:h.target, r:h.r, c:h.c})) });
-                }
-            }
             if (hasEvents && turno % 4 === 0) {
                 // Cassa di rifornimento
                 const cr = Math.floor(Math.random() * gridSize);
@@ -2013,17 +2338,17 @@ async function risolviTurno(data) {
             // =====================
             let allAttackCells = [];
 
-            Object.entries(attacks).forEach(([player, atk]) => {
-                let cells = calcolaCelleArma(atk.weapon || 'missile', atk.r, atk.c);
+            // ✅ Raccogli anche secondi colpi (doppio colpo)
+            const allPlayerAttacks = {};
+            Object.entries(attacks).forEach(([key, atk]) => {
+                const player = key.replace('_2', '');
+                if (!allPlayerAttacks[player]) allPlayerAttacks[player] = [];
+                allPlayerAttacks[player].push(atk);
+            });
 
-                if (tempestaAttiva && atk.weapon !== 'laser') {
-                    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-                    const d = dirs[Math.floor(Math.random() * dirs.length)];
-                    cells = cells.map(c => ({
-                        r: Math.max(0, Math.min(gridSize - 1, c.r + d[0])),
-                        c: Math.max(0, Math.min(gridSize - 1, c.c + d[1]))
-                    }));
-                }
+            Object.entries(allPlayerAttacks).forEach(([player, atks]) => {
+                atks.forEach(atk => {
+                let cells = calcolaCelleArma(atk.weapon || 'missile', atk.r, atk.c, atk.weaponDir);
 
                 // ✅ GroupId per cluster/laser (singola animazione)
                 const isGrouped = (atk.weapon === 'cluster' || atk.weapon === 'laser');
@@ -2040,14 +2365,12 @@ async function risolviTurno(data) {
                         isLaser: (atk.weapon === 'laser'),
                         groupId: groupId,
                         centerR: atk.r,
-                        centerC: atk.c
+                        centerC: atk.c,
+                        weaponDir: atk.weaponDir || null
                     });
                 });
             });
-
-            // Aggiungi Kraken selvaggio
-            allAttackCells.push(...krakenSelvaggio);
-
+            });
             // =====================
             // D. APPLICA SCUDI
             // =====================
@@ -2140,7 +2463,63 @@ async function risolviTurno(data) {
                 });
             }
             const storicoFinale = [...storicoAgg, ...ritorsioni];
+            // =====================
+            // G. POWERUPS CHECK
+            // =====================
+            let powerups = JSON.parse(JSON.stringify(fd.powerups || {}));
+            fd.partecipanti.forEach(player => {
+                if (!powerups[player]) powerups[player] = {};
+                const pStats = calcolaStatsGiocatoreFromStorico(player, fd.navi, storicoFinale, fd.partecipanti);
 
+                // Doppio Colpo: affondi una nave questo turno
+                const attacchiDelPlayer = storicoFinale.filter(a => a.by === player && a.round === turno);
+                attacchiDelPlayer.forEach(atk => {
+                    const ship = getShipAt(atk.target, atk.r, atk.c, fd.navi);
+                    if (ship && isShipSunk(atk.target, ship, storicoFinale)) {
+                        // Verifica che non fosse già affondata prima di questo turno
+                        const preStorico = storicoFinale.filter(a => a.round < turno);
+                        if (!isShipSunk(atk.target, ship, preStorico)) {
+                            powerups[player].doppioColpo = (powerups[player].doppioColpo || 0) + 1;
+                        }
+                    }
+                });
+
+                // Sonar Ping: 3 colpi consecutivi
+                if (pStats.streak >= 3 && pStats.streak % 3 === 0) {
+                    // Rivela 1 cella nemica (deterministica: prima cella non colpita in ordine)
+                    const opponents = fd.partecipanti.filter(p => p !== player && !(nuoviEliminati || []).includes(p));
+                    for (const opp of opponents) {
+                        const naviOpp = fd.navi[opp] || [];
+                        const allCells = naviOpp.flatMap(n => n.cells);
+                        const firstUnhit = allCells.find(c =>
+                            !storicoFinale.some(s => s.target === opp && s.r === c.r && s.c === c.c)
+                        );
+                        if (firstUnhit) {
+                            if (!intelData[player]) intelData[player] = {};
+                            if (!intelData[player][opp]) intelData[player][opp] = [];
+                            const alreadyRevealed = intelData[player][opp].some(i => i.r === firstUnhit.r && i.c === firstUnhit.c);
+                            if (!alreadyRevealed) {
+                                intelData[player][opp].push({ r: firstUnhit.r, c: firstUnhit.c, hasShip: true, turno, source: 'sonar' });
+                                powerups[player].sonarPing = (powerups[player].sonarPing || 0) + 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // Riparazione: 5 turni senza perdere nave
+                if (pStats.turniSenzaPerdita >= 5 && !(powerups[player].riparazioneGuadagnata)) {
+                    powerups[player].riparazione = (powerups[player].riparazione || 0) + 1;
+                    powerups[player].riparazioneGuadagnata = true;
+                }
+
+                // Ultimo Respiro: 1 nave rimasta
+                const naviPlayer = fd.navi[player] || [];
+                const naviRimaste = naviPlayer.filter(n => !isShipSunk(player, n, storicoFinale)).length;
+                if (naviRimaste === 1 && naviRimaste > 0) {
+                    powerups[player].ultimoRespiro = true;
+                }
+            });
             // =====================
             // H. ELIMINAZIONI
             // =====================
@@ -2168,8 +2547,7 @@ async function risolviTurno(data) {
                 arsenale: arsenali,
                 eventiLog,
                 intelData,
-                tempestaAttivaTurno: tempestaAttiva ? turno : null,
-                krakenSelvaggioTurno: krakenSelvaggio.length > 0 ? turno : null
+                owerups: powerups,
             });
         });
     } catch (e) { console.error("Errore risoluzione:", e); }
@@ -2756,6 +3134,8 @@ function renderWeaponBar() {
         switch (selectedWeapon) {
             case 'missile': helpEl.textContent = 'Clicca una cella nemica per colpirla'; break;
             case 'cluster': helpEl.textContent = 'Clicca il centro — colpisce a croce (5 celle)'; break;
+            case 'piercing': helpEl.textContent = `Clicca la cella di partenza — 3 celle in linea ${piercingDirection === 'H' ? '→' : '↓'}. Doppio click per ruotare`; break;
+            case 'torpedo': helpEl.textContent = `Clicca per scegliere ${torpedoMode === 'row' ? 'RIGA' : 'COLONNA'}. Doppio click per alternare riga/colonna`; break;
             case 'laser': helpEl.textContent = 'Clicca il centro — scansiona 3×3 senza danni'; break;
         }
     }
@@ -2911,18 +3291,34 @@ function renderMiaGrigliaForShield() {
         }
     }
 }
-function calcolaCelleArma(weapon, r, c) {
+function calcolaCelleArma(weapon, r, c, direction) {
     const cells = [{ r, c }];
     if (weapon === 'cluster') {
-        // Croce: cella + 4 adiacenti
         [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr, dc]) => {
             const nr = r + dr, nc = c + dc;
             if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
                 cells.push({ r: nr, c: nc });
             }
         });
+    } else if (weapon === 'piercing') {
+        const dir = direction || piercingDirection;
+        for (let i = 1; i <= 2; i++) {
+            const nr = dir === 'V' ? r + i : r;
+            const nc = dir === 'H' ? c + i : c;
+            if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
+                cells.push({ r: nr, c: nc });
+            }
+        }
+    } else if (weapon === 'torpedo') {
+        const mode = direction || torpedoMode;
+        // Rimuovi la cella originale, usa tutta la riga/colonna
+        cells.length = 0;
+        if (mode === 'row') {
+            for (let tc = 0; tc < gridSize; tc++) cells.push({ r, c: tc });
+        } else {
+            for (let tr = 0; tr < gridSize; tr++) cells.push({ r: tr, c });
+        }
     } else if (weapon === 'laser') {
-        // 3×3
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
                 const nr = r + dr, nc = c + dc;
@@ -2950,7 +3346,10 @@ function spawnTrailParticle(x, y) {
         { opacity: 0, transform: `scale(0.3) translateY(${15 + Math.random() * 20}px)` }
     ], { duration: 400 + Math.random() * 200 }).onfinish = () => trail.remove();
 }
-
+function toggleHelp() {
+    const overlay = document.getElementById('help-overlay');
+    overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
+}
 // ==========================================
 // 💥 PICCOLA ESPLOSIONE (Colpito)
 // ==========================================
@@ -3129,7 +3528,93 @@ function spawnImpactEmoji(x, y, emoji, scale) {
 
     setTimeout(() => { if (e.parentNode) e.remove(); }, 1100);
 }
+// ==========================================
+// 📊 RENDER STATS
+// ==========================================
+function renderStatsBar(data) {
+    const section = document.getElementById('stats-powerup-section');
+    if (!featureArmiSpeciali && !featurePowerups) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
 
+    const stats = calcolaStatsGiocatore(mioNome, data);
+    const bar = document.getElementById('stats-bar');
+
+    bar.innerHTML = `
+        <div class="stat-chip">
+            <span class="stat-emoji">🎯</span>
+            <span>Precisione: <span class="stat-value">${stats.precisione}%</span></span>
+        </div>
+        <div class="stat-chip ${stats.streak >= 2 ? 'streak-active' : ''}">
+            <span class="stat-emoji">🔥</span>
+            <span>Streak: <span class="stat-value">${stats.streak}</span></span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-emoji">💀</span>
+            <span>Colpi: <span class="stat-value">${stats.hit}/${stats.colpi}</span></span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-emoji">🚢</span>
+            <span>Flotta: <span class="stat-value">${stats.naviRimaste}/${stats.naviTotali}</span></span>
+        </div>
+    `;
+
+    // Powerups
+    if (featurePowerups) {
+        renderPowerupBar(data, stats);
+    } else {
+        document.getElementById('powerup-bar').innerHTML = '';
+    }
+}
+
+function renderPowerupBar(data, stats) {
+    const bar = document.getElementById('powerup-bar');
+    const powerups = data.powerups || {};
+    const miei = powerups[mioNome] || {};
+
+    const items = [
+        {
+            id: 'doppioColpo',
+            def: POWERUP_DEFS.doppioColpo,
+            available: (miei.doppioColpo || 0) > 0,
+            count: miei.doppioColpo || 0,
+            progress: null
+        },
+        {
+            id: 'sonarPing',
+            def: POWERUP_DEFS.sonarPing,
+            available: (miei.sonarPing || 0) > 0,
+            count: miei.sonarPing || 0,
+            progress: `Streak: ${stats.streak}/3`
+        },
+        {
+            id: 'riparazione',
+            def: POWERUP_DEFS.riparazione,
+            available: (miei.riparazione || 0) > 0,
+            count: miei.riparazione || 0,
+            progress: `Turni sicuri: ${stats.turniSenzaPerdita}/5`
+        },
+        {
+            id: 'ultimoRespiro',
+            def: POWERUP_DEFS.ultimoRespiro,
+            available: stats.naviRimaste === 1 && stats.naviRimaste > 0,
+            count: stats.naviRimaste === 1 ? 1 : 0,
+            progress: `Navi: ${stats.naviRimaste}`
+        }
+    ];
+
+    bar.innerHTML = items.map(item => {
+        const state = item.available ? 'available' : 'locked';
+        const tooltip = `${item.def.name}: ${item.def.desc}\n🔓 ${item.def.unlock}${item.progress ? '\n📊 ' + item.progress : ''}`;
+        return `
+            <div class="powerup-chip ${state}" title="${tooltip}">
+                <span class="pu-emoji">${item.def.emoji}</span>
+                ${item.def.name}
+                ${item.count > 0 ? `<span style="color:#2ecc71;"> ×${item.count}</span>` : ''}
+                ${!item.available && item.progress ? `<span style="font-size:0.55rem; color:#666; margin-left:3px;">(${item.progress})</span>` : ''}
+            </div>
+        `;
+    }).join('');
+}
 function spawnWaterDrops(x, y, count) {
     for (let i = 0; i < count; i++) {
         const d = document.createElement('div');
