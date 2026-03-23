@@ -2644,20 +2644,19 @@ function togEx(uid) {
                     console.log('=== DEBUG ESERCIZIO ===');
                     console.log('Nome:', ex.name);
                     console.log('ID:', ex.exerciseId);
-                    console.log('Override?', PRIMARY_OVERRIDE[ex.exerciseId] || 'no');
-                    console.log('def.group (originale):', def.group);
-                    console.log('def.groups (tutti):', def.groups);
-                    console.log('Muscles (raw):', def.muscles);
-                    console.log('Primary (calcolato):', primary);
+                    console.log('def.group (originale dal JSON):', def.group);
+                    console.log('def.groups (tutti i gruppi):', def.groups);
+                    console.log('Muscles (raw dal JSON):', def.muscles);
+                    console.log('Primary (usato per conteggio):', primary);
                     console.log('Serie:', sets, '| RPE factor:', rpeFactor.toFixed(2), '| Effective sets:', effectiveSets.toFixed(1));
-                    console.log('Contributi:');
+                    console.log('Contributi volume:');
                     def.groups.forEach(g => {
                         if (g === 'Cardio') return;
                         const isPrim = g === primary;
                         const credit = isPrim ? effectiveSets : effectiveSets * SECONDARY_CREDIT;
-                        console.log('  ' + g + ': ' + credit.toFixed(1) + ' serie (' + (isPrim ? 'PRIMARIO ×1.0' : 'secondario ×' + SECONDARY_CREDIT) + ')');
+                        console.log('  ' + g + ': ' + credit.toFixed(1) + ' serie (' + (isPrim ? 'PRIMARIO x1.0' : 'secondario x' + SECONDARY_CREDIT) + ')');
                     });
-                    console.log('Fatigue map (per mappa):', exFatigue);
+                    console.log('Fatigue map (colori mappa):', exFatigue);
                 }
             }
         }
