@@ -1841,7 +1841,7 @@ function renderMiaGrigliaPiazzamento() {
     }
 }
 // ==========================================
-// 🔄 ROTAZIONE CON TASTO DESTRO E ROTELLINA
+// 🔄 ROTAZIONE CON TASTO DESTRO
 // ==========================================
 document.addEventListener('contextmenu', (e) => {
     // Solo durante piazzamento
@@ -1855,15 +1855,6 @@ document.addEventListener('contextmenu', (e) => {
     ruotaDirezione();
 });
 
-document.addEventListener('wheel', (e) => {
-    if (!piazzamentoIniziato || naveSelezionataIdx < 0) return;
-
-    const gridContainer = document.getElementById('my-grid-container');
-    if (!gridContainer || !gridContainer.contains(e.target)) return;
-
-    e.preventDefault();
-    ruotaDirezione();
-}, { passive: false });
 // ✅ FIX: Converte celle in oggetti semplici per Firebase
 async function confermaPiazzamento() {
     if (naviPiazzate.length < naviConfig.length) return;
