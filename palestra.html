@@ -940,6 +940,40 @@ body.in-session .ses-nav { display:flex; }
 }
 .ses-sw-btn:active { transform:scale(.95); }
 .ses-sw-btn.active { border-color:var(--grn);color:var(--grn);background:rgba(39,174,96,.1); }
+
+/* ===== TIMER MINIMIZED BANNER ===== */
+.ses-timer-mini {
+    display:none;position:fixed;bottom:70px;left:12px;right:12px;
+    z-index:9998;padding:10px 16px;border-radius:14px;
+    background:rgba(30,30,30,.95);border:1px solid var(--brd);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    cursor:pointer;
+    box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+[data-theme="light"] .ses-timer-mini { background:rgba(255,255,255,.95); }
+.ses-timer-mini-row {
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.ses-timer-mini-time {
+    font-size:1.1rem;font-weight:900;color:var(--acc);
+    font-family:'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums;
+}
+.ses-timer-mini-label {
+    font-size:.7rem;color:var(--tx2);flex:1;
+}
+.ses-timer-mini-bar {
+    height:4px;border-radius:2px;background:var(--c3);margin-top:6px;overflow:hidden;
+}
+.ses-timer-mini-fill {
+    height:100%;border-radius:2px;background:var(--acc);transition:width .3s linear;
+}
+.ses-timer-mini-skip {
+    padding:6px 14px;border-radius:8px;border:none;
+    background:var(--c2);color:var(--acc);font-size:.7rem;
+    font-weight:700;cursor:pointer;min-height:32px;font-family:inherit;
+}
+.ses-timer-mini-skip:active { transform:scale(.95); }
+		
 /* ===== MISC ===== */
 #confetti { position:fixed;inset:0;z-index:99999;pointer-events:none; }
 .emp { text-align:center;padding:30px;color:var(--tx3); }
@@ -1083,6 +1117,22 @@ body.in-session .ses-nav { display:flex; }
             <button class="ses-timer-adj" onclick="adjRestTimer(-15)">−15s</button>
             <button class="ses-timer-skip" onclick="skipRestTimer()">SALTA ▶</button>
             <button class="ses-timer-adj" onclick="adjRestTimer(+15)">+15s</button>
+        </div>
+        <button onclick="minimizeTimer()" style="margin-top:12px;padding:10px 24px;border-radius:10px;
+            border:1px solid var(--brd);background:var(--c2);color:var(--tx2);
+            font-size:.75rem;font-weight:600;cursor:pointer;min-height:40px;font-family:inherit;">
+            ▼ Minimizza
+        </button>
+    </div>
+	<!-- Timer Minimized Banner -->
+    <div class="ses-timer-mini" id="sesTimerMini" onclick="expandTimer()">
+        <div class="ses-timer-mini-row">
+            <span class="ses-timer-mini-time" id="sesTimerMiniTime">0:00</span>
+            <span class="ses-timer-mini-label" id="sesTimerMiniLabel">Recupero</span>
+            <button class="ses-timer-mini-skip" onclick="event.stopPropagation();skipRestTimer()">Salta ▶</button>
+        </div>
+        <div class="ses-timer-mini-bar">
+            <div class="ses-timer-mini-fill" id="sesTimerMiniFill" style="width:100%;"></div>
         </div>
     </div>
     <!-- Esercizio corrente -->
@@ -2327,15 +2377,14 @@ function getMuscleFatigue() {
 
             const effectiveSets = numSets * rpeFactor;
 
-            // Gruppo primario: credito pieno
-            if (def.group) {
-                sets[def.group] = (sets[def.group] || 0) + effectiveSets;
+            const primary = getPrimaryGroup(def);
+            if (primary && primary !== 'Altro') {
+                sets[primary] = (sets[primary] || 0) + effectiveSets;
             }
 
-            // Gruppi secondari: credito parziale (compound)
             if (def.groups && def.groups.length > 1) {
                 def.groups.forEach(g => {
-                    if (g !== def.group && g !== 'Cardio') {
+                    if (g !== primary && g !== 'Cardio') {
                         sets[g] = (sets[g] || 0) + effectiveSets * SECONDARY_CREDIT;
                     }
                 });
@@ -2370,17 +2419,18 @@ function getDayFatigue(day) {
 
         const effectiveSets = numSets * rpeFactor;
 
-        if (def.group) {
-            sets[def.group] = (sets[def.group] || 0) + effectiveSets;
-        }
+		const primary = getPrimaryGroup(def);
+		if (primary && primary !== 'Altro') {
+			sets[primary] = (sets[primary] || 0) + effectiveSets;
+		}
 
-        if (def.groups && def.groups.length > 1) {
-            def.groups.forEach(g => {
-                if (g !== def.group && g !== 'Cardio') {
-                    sets[g] = (sets[g] || 0) + effectiveSets * SECONDARY_CREDIT;
-                }
-            });
-        }
+		if (def.groups && def.groups.length > 1) {
+			def.groups.forEach(g => {
+				if (g !== primary && g !== 'Cardio') {
+					sets[g] = (sets[g] || 0) + effectiveSets * SECONDARY_CREDIT;
+				}
+			});
+		}
     });
 
     // Normalizza: il muscolo più allenato → 0.65 (centro zona verde)
@@ -3275,7 +3325,8 @@ function sesRender() {
     const globalPct = totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
 
     document.getElementById('sesProgFill').style.width = globalPct + '%';
-    document.getElementById('sesExCount').textContent = (sesExIdx + 1) + '/' + exs.length;
+    const doneExCount = exs.filter(e => e.sd && e.sd.length > 0 && e.sd.every(s => s.done)).length;
+    document.getElementById('sesExCount').textContent = doneExCount + '/' + exs.length;
 
     // Nascondi prev/next ai limiti
     document.getElementById('sesBtnPrev').style.visibility = sesExIdx === 0 ? 'hidden' : 'visible';
@@ -3339,7 +3390,7 @@ function sesRender() {
         if (s.done) cls += 'done';
         else if (i === curSetIdx) cls += 'current';
         else cls += 'todo';
-        return `<div class="${cls}"></div>`;
+        return `<div class="${cls}" onclick="sesEditSet(${i})" style="cursor:pointer;" title="Set ${i+1}"></div>`;
     }).join('');
 
     // Set area vs completed
@@ -3588,7 +3639,10 @@ function startRestTimer(seconds) {
         updateTimerDisplay();
         if (restTimeLeft <= 0) {
             clearInterval(restTimerId);
+            timerMinimized = false;
             overlay.style.display = 'none';
+            var mini = document.getElementById('sesTimerMini');
+            if (mini) mini.style.display = 'none';
             if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
         }
     }, 250);
@@ -3597,21 +3651,41 @@ function startRestTimer(seconds) {
 function updateTimerDisplay() {
     const m = Math.floor(restTimeLeft / 60);
     const s = restTimeLeft % 60;
+    const timeStr = m + ':' + String(s).padStart(2, '0');
+    const progress = restTimeTotal > 0 ? (restTimeLeft / restTimeTotal) : 0;
+    const isWarning = restTimeLeft <= 10;
+
+    // Fullscreen
     const el = document.getElementById('sesTimerTime');
-    if (el) el.textContent = m + ':' + String(s).padStart(2, '0');
+    if (el) el.textContent = timeStr;
 
     const circle = document.getElementById('sesTimerCircle');
     if (circle) {
-        const offset = 553 * (1 - restTimeLeft / restTimeTotal);
+        const offset = 553 * (1 - progress);
         circle.style.strokeDashoffset = offset;
-        circle.style.stroke = restTimeLeft <= 5 ? 'var(--red)' : 'var(--acc)';
+        circle.style.stroke = isWarning ? 'var(--red)' : 'var(--acc)';
+    }
+
+    // Mini banner
+    const miniTime = document.getElementById('sesTimerMiniTime');
+    if (miniTime) {
+        miniTime.textContent = timeStr;
+        miniTime.style.color = isWarning ? 'var(--red)' : 'var(--acc)';
+    }
+    const miniFill = document.getElementById('sesTimerMiniFill');
+    if (miniFill) {
+        miniFill.style.width = (progress * 100) + '%';
+        miniFill.style.background = isWarning ? 'var(--red)' : 'var(--acc)';
     }
 }
 
 function skipRestTimer() {
     clearInterval(restTimerId);
-    const el = document.getElementById('sesTimer');
+    timerMinimized = false;
+    var el = document.getElementById('sesTimer');
     if (el) el.style.display = 'none';
+    var mini = document.getElementById('sesTimerMini');
+    if (mini) mini.style.display = 'none';
     if (navigator.vibrate) navigator.vibrate(15);
 }
 
@@ -3620,6 +3694,21 @@ function adjRestTimer(delta) {
     restTimeLeft = Math.max(5, Math.ceil((restEndTime - Date.now()) / 1000));
     if (restTimeLeft > restTimeTotal) restTimeTotal = restTimeLeft;
     updateTimerDisplay();
+    if (navigator.vibrate) navigator.vibrate(10);
+}
+let timerMinimized = false;
+
+function minimizeTimer() {
+    timerMinimized = true;
+    document.getElementById('sesTimer').style.display = 'none';
+    document.getElementById('sesTimerMini').style.display = 'block';
+    if (navigator.vibrate) navigator.vibrate(10);
+}
+
+function expandTimer() {
+    timerMinimized = false;
+    document.getElementById('sesTimerMini').style.display = 'none';
+    document.getElementById('sesTimer').style.display = 'flex';
     if (navigator.vibrate) navigator.vibrate(10);
 }
 // ============================================================
@@ -3694,13 +3783,75 @@ function sesGetCurrentSetIdx(ex) {
     const idx = ex.sd.findIndex(s => !s.done);
     return idx >= 0 ? idx : ex.sd.length - 1;
 }
+function sesEditSet(setIdx) {
+    const day = gD();
+    const ex = day.exs[sesExIdx];
+    if (!ex || !ex.sd[setIdx]) return;
 
+    const s = ex.sd[setIdx];
+
+    // Mostra i campi con i valori di quella serie
+    const setArea = document.getElementById('sesSetArea');
+    const doneArea = document.getElementById('sesExDone');
+    setArea.style.display = 'block';
+    doneArea.style.display = 'none';
+
+    document.getElementById('sesSetLabel').textContent = 'SET ' + (setIdx + 1) + '/' + ex.sd.length + (s.done ? ' ✏️' : '');
+    document.getElementById('sesReps').value = s.r || '';
+    document.getElementById('sesKg').value = s.w || '';
+    const rpeEl = document.getElementById('sesRpe');
+    rpeEl.value = s.rpe || '';
+    updateRpeColor(rpeEl);
+
+    // Se la serie era già fatta, il pulsante diventa "Aggiorna"
+    const checkBtn = document.getElementById('sesCheckBtn');
+    if (s.done) {
+        checkBtn.setAttribute('data-edit-idx', setIdx);
+        checkBtn.innerHTML = '<span class="ses-check-icon">✏️</span><span>AGGIORNA</span>';
+    } else {
+        checkBtn.removeAttribute('data-edit-idx');
+        checkBtn.innerHTML = '<span class="ses-check-icon">✓</span><span>FATTO</span>';
+    }
+
+    // Aggiorna dots per evidenziare quale si sta editando
+    document.querySelectorAll('.ses-dot').forEach((dot, i) => {
+        dot.classList.remove('current');
+        if (i === setIdx && !ex.sd[i].done) dot.classList.add('current');
+    });
+
+    // Suggerimento
+    const sugEl = document.getElementById('sesSuggestion');
+    if (sugEl) sugEl.innerHTML = buildSuggestionHTML(curDay, ex, setIdx);
+
+    if (navigator.vibrate) navigator.vibrate(10);
+}
 // ===== Check set (con Logica Superserie Alternate) =====
 function sesCheck() {
     if (swRunning) stopStopwatch();
     const day = gD();
     const ex = day.exs[sesExIdx];
     if (!ex) return;
+
+    const checkBtn = document.getElementById('sesCheckBtn');
+    const editIdx = checkBtn.getAttribute('data-edit-idx');
+
+    // Se stiamo editando una serie già fatta
+    if (editIdx !== null) {
+        const idx = parseInt(editIdx);
+        const s = ex.sd[idx];
+        if (s) {
+            s.r = parseInt(document.getElementById('sesReps').value) || 0;
+            s.w = parseFloat(document.getElementById('sesKg').value) || 0;
+            s.rpe = parseInt(document.getElementById('sesRpe').value) || null;
+            save();
+            toast('✏️ Set ' + (idx + 1) + ' aggiornato', 'ok', 1200);
+            if (navigator.vibrate) navigator.vibrate([15, 10, 15]);
+        }
+        checkBtn.removeAttribute('data-edit-idx');
+        checkBtn.innerHTML = '<span class="ses-check-icon">✓</span><span>FATTO</span>';
+        sesRender();
+        return;
+    }
 
     const setIdx = sesGetCurrentSetIdx(ex);
     const s = ex.sd[setIdx];
