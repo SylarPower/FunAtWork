@@ -236,7 +236,11 @@
         .cell.target-cell .ship-emoji { display: none; }
         .cell.target-cell .sunk-skull { display: none; }
         .cell.attacked-cell { cursor: not-allowed; opacity: 0.7; }
-        
+        .cell.target-cell.cassa-cell::after,
+        .cell.target-cell.intel-cell::after,
+        .cell.target-cell.shielded-cell::after {
+            content: none !important;
+        }        
         @keyframes pulseTarget {
             0%, 100% { box-shadow: 0 0 5px rgba(241,196,15,0.4); }
             50% { box-shadow: 0 0 15px rgba(241,196,15,0.7); }
@@ -1063,6 +1067,19 @@
             <span onclick="toggleHelp()" style="cursor:pointer; font-size:1.5rem;">✖️</span>
         </div>
         <div class="help-section">
+            <h3>🎯 Regola del Turno</h3>
+            <div class="help-item">
+                <span class="hi-emoji">⚔️</span>
+                <div>
+                    <span class="hi-name">Chi devi colpire?</span><br>
+                    <span class="hi-desc">
+                        In multiplayer devi colpire tutti gli avversari ancora vivi almeno una volta per turno.
+                        Se hai Doppio Colpo o Ultimo Respiro, ottieni 1 colpo extra nel turno.
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="help-section">
             <h3>⚔️ Armi</h3>
             <div class="help-item"><span class="hi-emoji">🚀</span><div><span class="hi-name">Missile</span> — <span class="hi-desc">Colpisce 1 cella. Illimitato.</span></div></div>
             <div class="help-item"><span class="hi-emoji">💣</span><div><span class="hi-name">Grappolo</span> — <span class="hi-desc">Esplosione a croce: cella + 4 adiacenti (×2)</span></div></div>
@@ -1324,6 +1341,7 @@ let colpiRimastiTurno = 1;
 let colpiSparatiTurno = 0;
 let turnoCorrenteLocale = 0;
 let doppioColpoAttivo = false;
+let attacchiTurnoLocali = [];
 let torpedoMode = 'row';       // 'row' o 'col' per torpedine
 let krakenShapeIndex = 0;       // indice forma corrente per Kraken
 let piazzamentoIniziato = false;
@@ -1430,7 +1448,42 @@ function isPlayerEliminated(player, naviData, storico) {
 function getSurvivingPlayers(data) { return data.partecipanti.filter(p => !(data.eliminati||[]).includes(p)); }
 function getOpponents(data) { return data.partecipanti.filter(p => p !== mioNome); }
 function getSurvivingOpponents(data) { return getSurvivingPlayers(data).filter(p => p !== mioNome); }
+function getRequiredTargetsForPlayer(player, data) {
+    const eliminati = data.eliminati || [];
+    return data.partecipanti.filter(p => p !== player && !eliminati.includes(p));
+}
 
+function getPlayerTurnAttacks(player, data) {
+    return (data.attacchiTurno?.[player] || []);
+}
+
+function getMissingTargets(player, data) {
+    const required = getRequiredTargetsForPlayer(player, data);
+    const attacks = getPlayerTurnAttacks(player, data);
+    const attackedTargets = new Set(attacks.map(a => a.target));
+    return required.filter(t => !attackedTargets.has(t));
+}
+
+function getExtraShotsAvailable(player, data) {
+    const hasDC = (data.powerups?.[player]?.doppioColpo || 0) > 0;
+    const hasUR = data.powerups?.[player]?.ultimoRespiro === true;
+    return (hasDC || hasUR) ? 1 : 0; // massimo 1 extra totale
+}
+
+function getRequiredShotCount(player, data) {
+    return getRequiredTargetsForPlayer(player, data).length + getExtraShotsAvailable(player, data);
+}
+
+function playerHasCompletedTurn(player, data) {
+    const requiredTargets = getRequiredTargetsForPlayer(player, data);
+    const attacks = getPlayerTurnAttacks(player, data);
+
+    const attackedTargets = new Set(attacks.map(a => a.target));
+    const allTargetsCovered = requiredTargets.every(t => attackedTargets.has(t));
+    if (!allTargetsCovered) return false;
+
+    return attacks.length >= getRequiredShotCount(player, data);
+}
 // Determina info visiva per una cella nave
 function getShipCellInfo(navi, r, c) {
     for (const nave of navi) {
@@ -1473,8 +1526,10 @@ function renderGrid(containerId, opts) {
 
     // Precalcola set
     const allAttacks = opts.allAttacks || opts.attacks || [];
+    const pendingAttacks = opts.pendingAttacks || [];
     const attackedSet = new Set();
     allAttacks.forEach(a => attackedSet.add(`${a.r},${a.c}`));
+    pendingAttacks.forEach(a => attackedSet.add(`${a.r},${a.c}`)); // ✅ evita doppio click stessa cella nello stesso turno
 
     const shipCellSet = new Set();
     const sunkCellSet = new Set();
@@ -1901,17 +1956,12 @@ function iniziaBattaglia(data) {
     statusFase.textContent = amIEliminated ? 'Eliminato 💀' : 'Battaglia';
 
     const turno = data.turnoCorrente || 1;
-    const attacchiTurno = data.attacchiTurno || {};
 
-    // ✅ Calcola doppio colpo PRIMA di determinare hoAttaccato
-    const hasDC = (data.powerups?.[mioNome]?.doppioColpo || 0) > 0;
-    const hasUR = data.powerups?.[mioNome]?.ultimoRespiro === true;
-    doppioColpoAttivo = hasDC || hasUR;
+    doppioColpoAttivo = getExtraShotsAvailable(mioNome, data) > 0;
 
-    const colpo1Inviato = !!attacchiTurno[mioNome];
-    const colpo2Inviato = !!attacchiTurno[`${mioNome}_2`];
-    const colpiInviatiServer = (colpo1Inviato ? 1 : 0) + (colpo2Inviato ? 1 : 0);
-    const colpiNecessari = doppioColpoAttivo ? 2 : 1;
+    const attacchiMieiServer = getPlayerTurnAttacks(mioNome, data);
+    const colpiInviatiServer = attacchiMieiServer.length;
+    const colpiNecessari = getRequiredShotCount(mioNome, data);
 
     if (turno !== turnoCorrenteLocale) {
         turnoCorrenteLocale = turno;
@@ -1924,14 +1974,23 @@ function iniziaBattaglia(data) {
         piercingDirection = 'H';
         torpedoMode = 'row';
 
+        attacchiTurnoLocali = [...attacchiMieiServer];
         colpiSparatiTurno = colpiInviatiServer;
         colpiRimastiTurno = colpiNecessari;
-        hoAttaccato = colpiSparatiTurno >= colpiRimastiTurno || amIEliminated;
+        hoAttaccato = playerHasCompletedTurn(mioNome, data) || amIEliminated;
     } else {
-        // ✅ stesso turno: non peggiorare mai lo stato locale
+        if (attacchiMieiServer.length > attacchiTurnoLocali.length) {
+            attacchiTurnoLocali = [...attacchiMieiServer];
+        }
         colpiSparatiTurno = Math.max(colpiSparatiTurno, colpiInviatiServer);
         colpiRimastiTurno = colpiNecessari;
-        hoAttaccato = colpiSparatiTurno >= colpiRimastiTurno || amIEliminated;
+        hoAttaccato = playerHasCompletedTurn(mioNome, data) || amIEliminated;
+    }
+
+    const requiredTargets = getRequiredTargetsForPlayer(mioNome, data);
+    const missingTargets = getMissingTargets(mioNome, data);
+    if (!targetSelezionato || !requiredTargets.includes(targetSelezionato)) {
+        targetSelezionato = missingTargets[0] || requiredTargets[0] || null;
     }
 
     renderBattaglia(data);
@@ -1948,45 +2007,58 @@ function renderBattaglia(data) {
     const surviving = getSurvivingPlayers(data);
     statusSuperstiti.textContent = `${surviving.length}/${data.partecipanti.length}`;
 
-    hoAttaccato = !!attacchiTurno[mioNome] || amIEliminated;
-
     // Mia griglia
     const mieNavi = data.navi[mioNome] || [];
     const attacchiControMe = getAttacksAgainst(mioNome, storico);
     renderGrid('my-grid-container', {
-        size: gridSize, showShips: mieNavi,
-        allAttacks: attacchiControMe, attacks: attacchiControMe,
-        isMyGrid: true, interactive: false
+        size: gridSize,
+        showShips: mieNavi,
+        allAttacks: attacchiControMe,
+        attacks: attacchiControMe,
+        isMyGrid: true,
+        interactive: false
     });
     renderFleetStatus('my-fleet-status', mieNavi, storico, mioNome);
 
-    // Tabs avversari
+    // Tabs + griglia avversario
     renderOpponentTabs(data, eliminati);
 
     if (!targetSelezionato || !data.partecipanti.includes(targetSelezionato) || targetSelezionato === mioNome) {
+        const missingTargets = getMissingTargets(mioNome, data);
         const opp = getSurvivingOpponents(data);
-        targetSelezionato = opp.length > 0 ? opp[0] : getOpponents(data)[0];
+        targetSelezionato = missingTargets[0] || opp[0] || null;
     }
     renderOpponentGrid(data);
 
-    // Render armi e scudi
+    // Armi e scudi
     renderWeaponBar();
     renderShieldBar();
 
-    const opponents = getOpponents(data);
-    if (opponents.length > 1) {
-        targetBar.classList.remove('hidden');
-    } else if (opponents.length === 1) {
-        targetSelezionato = opponents[0];
-        targetBar.classList.add('hidden');
-    }
+    const opponents = getOpponents(data).filter(p => !eliminati.includes(p));
+    if (opponents.length > 1) targetBar.classList.remove('hidden');
+    else targetBar.classList.add('hidden');
 
     const titleEl = document.getElementById('opponent-section-title');
     if (titleEl && targetSelezionato) {
-        titleEl.textContent = `🎯 ${targetSelezionato} ${eliminati.includes(targetSelezionato) ? '(eliminato)' : ''}`;
+        titleEl.textContent = `🎯 ${targetSelezionato}`;
     }
 
-    // ✅ Testo bottone
+    const fakeData = {
+        ...data,
+        attacchiTurno: {
+            ...(data.attacchiTurno || {}),
+            [mioNome]: attacchiTurnoLocali
+        }
+    };
+
+    const missingTargets = getMissingTargets(mioNome, fakeData);
+    const extraShots = getExtraShotsAvailable(mioNome, fakeData);
+    const requiredTargets = getRequiredTargetsForPlayer(mioNome, fakeData);
+    const attackedRequiredCount = requiredTargets.filter(t =>
+        attacchiTurnoLocali.some(a => a.target === t)
+    ).length;
+    const extraUsed = Math.max(0, attacchiTurnoLocali.length - attackedRequiredCount);
+
     let fireLabel = '';
     if (selectedWeapon === 'laser') fireLabel = '🔭 SCANSIONA!';
     else if (selectedWeapon === 'cluster') fireLabel = '💣 FUOCO GRAPPOLO!';
@@ -1997,45 +2069,24 @@ function renderBattaglia(data) {
     if (scudoGlobaleAttivo) fireLabel += ' + 🛡️';
     if (scudoCellaAttiva) fireLabel += ` + 🎯${COL_LABELS[scudoCellaAttiva.c]}${scudoCellaAttiva.r + 1}`;
 
-    // ✅ Indicatore doppio colpo
-    if (colpiRimastiTurno > 1 && !hoAttaccato) {
-        if (colpiSparatiTurno === 0) {
-            fireLabel += ` ⚡ 1/${colpiRimastiTurno}`;
-            btnFire.style.boxShadow = '';
-        } else {
-            fireLabel = `🔥 SECONDO COLPO! (${colpiSparatiTurno + 1}/${colpiRimastiTurno})`;
-            btnFire.style.boxShadow = '0 0 20px rgba(241,196,15,0.5)';
-        }
+    if (extraShots > 0 && missingTargets.length === 0 && extraUsed < extraShots && !hoAttaccato) {
+        fireLabel += ' ⚡ EXTRA';
+        btnFire.style.boxShadow = '0 0 20px rgba(241,196,15,0.5)';
     } else {
         btnFire.style.boxShadow = '';
     }
 
     btnFire.textContent = fireLabel;
 
-    // ✅ Stato bottone/attesa
-    const hoFinitoDavvero = colpiSparatiTurno >= colpiRimastiTurno;
-
     if (amIEliminated) {
         btnFire.classList.add('hidden');
         waitingBar.classList.remove('hidden');
         waitingText.textContent = '💀 Sei stato eliminato. Osserva la battaglia!';
-    } else if (hoFinitoDavvero) {
+    } else if (hoAttaccato) {
         btnFire.classList.add('hidden');
         waitingBar.classList.remove('hidden');
-
-        const submitted = surviving.filter(p => {
-            const hasDC = (data.powerups?.[p]?.doppioColpo || 0) > 0;
-            const hasUR = data.powerups?.[p]?.ultimoRespiro === true;
-            const colpiNecessari = (hasDC || hasUR) ? 2 : 1;
-
-            const colpo1 = !!attacchiTurno[p];
-            const colpo2 = !!attacchiTurno[`${p}_2`];
-            const colpiInviati = (colpo1 ? 1 : 0) + (colpo2 ? 1 : 0);
-
-            return colpiInviati >= colpiNecessari;
-        }).length;
-
-        waitingText.textContent = `Attacchi completati: ${submitted}/${surviving.length} — attendo gli altri...`;
+        const submitted = surviving.filter(p => playerHasCompletedTurn(p, data)).length;
+        waitingText.textContent = `Giocatori pronti: ${submitted}/${surviving.length} — attendo gli altri...`;
     } else {
         btnFire.classList.remove('hidden');
         btnFire.disabled = !cellaSelezionata;
@@ -2098,6 +2149,7 @@ function renderOpponentGrid(data) {
     const allAttacksVsTarget = getAttacksAgainst(targetSelezionato, storico);
     const targetShips = data.navi[targetSelezionato] || [];
     const interactive = !hoAttaccato && !amIEliminated && !targetEliminated;
+    const mieiAttacchiSuQuestoTarget = attacchiTurnoLocali.filter(a => a.target === targetSelezionato);
 
     // Raccogli dati intel per questo avversario
     const myIntel = currentGameData?.intelData?.[mioNome]?.[targetSelezionato] || [];
@@ -2111,10 +2163,10 @@ function renderOpponentGrid(data) {
         showShips: targetEliminated ? targetShips : [],
         enemyShips: targetShips,
         allAttacks: allAttacksVsTarget,
+        pendingAttacks: mieiAttacchiSuQuestoTarget,
         isMyGrid: false,
         interactive,
         onClick: (r, c) => selezionaCellaAttacco(r, c, data),
-        targetCell: cellaSelezionata,
         targetCells: selectedWeaponCells,
         intelCells: intelCellsForTarget
     });
@@ -2198,13 +2250,13 @@ function selezionaCellaAttacco(r, c, data) {
         // Doppio click: per piercing/torpedo, cambia direzione invece di sparare
         if (selectedWeapon === 'piercing') {
             piercingDirection = piercingDirection === 'H' ? 'V' : 'H';
-            selectedWeaponCells = calcolaCelleArma('piercing', r, c);
+            selectedWeaponCells = calcolaCelleArma('piercing', r, c, piercingDirection);
             renderOpponentGrid(data);
             return;
         }
         if (selectedWeapon === 'torpedo') {
             torpedoMode = torpedoMode === 'row' ? 'col' : 'row';
-            selectedWeaponCells = calcolaCelleArma('torpedo', r, c);
+            selectedWeaponCells = calcolaCelleArma('torpedo', r, c, torpedoMode);
             renderOpponentGrid(data);
             return;
         }
@@ -2213,7 +2265,13 @@ function selezionaCellaAttacco(r, c, data) {
     }
 
     cellaSelezionata = { r, c };
-    selectedWeaponCells = calcolaCelleArma(selectedWeapon, r, c);
+    selectedWeaponCells = calcolaCelleArma(
+        selectedWeapon,
+        r,
+        c,
+        selectedWeapon === 'piercing' ? piercingDirection :
+        (selectedWeapon === 'torpedo' ? torpedoMode : null)
+    );
 
     renderOpponentGrid(data);
     btnFire.disabled = false;
@@ -2228,12 +2286,28 @@ async function confermaAttacco() {
     }
     if (hoAttaccato) return;
 
-    // Verifica arma
     if (!ARMI_CONFIG[selectedWeapon]?.unlimited) {
         if ((arsenaleLocale[selectedWeapon] || 0) <= 0) {
             alert(`${ARMI_CONFIG[selectedWeapon].name} esaurito!`);
             return;
         }
+    }
+
+    const fakeData = {
+        ...currentGameData,
+        attacchiTurno: {
+            ...(currentGameData.attacchiTurno || {}),
+            [mioNome]: [...attacchiTurnoLocali]
+        }
+    };
+
+    const missingTargets = getMissingTargets(mioNome, fakeData);
+    const targetGiaAttaccato = attacchiTurnoLocali.some(a => a.target === targetSelezionato);
+
+    // Se ci sono target mancanti, non puoi fare extra su target già colpito
+    if (missingTargets.length > 0 && targetGiaAttaccato) {
+        alert(`Devi ancora colpire: ${missingTargets.join(', ')}`);
+        return;
     }
 
     btnFire.disabled = true;
@@ -2244,68 +2318,62 @@ async function confermaAttacco() {
         c: cellaSelezionata.c,
         weapon: selectedWeapon,
         weaponDir: selectedWeapon === 'piercing' ? piercingDirection :
-                   (selectedWeapon === 'torpedo' ? torpedoMode : null)
+                   (selectedWeapon === 'torpedo' ? torpedoMode : null),
+        extra: targetGiaAttaccato
     };
 
-    // Scudi solo sul primo colpo
-    if (colpiSparatiTurno === 0) {
+    // Scudi solo sul primo attacco del turno
+    if (attacchiTurnoLocali.length === 0) {
         if (scudoGlobaleAttivo) attackData.scudoGlobale = true;
         if (scudoCellaAttiva) attackData.scudoCella = { r: scudoCellaAttiva.r, c: scudoCellaAttiva.c };
     }
 
-    // ✅ Chiave Firebase: primo o secondo colpo
-    const attackKey = colpiSparatiTurno === 0
-        ? `attacchiTurno.${mioNome}`
-        : `attacchiTurno.${mioNome}_2`;
-
     try {
         const updates = {};
-        updates[attackKey] = attackData;
+        const nuoviAttacchi = [...attacchiTurnoLocali, attackData];
+        updates[`attacchiTurno.${mioNome}`] = nuoviAttacchi;
 
-        // Decrementa arsenale
         if (!ARMI_CONFIG[selectedWeapon]?.unlimited) {
             arsenaleLocale[selectedWeapon] = (arsenaleLocale[selectedWeapon] || 0) - 1;
         }
-        if (colpiSparatiTurno === 0 && scudoGlobaleAttivo) {
+        if (attacchiTurnoLocali.length === 0 && scudoGlobaleAttivo) {
             arsenaleLocale.scudo = (arsenaleLocale.scudo || 0) - 1;
         }
-        if (colpiSparatiTurno === 0 && scudoCellaAttiva) {
+        if (attacchiTurnoLocali.length === 0 && scudoCellaAttiva) {
             arsenaleLocale.scudoStratega = (arsenaleLocale.scudoStratega || 0) - 1;
         }
+
         updates[`arsenale.${mioNome}`] = { ...arsenaleLocale };
 
         await db.collection("partite").doc(matchId).update(updates);
 
-        // ✅ Aggiorna stato locale
-        colpiSparatiTurno++;
+        attacchiTurnoLocali = nuoviAttacchi;
+        colpiSparatiTurno = nuoviAttacchi.length;
+        hoAttaccato = colpiSparatiTurno >= colpiRimastiTurno;
+
         cellaSelezionata = null;
         selectedWeaponCells = [];
         selectedWeapon = 'missile';
         piercingDirection = 'H';
         torpedoMode = 'row';
-
-        // Gli scudi si consumano comunque dopo il primo invio turno
         scudoGlobaleAttivo = false;
         scudoCellaAttiva = null;
         shieldSelectionMode = false;
 
-        // ✅ Solo se ho finito TUTTI i colpi vado in attesa
-        hoAttaccato = colpiSparatiTurno >= colpiRimastiTurno;
-
-        if (currentGameData) {
-            // Aggiorna subito il dato locale per evitare attesa sbagliata
-            const localAttacchiTurno = { ...(currentGameData.attacchiTurno || {}) };
-            if (colpiSparatiTurno === 1) {
-                localAttacchiTurno[mioNome] = attackData;
-            } else {
-                localAttacchiTurno[`${mioNome}_2`] = attackData;
+        const localData = {
+            ...currentGameData,
+            attacchiTurno: {
+                ...(currentGameData.attacchiTurno || {}),
+                [mioNome]: nuoviAttacchi
             }
+        };
 
-            renderBattaglia({
-                ...currentGameData,
-                attacchiTurno: localAttacchiTurno
-            });
+        const nuoviMissing = getMissingTargets(mioNome, localData);
+        if (nuoviMissing.length > 0) {
+            targetSelezionato = nuoviMissing[0];
         }
+
+        renderBattaglia(localData);
 
     } catch (e) {
         console.error("Errore invio attacco:", e);
@@ -2352,23 +2420,23 @@ async function risolviTurno(data) {
             const fd = snap.data();
             const surviving = getSurvivingPlayers(fd);
             const attacks = fd.attacchiTurno || {};
-            if (Object.keys(attacks).length < surviving.length) { processingResolution = false; return; }
+
+            const tuttiPronti = surviving.every(p => playerHasCompletedTurn(p, fd));
+            if (!tuttiPronti) { processingResolution = false; return; }
 
             const turno = fd.turnoCorrente || 1;
             const storico = fd.storicoAttacchi || [];
             const mode = fd.opzioni?.mode || 'classic';
-            const hasEvents = (mode === 'chaos');
-            const hasSpecial = (mode === 'worms' || mode === 'chaos');
+            const hasEvents = (mode === 'trump');
+            const hasSpecial = (mode === 'super' || mode === 'trump');
+
             let casseAttive = [...(fd.casseAttive || [])];
             let arsenali = JSON.parse(JSON.stringify(fd.arsenale || {}));
             const eventiLog = [...(fd.eventiLog || [])];
             let intelData = JSON.parse(JSON.stringify(fd.intelData || {}));
-
-            // =====================
-            // A. EVENTI RANDOM (solo tempesta e cassa)
-            // =====================
             let tempestaAttiva = false;
 
+            // Eventi
             if (hasEvents && turno >= 3) {
                 if (Math.random() < 0.20) {
                     tempestaAttiva = true;
@@ -2377,19 +2445,15 @@ async function risolviTurno(data) {
             }
 
             if (hasEvents && turno % 4 === 0) {
-                // ✅ Una cassa per ogni coppia giocatore-avversario
                 surviving.forEach(player => {
                     const opponents = surviving.filter(p => p !== player);
                     opponents.forEach(opp => {
-                        // Trova cella libera (non colpita) sulla griglia dell'avversario
                         let attempts = 0;
                         let placed = false;
                         while (!placed && attempts < 50) {
                             const cr = Math.floor(Math.random() * gridSize);
                             const cc = Math.floor(Math.random() * gridSize);
-                            // Verifica che non sia già colpita
-                            const alreadyHit = storicoAgg.some(s => s.target === opp && s.r === cr && s.c === cc);
-                            // Verifica che non ci sia già una cassa
+                            const alreadyHit = storico.some(s => s.target === opp && s.r === cr && s.c === cc);
                             const alreadyCassa = casseAttive.some(c => c.target === opp && c.viewer === player && c.r === cr && c.c === cc);
                             if (!alreadyHit && !alreadyCassa) {
                                 casseAttive.push({ r: cr, c: cc, target: opp, viewer: player });
@@ -2402,38 +2466,24 @@ async function risolviTurno(data) {
                 eventiLog.push({ turno, tipo: 'cassa' });
             }
 
-            // =====================
-            // B. RACCOGLI SCUDI
-            // =====================
+            // Scudi
             const scudi = {};
-            Object.entries(attacks).forEach(([key, atk]) => {
-                const player = key.replace('_2', '');
-                if (!scudi[player]) {
-                    scudi[player] = {
-                        globale: atk.scudoGlobale || false,
-                        globaleUsato: false,
-                        cella: atk.scudoCella || null
-                    };
-                }
+            Object.entries(attacks).forEach(([player, atkList]) => {
+                const firstAtk = (atkList || [])[0];
+                scudi[player] = {
+                    globale: firstAtk?.scudoGlobale || false,
+                    globaleUsato: false,
+                    cella: firstAtk?.scudoCella || null
+                };
             });
 
-            // =====================
-            // C. ESPANDI ATTACCHI (inclusi doppi colpi)
-            // =====================
+            // Espandi attacchi
             let allAttackCells = [];
 
-            const allPlayerAttacks = {};
-            Object.entries(attacks).forEach(([key, atk]) => {
-                const player = key.replace('_2', '');
-                if (!allPlayerAttacks[player]) allPlayerAttacks[player] = [];
-                allPlayerAttacks[player].push(atk);
-            });
-
-            Object.entries(allPlayerAttacks).forEach(([player, atks]) => {
-                atks.forEach(atk => {
+            Object.entries(attacks).forEach(([player, atks]) => {
+                (atks || []).forEach(atk => {
                     let cells = calcolaCelleArma(atk.weapon || 'missile', atk.r, atk.c, atk.weaponDir);
 
-                    // Tempesta: devia di 1 cella
                     if (tempestaAttiva && atk.weapon !== 'laser') {
                         const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
                         const d = dirs[Math.floor(Math.random() * dirs.length)];
@@ -2443,8 +2493,8 @@ async function risolviTurno(data) {
                         }));
                     }
 
-                    const isGrouped = (atk.weapon === 'cluster' || atk.weapon === 'laser' || atk.weapon === 'piercing' || atk.weapon === 'torpedo');
-                    const groupId = isGrouped ? `${player}-${turno}-${atk.weapon}-${atk.r}-${atk.c}` : null;
+                    const isGrouped = ['cluster', 'laser', 'piercing', 'torpedo'].includes(atk.weapon);
+                    const groupId = isGrouped ? `${player}-${turno}-${atk.weapon}-${atk.target}-${atk.r}-${atk.c}-${atk.extra ? 'EXTRA' : 'BASE'}` : null;
 
                     cells.forEach(cell => {
                         allAttackCells.push({
@@ -2455,49 +2505,37 @@ async function risolviTurno(data) {
                             round: turno,
                             weapon: atk.weapon || 'missile',
                             isLaser: (atk.weapon === 'laser'),
-                            groupId: groupId,
+                            groupId,
                             centerR: atk.r,
                             centerC: atk.c,
-                            weaponDir: atk.weaponDir || null
+                            weaponDir: atk.weaponDir || null,
+                            extra: !!atk.extra
                         });
                     });
                 });
             });
 
-            // =====================
-            // D. APPLICA SCUDI + FILTRA LASER
-            // =====================
+            // Applica scudi / laser
             const finalAttacks = [];
             const laserReveals = [];
 
             allAttackCells.forEach(atk => {
-                // Laser non fa danno, solo rivela
                 if (atk.isLaser) {
                     laserReveals.push(atk);
                     return;
                 }
 
-                const targetPlayer = atk.target;
-                const shield = scudi[targetPlayer];
-
-                // Scudo Stratega: protegge cella specifica
-                if (shield && shield.cella && shield.cella.r === atk.r && shield.cella.c === atk.c) {
-                    return; // Colpo bloccato
-                }
-                // Scudo Globale: blocca il primo colpo
+                const shield = scudi[atk.target];
+                if (shield && shield.cella && shield.cella.r === atk.r && shield.cella.c === atk.c) return;
                 if (shield && shield.globale && !shield.globaleUsato) {
                     shield.globaleUsato = true;
-                    return; // Colpo bloccato
+                    return;
                 }
 
-                // Non duplicare attacchi sulla stessa cella già colpita
                 const alreadyHit = storico.some(s => s.target === atk.target && s.r === atk.r && s.c === atk.c);
-                if (!alreadyHit) {
-                    finalAttacks.push(atk);
-                }
+                if (!alreadyHit) finalAttacks.push(atk);
             });
 
-            // Aggiungi laser reveals a intel
             laserReveals.forEach(lr => {
                 if (!intelData[lr.by]) intelData[lr.by] = {};
                 if (!intelData[lr.by][lr.target]) intelData[lr.by][lr.target] = [];
@@ -2510,33 +2548,24 @@ async function risolviTurno(data) {
 
             const storicoAgg = [...storico, ...finalAttacks];
 
-            // =====================
-            // E. CASSA RIFORNIMENTO
-            // =====================
+            // Casse
             const nuoveCasse = [];
             casseAttive.forEach(cassa => {
-                // ✅ La cassa è sulla griglia di cassa.target, visibile a cassa.viewer
                 const hit = finalAttacks.some(a =>
                     a.target === cassa.target && a.r === cassa.r && a.c === cassa.c && a.by === cassa.viewer
                 );
                 if (hit) {
-                    // Chi ha colpito la cassa riceve il bonus
                     if (arsenali[cassa.viewer]) {
                         const bonusType = ['cluster', 'piercing', 'laser', 'scudo'][Math.floor(Math.random() * 4)];
                         arsenali[cassa.viewer][bonusType] = (arsenali[cassa.viewer][bonusType] || 0) + 1;
                     }
                 } else {
-                    // Rimuovi casse su celle ora colpite
                     const nowHit = storicoAgg.some(s => s.target === cassa.target && s.r === cassa.r && s.c === cassa.c);
-                    if (!nowHit) {
-                        nuoveCasse.push(cassa);
-                    }
+                    if (!nowHit) nuoveCasse.push(cassa);
                 }
             });
 
-            // =====================
-            // F. CANNONIERA RITORSIONE
-            // =====================
+            // Cannoniera
             const ritorsioni = [];
             if (hasSpecial) {
                 finalAttacks.forEach(atk => {
@@ -2560,19 +2589,15 @@ async function risolviTurno(data) {
                     }
                 });
             }
+
             const storicoFinale = [...storicoAgg, ...ritorsioni];
 
-            // =====================
-            // G. POWERUPS CHECK
-            // =====================
+            // Powerups
             let powerups = JSON.parse(JSON.stringify(fd.powerups || {}));
-
             fd.partecipanti.forEach(player => {
                 if (!powerups[player]) powerups[player] = {};
-
                 const pStats = calcolaStatsGiocatoreFromStorico(player, fd.navi, storicoFinale, fd.partecipanti);
 
-                // --- DOPPIO COLPO: affondi una nave questo turno ---
                 const attacchiDelPlayer = storicoFinale.filter(a =>
                     a.by === player && a.round === turno && !a.isRetaliation && !a.isLaser
                 );
@@ -2586,11 +2611,8 @@ async function risolviTurno(data) {
                     }
                 });
 
-                // --- SONAR PING: streak di 3 colpi ---
                 if (pStats.streak >= 3 && pStats.streak % 3 === 0) {
-                    const opponents = fd.partecipanti.filter(p =>
-                        p !== player && !(nuoviEliminati || []).includes(p)
-                    );
+                    const opponents = fd.partecipanti.filter(p => p !== player && !(fd.eliminati || []).includes(p));
                     for (const opp of opponents) {
                         const naviOpp = fd.navi[opp] || [];
                         const allCells = naviOpp.flatMap(n => n.cells);
@@ -2600,13 +2622,14 @@ async function risolviTurno(data) {
                         if (firstUnhit) {
                             if (!intelData[player]) intelData[player] = {};
                             if (!intelData[player][opp]) intelData[player][opp] = [];
-                            const alreadyRevealed = intelData[player][opp].some(
-                                i => i.r === firstUnhit.r && i.c === firstUnhit.c
-                            );
+                            const alreadyRevealed = intelData[player][opp].some(i => i.r === firstUnhit.r && i.c === firstUnhit.c);
                             if (!alreadyRevealed) {
                                 intelData[player][opp].push({
-                                    r: firstUnhit.r, c: firstUnhit.c,
-                                    hasShip: true, turno, source: 'sonar'
+                                    r: firstUnhit.r,
+                                    c: firstUnhit.c,
+                                    hasShip: true,
+                                    turno,
+                                    source: 'sonar'
                                 });
                                 powerups[player].sonarPing = (powerups[player].sonarPing || 0) + 1;
                             }
@@ -2615,64 +2638,121 @@ async function risolviTurno(data) {
                     }
                 }
 
-                // --- RIPARAZIONE: 5 turni senza perdere nave ---
                 if (pStats.turniSenzaPerdita >= 5 && !powerups[player].riparazioneGuadagnata) {
                     powerups[player].riparazione = (powerups[player].riparazione || 0) + 1;
                     powerups[player].riparazioneGuadagnata = true;
                 }
 
-                // --- ULTIMO RESPIRO: 1 sola nave rimasta ---
-                if (pStats.naviRimaste === 1 && pStats.naviRimaste > 0) {
-                    powerups[player].ultimoRespiro = true;
-                } else {
-                    powerups[player].ultimoRespiro = false;
-                }
-                // --- CONSUMARE DOPPIO COLPO USATO ---
+                if (pStats.naviRimaste === 1 && pStats.naviRimaste > 0) powerups[player].ultimoRespiro = true;
+                else powerups[player].ultimoRespiro = false;
+
                 const hadDoppioColpo = (fd.powerups?.[player]?.doppioColpo || 0) > 0;
-                const usedSecondShot = !!attacks[`${player}_2`];
-                if (hadDoppioColpo && usedSecondShot) {
+                const usedExtra = (attacks[player] || []).some(a => a.extra);
+                if (hadDoppioColpo && usedExtra) {
                     powerups[player].doppioColpo = Math.max(0, (powerups[player].doppioColpo || 1) - 1);
                 }
             });
 
-            // =====================
-            // H. ELIMINAZIONI
-            // =====================
+            // Eliminazioni
             const nuoviEliminati = [...(fd.eliminati || [])];
             fd.partecipanti.forEach(player => {
                 if (nuoviEliminati.includes(player)) return;
-                if (isPlayerEliminated(player, fd.navi, storicoFinale)) {
-                    nuoviEliminati.push(player);
-                }
+                if (isPlayerEliminated(player, fd.navi, storicoFinale)) nuoviEliminati.push(player);
             });
 
             const sopravvissuti = fd.partecipanti.filter(p => !nuoviEliminati.includes(p));
             const vincitore = sopravvissuti.length <= 1 ? (sopravvissuti[0] || null) : null;
 
-            // =====================
-            // SAVE
-            // =====================
             transaction.update(docRef, {
                 storicoAttacchi: storicoFinale,
                 attacchiTurno: {},
                 turnoCorrente: turno + 1,
                 eliminati: nuoviEliminati,
-                vincitore: vincitore,
+                vincitore,
                 ultimoRoundRisolto: turno,
                 stato: vincitore ? 'conclusa' : 'battaglia',
                 casseAttive: nuoveCasse,
                 arsenale: arsenali,
-                eventiLog: eventiLog,
-                intelData: intelData,
-                powerups: powerups,
+                eventiLog,
+                intelData,
+                powerups,
                 tempestaAttivaTurno: tempestaAttiva ? turno : null
             });
         });
     } catch (e) {
         console.error("Errore risoluzione turno:", e);
     }
-
     processingResolution = false;
+}
+```---
+
+## 7. SOSTITUIRE completamente `renderOpponentTabs`
+
+### PRE
+(la tua funzione attuale)
+
+### POST
+```javascript
+function renderOpponentTabs(data, eliminati) {
+    const tabsEl = document.getElementById('opponent-tabs');
+    tabsEl.innerHTML = '';
+
+    const opponents = getOpponents(data).filter(p => !eliminati.includes(p));
+    const mieiAttacchi = attacchiTurnoLocali || [];
+    const missingTargets = getMissingTargets(mioNome, {
+        ...data,
+        attacchiTurno: {
+            ...(data.attacchiTurno || {}),
+            [mioNome]: mieiAttacchi
+        }
+    });
+
+    if (opponents.length === 1) {
+        targetSelezionato = opponents[0];
+        targetBar.classList.add('hidden');
+        const titleEl = document.getElementById('opponent-section-title');
+        if (titleEl) titleEl.textContent = `🎯 ${targetSelezionato}`;
+        return;
+    }
+
+    targetBar.classList.remove('hidden');
+
+    opponents.forEach(p => {
+        const btn = document.createElement('button');
+        const giaAttaccato = mieiAttacchi.some(a => a.target === p);
+        const ancoraNecessario = missingTargets.includes(p);
+        btn.className = `tab-btn ${p === targetSelezionato ? 'active' : ''}`;
+        if (ancoraNecessario) {
+            btn.style.borderColor = '#f1c40f';
+            btn.style.boxShadow = '0 0 8px rgba(241,196,15,0.2)';
+        } else if (giaAttaccato) {
+            btn.style.borderColor = '#2ecc71';
+        }
+
+        const storico = data.storicoAttacchi || [];
+        const hitsOnP = storico.filter(a => a.target === p && cellHasShip(p, a.r, a.c, data.navi)).length;
+        const naviP = data.navi[p] || [];
+        const totalCells = naviP.reduce((sum, n) => sum + n.cells.length, 0);
+
+        let badge = '';
+        if (ancoraNecessario) badge = '🎯';
+        else if (giaAttaccato) badge = '✅';
+
+        btn.innerHTML = `${badge} ${p} <span style="font-size:0.6rem; opacity:0.7;">(${hitsOnP}/${totalCells})</span>`;
+
+        btn.addEventListener('click', () => {
+            targetSelezionato = p;
+            cellaSelezionata = null;
+            selectedWeaponCells = [];
+            renderOpponentTabs(currentGameData, currentGameData.eliminati || []);
+            renderOpponentGrid(currentGameData);
+            btnFire.disabled = true;
+            const titleEl = document.getElementById('opponent-section-title');
+            if (titleEl) titleEl.textContent = `🎯 ${p}`;
+        });
+
+        tabsEl.appendChild(btn);
+    });
 }
 
 async function showEventAnimation(tipo) {
@@ -3275,11 +3355,21 @@ function renderWeaponBar() {
     const helpEl = document.getElementById('weapon-help-text');
     if (helpEl) {
         switch (selectedWeapon) {
-            case 'missile': helpEl.textContent = 'Clicca una cella nemica per colpirla'; break;
-            case 'cluster': helpEl.textContent = 'Clicca il centro — colpisce a croce (5 celle)'; break;
-            case 'piercing': helpEl.textContent = `Clicca la cella di partenza — 3 celle in linea ${piercingDirection === 'H' ? '→' : '↓'}. Doppio click per ruotare`; break;
-            case 'torpedo': helpEl.textContent = `Clicca per scegliere ${torpedoMode === 'row' ? 'RIGA' : 'COLONNA'}. Doppio click per alternare riga/colonna`; break;
-            case 'laser': helpEl.textContent = 'Clicca il centro — scansiona 3×3 senza danni'; break;
+            case 'missile':
+                helpEl.textContent = '🚀 Missile: colpisce 1 cella';
+                break;
+            case 'cluster':
+                helpEl.textContent = '💣 Grappolo: scegli il centro, esplode a croce (5 celle)';
+                break;
+            case 'piercing':
+                helpEl.textContent = `🔩 Perforante: 3 celle in linea ${piercingDirection === 'H' ? 'orizzontale' : 'verticale'} — doppio click per ruotare`;
+                break;
+            case 'torpedo':
+                helpEl.textContent = `🐟 Torpedine: colpisce intera ${torpedoMode === 'row' ? 'RIGA' : 'COLONNA'} — doppio click per cambiare`;
+                break;
+            case 'laser':
+                helpEl.textContent = '🔭 Laser: scansiona 3×3 senza danni, rivela navi';
+                break;
         }
     }
 }
@@ -3687,15 +3777,15 @@ function renderStatsBar(data) {
             <span class="stat-emoji">🎯</span>
             <span>Precisione: <span class="stat-value">${stats.precisione}%</span></span>
         </div>
-        <div class="stat-chip ${stats.streak >= 2 ? 'streak-active' : ''}">
+        <div class="stat-chip ${stats.streak >= 2 ? 'streak-active' : ''}" title="Colpi consecutivi a segno">
             <span class="stat-emoji">🔥</span>
             <span>Streak: <span class="stat-value">${stats.streak}</span></span>
         </div>
-        <div class="stat-chip">
-            <span class="stat-emoji">💀</span>
-            <span>Colpi: <span class="stat-value">${stats.hit}/${stats.colpi}</span></span>
+        <div class="stat-chip" title="Colpi a segno / colpi totali">
+            <span class="stat-emoji">💥</span>
+            <span>Hit: <span class="stat-value">${stats.hit}/${stats.colpi}</span></span>
         </div>
-        <div class="stat-chip">
+        <div class="stat-chip" title="Navi ancora in vita">
             <span class="stat-emoji">🚢</span>
             <span>Flotta: <span class="stat-value">${stats.naviRimaste}/${stats.naviTotali}</span></span>
         </div>
@@ -3751,9 +3841,8 @@ function renderPowerupBar(data, stats) {
         return `
             <div class="powerup-chip ${state}" title="${tooltip}">
                 <span class="pu-emoji">${item.def.emoji}</span>
-                ${item.def.name}
-                ${item.count > 0 ? `<span style="color:#2ecc71;"> ×${item.count}</span>` : ''}
-                ${!item.available && item.progress ? `<span style="font-size:0.55rem; color:#666; margin-left:3px;">(${item.progress})</span>` : ''}
+                <span>${item.def.name}</span>
+                ${item.count > 0 ? `<span style="color:#2ecc71; font-weight:900;">×${item.count}</span>` : ''}
             </div>
         `;
     }).join('');
@@ -3897,17 +3986,32 @@ function gestisciPiazzamento(data) {
             const hasSpecial = (mode === 'super' || mode === 'trump');
 
             const updateData = {
-                stato: 'battaglia', turnoCorrente: 1, attacchiTurno: {},
-                storicoAttacchi: [], eliminati: [],
-                casseAttive: [], eventiLog: [], intelData: {}
+                stato: 'battaglia',
+                turnoCorrente: 1,
+                attacchiTurno: {},
+                storicoAttacchi: [],
+                eliminati: [],
+                casseAttive: [],
+                eventiLog: [],
+                intelData: {},
+                powerups: {}
             };
 
             if (hasSpecial) {
                 const arsenali = {};
+                const powerups = {};
                 data.partecipanti.forEach(p => {
                     arsenali[p] = { ...ARSENALE_INIZIALE };
+                    powerups[p] = {
+                        doppioColpo: 0,
+                        sonarPing: 0,
+                        riparazione: 0,
+                        riparazioneGuadagnata: false,
+                        ultimoRespiro: false
+                    };
                 });
                 updateData.arsenale = arsenali;
+                updateData.powerups = powerups;
             }
 
             db.collection("partite").doc(matchId).update(updateData);
@@ -3916,7 +4020,6 @@ function gestisciPiazzamento(data) {
 }
 
 function gestisciBattaglia(data) {
-    const attacchiTurno = data.attacchiTurno || {};
     const surviving = getSurvivingPlayers(data);
     const ultimoRisolto = data.ultimoRoundRisolto || 0;
     removeGameBanner();
@@ -3934,18 +4037,7 @@ function gestisciBattaglia(data) {
         }
     }
 
-    // ✅ Check tutti hanno finito (considerando doppio colpo)
-    const tuttiAttaccato = surviving.every(p => {
-        const hasDC = (data.powerups?.[p]?.doppioColpo || 0) > 0;
-        const hasUR = data.powerups?.[p]?.ultimoRespiro === true;
-        const colpiNecessari = (hasDC || hasUR) ? 2 : 1;
-
-        const colpo1 = !!attacchiTurno[p];
-        const colpo2 = !!attacchiTurno[`${p}_2`];
-        const colpiInviati = (colpo1 ? 1 : 0) + (colpo2 ? 1 : 0);
-
-        return colpiInviati === colpiNecessari;
-    });
+    const tuttiAttaccato = surviving.every(p => playerHasCompletedTurn(p, data));
 
     if (tuttiAttaccato && surviving.length > 0) {
         const resolver = surviving.sort()[0];
@@ -3959,21 +4051,17 @@ function gestisciConclusa(data) {
 
     if (!isAnimating) {
         if (ultimoRisolto > 0 && animatingRound < ultimoRisolto) {
-            // ✅ Render pre-round, poi anima
             const preRoundData = {
                 ...data,
                 storicoAttacchi: (data.storicoAttacchi || []).filter(a => a.round !== ultimoRisolto)
             };
             iniziaBattaglia(preRoundData);
             playAttackAnimations(data, ultimoRisolto);
-            return; // Banner mostrato dopo animazioni
+            return;
         }
         iniziaBattaglia(data);
-    } else {
-        return; // Animazione in corso
+        mostraFinalePartita(data, vincitore);
     }
-
-    mostraFinalePartita(data, vincitore);
 }
 
 function mostraFinalePartita(data, vincitore) {
