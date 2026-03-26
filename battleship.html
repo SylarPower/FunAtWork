@@ -1673,7 +1673,7 @@ function renderGrid(containerId, opts) {
                 cell.title = '📦 Cassa di rifornimento — Colpiscila per bonus!';
             }
             if (cell.classList.contains('intel-cell')) {
-                cell.title = '🔭 Nave rilevata dal laser in quest\'area';
+                cell.title = '🔭 Nave rilevata (laser o sonar)';
             }
             if (cell.classList.contains('shielded-cell')) {
                 cell.title = '🛡️ Cella protetta dallo scudo questo turno';
@@ -2096,50 +2096,6 @@ function renderBattaglia(data) {
     renderStatsBar(data);
 }
 
-function renderOpponentTabs(data, eliminati) {
-    const tabsEl = document.getElementById('opponent-tabs');
-    tabsEl.innerHTML = '';
-
-    const opponents = getOpponents(data);
-
-    if (opponents.length === 1) {
-        targetSelezionato = opponents[0];
-        targetBar.classList.add('hidden');
-        const titleEl = document.getElementById('opponent-section-title');
-        if (titleEl) titleEl.textContent = `🎯 ${targetSelezionato}`;
-        return;
-    }
-
-    targetBar.classList.remove('hidden');
-
-    opponents.forEach(p => {
-        const btn = document.createElement('button');
-        btn.className = `tab-btn ${p === targetSelezionato ? 'active' : ''} ${eliminati.includes(p) ? 'eliminated' : ''}`;
-
-        const storico = data.storicoAttacchi || [];
-        const hitsOnP = storico.filter(a => a.target === p && cellHasShip(p, a.r, a.c, data.navi)).length;
-        const naviP = data.navi[p] || [];
-        const totalCells = naviP.reduce((sum, n) => sum + n.cells.length, 0);
-
-        let statusEmoji = eliminati.includes(p) ? '💀' : '';
-        if (!eliminati.includes(p) && hitsOnP > 0) statusEmoji = '🔥';
-
-        btn.innerHTML = `${statusEmoji} ${p} <span style="font-size:0.6rem; opacity:0.7;">(${hitsOnP}/${totalCells})</span>`;
-
-        btn.addEventListener('click', () => {
-            targetSelezionato = p;
-            cellaSelezionata = null;
-            selectedWeaponCells = [];
-            renderOpponentTabs(currentGameData, currentGameData.eliminati || []);
-            renderOpponentGrid(currentGameData);
-            btnFire.disabled = true;
-            const titleEl = document.getElementById('opponent-section-title');
-            if (titleEl) titleEl.textContent = `🎯 ${p} ${eliminati.includes(p) ? '(eliminato)' : ''}`;
-        });
-        tabsEl.appendChild(btn);
-    });
-}
-
 function renderOpponentGrid(data) {
     if (!targetSelezionato) return;
     const storico = data.storicoAttacchi || [];
@@ -2153,10 +2109,14 @@ function renderOpponentGrid(data) {
 
     // Raccogli dati intel per questo avversario
     const myIntel = currentGameData?.intelData?.[mioNome]?.[targetSelezionato] || [];
-    // ✅ Mostra solo celle con nave e non già colpite
     const intelCellsForTarget = myIntel.filter(i =>
-        i.hasShip && !allAttacksVsTarget.some(a => a.r === i.r && a.c === i.c)
+        i.hasShip &&
+        !allAttacksVsTarget.some(a => a.r === i.r && a.c === i.c)
     );
+    
+    // opzionale: se vuoi distinguere in futuro laser vs sonar
+    const laserIntelCellsForTarget = intelCellsForTarget.filter(i => i.source === 'laser');
+    const sonarIntelCellsForTarget = intelCellsForTarget.filter(i => i.source === 'sonar');
 
     renderGrid('opponent-grid-container', {
         size: gridSize,
@@ -2886,18 +2846,32 @@ async function animateGroupAttack(group, renderData, checkStorico, naviData) {
 
     const getStablePosition = (el) => {
         return new Promise(resolve => {
-            let lastX = -1, lastY = -1, checks = 0;
+            let lastX = -9999, lastY = -9999;
+            let stableCount = 0;
+
             const poll = () => {
+                const containerRect = gridContainer.getBoundingClientRect();
                 const rect = el.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                if (x === lastX && y === lastY && checks > 2) {
-                    resolve({ x, y });
+
+                const x = containerRect.left + (rect.left - containerRect.left) + rect.width / 2;
+                const y = containerRect.top + (rect.top - containerRect.top) + rect.height / 2;
+
+                if (Math.abs(x - lastX) < 0.5 && Math.abs(y - lastY) < 0.5) {
+                    stableCount++;
                 } else {
-                    lastX = x; lastY = y; checks++;
+                    stableCount = 0;
+                }
+
+                lastX = x;
+                lastY = y;
+
+                if (stableCount >= 3) {
+                    resolve({ x, y, rect, containerRect });
+                } else {
                     requestAnimationFrame(poll);
                 }
             };
+
             poll();
         });
     };
@@ -2929,14 +2903,32 @@ async function playClusterExplosion(gridContainer, attacks, naviData, storico) {
 
     const getStablePos = (el) => {
         return new Promise(resolve => {
-            let lastX = -1, lastY = -1, checks = 0;
+            let lastX = -9999, lastY = -9999;
+            let stableCount = 0;
+
             const poll = () => {
+                const containerRect = gridContainer.getBoundingClientRect();
                 const rect = el.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                if (x === lastX && y === lastY && checks > 1) resolve({ x, y });
-                else { lastX = x; lastY = y; checks++; requestAnimationFrame(poll); }
+
+                const x = containerRect.left + (rect.left - containerRect.left) + rect.width / 2;
+                const y = containerRect.top + (rect.top - containerRect.top) + rect.height / 2;
+
+                if (Math.abs(x - lastX) < 0.5 && Math.abs(y - lastY) < 0.5) {
+                    stableCount++;
+                } else {
+                    stableCount = 0;
+                }
+
+                lastX = x;
+                lastY = y;
+
+                if (stableCount >= 2) {
+                    resolve({ x, y, rect, containerRect });
+                } else {
+                    requestAnimationFrame(poll);
+                }
             };
+
             poll();
         });
     };
@@ -3046,21 +3038,32 @@ async function animateSingleAttack(atk, renderData, checkStorico) {
     // ✅ FIX DEFINITIVO: aspetta layout stabile con polling
     const getStablePosition = () => {
         return new Promise(resolve => {
-            let lastX = -1, lastY = -1;
-            let checks = 0;
+            let lastX = -9999, lastY = -9999;
+            let stableCount = 0;
+
             const poll = () => {
+                const containerRect = gridContainer.getBoundingClientRect();
                 const rect = cellEl.getBoundingClientRect();
-                const x = rect.left + rect.width / 2;
-                const y = rect.top + rect.height / 2;
-                if (x === lastX && y === lastY && checks > 2) {
-                    resolve({ x, y, rect });
+
+                const x = containerRect.left + (rect.left - containerRect.left) + rect.width / 2;
+                const y = containerRect.top + (rect.top - containerRect.top) + rect.height / 2;
+
+                if (Math.abs(x - lastX) < 0.5 && Math.abs(y - lastY) < 0.5) {
+                    stableCount++;
                 } else {
-                    lastX = x;
-                    lastY = y;
-                    checks++;
+                    stableCount = 0;
+                }
+
+                lastX = x;
+                lastY = y;
+
+                if (stableCount >= 3) {
+                    resolve({ x, y, rect, containerRect });
+                } else {
                     requestAnimationFrame(poll);
                 }
             };
+
             poll();
         });
     };
@@ -3260,45 +3263,6 @@ function launchMissileToCell(startX, startY, targetX, targetY, direction, atk) {
 
         requestAnimationFrame(animate);
     });
-}
-
-async function playLaserScan(x, y) {
-    // Flash blu
-    spawnFlash(x, y, 'rgba(52,152,219,0.6)', 120);
-
-    // Griglia laser
-    for (let i = 0; i < 3; i++) {
-        const ring = document.createElement('div');
-        ring.className = 'water-ripple';
-        const size = 20;
-        ring.style.left = (x - size/2) + 'px';
-        ring.style.top = (y - size/2) + 'px';
-        ring.style.width = size + 'px';
-        ring.style.height = size + 'px';
-        ring.style.borderColor = '#3498db';
-        document.body.appendChild(ring);
-
-        ring.animate([
-            { width: size+'px', height: size+'px', left: (x-size/2)+'px', top: (y-size/2)+'px', opacity: 0.9 },
-            { width: (80+i*25)+'px', height: (80+i*25)+'px', left: (x-(80+i*25)/2)+'px', top: (y-(80+i*25)/2)+'px', opacity: 0 }
-        ], { duration: 600+i*150, delay: i*100 }).onfinish = () => ring.remove();
-    }
-
-    // Testo
-    const txt = document.createElement('div');
-    txt.className = 'impact-text';
-    txt.style.left = '50%'; txt.style.top = (y-50)+'px';
-    txt.style.transform = 'translateX(-50%)';
-    txt.style.color = '#5dade2'; txt.style.fontSize = '1.8rem';
-    txt.textContent = '🔭 SCANSIONE';
-    document.body.appendChild(txt);
-    txt.animate([
-        { opacity: 0, transform: 'translateX(-50%) translateY(10px)' },
-        { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
-        { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' }
-    ], { duration: 1200 }).onfinish = () => txt.remove();
-
-    await sleep(800);
 }
 
 // ==========================================
@@ -3829,7 +3793,7 @@ function renderPowerupBar(data, stats) {
 
     bar.innerHTML = items.map(item => {
         const state = item.available ? 'available' : 'locked';
-        const tooltip = `${item.def.name}: ${item.def.desc}\n🔓 ${item.def.unlock}${item.progress ? '\n📊 ' + item.progress : ''}`;
+        const tooltip = `${item.def.name}\n${item.def.desc}\n🔓 ${item.def.unlock}${item.progress ? '\n📊 ' + item.progress : ''}`;
         return `
             <div class="powerup-chip ${state}" title="${tooltip}">
                 <span class="pu-emoji">${item.def.emoji}</span>
